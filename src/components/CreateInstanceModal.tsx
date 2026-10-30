@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Layers, Cpu } from 'lucide-react';
+import { X, Layers, Cpu, Sliders, ChevronDown } from 'lucide-react';
 import { CreateInstancePayload, MojangManifest } from '../types';
 
 interface CreateInstanceModalProps {
@@ -18,28 +18,34 @@ export function CreateInstanceModal({
 }: CreateInstanceModalProps) {
   const [name, setName] = useState('');
   const [mcVersion, setMcVersion] = useState('1.21.4');
+  const [versionTypeFilter, setVersionTypeFilter] = useState<'all' | 'release' | 'snapshot'>('release');
   const [loader, setLoader] = useState<'vanilla' | 'fabric' | 'forge' | 'neoforge' | 'quilt'>('fabric');
   const [ramGb, setRamGb] = useState(4);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [jvmArgs, setJvmArgs] = useState('-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
+  const [preLaunchCmd, setPreLaunchCmd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (manifest?.latest?.release) {
+      setMcVersion(manifest.latest.release);
+    }
+  }, [manifest]);
+
   const loaderOptions = [
-    { id: 'fabric', label: 'Fabric', desc: 'Rápido, ligero, ideal para mods modernos' },
-    { id: 'neoforge', label: 'NeoForge', desc: 'El sucesor moderno de Forge' },
-    { id: 'forge', label: 'Forge', desc: 'El modloader clásico con soporte histórico' },
-    { id: 'quilt', label: 'Quilt', desc: 'Fork comunitario avanzado de Fabric' },
-    { id: 'vanilla', label: 'Vanilla', desc: 'Minecraft puro sin modificaciones' },
+    { id: 'fabric', label: 'Fabric', desc: 'Rendimiento y ecosistema moderno' },
+    { id: 'neoforge', label: 'NeoForge', desc: 'Siguiente generación de Forge' },
+    { id: 'forge', label: 'Forge', desc: 'Soporte legendario' },
+    { id: 'quilt', label: 'Quilt', desc: 'Fork comunitario modular' },
+    { id: 'vanilla', label: 'Vanilla', desc: 'Sin loaders' },
   ];
 
-  const availableVersions = manifest?.versions
-    .filter((v) => v.type === 'release')
-    .slice(0, 30) || [
-    { id: '1.21.4', type: 'release', releaseTime: '2024-12-03', time: '', url: '' },
-    { id: '1.21.1', type: 'release', releaseTime: '2024-08-08', time: '', url: '' },
-    { id: '1.20.1', type: 'release', releaseTime: '2023-06-12', time: '', url: '' },
-    { id: '1.19.4', type: 'release', releaseTime: '2023-03-14', time: '', url: '' },
-    { id: '1.16.5', type: 'release', releaseTime: '2021-01-15', time: '', url: '' },
-    { id: '1.12.2', type: 'release', releaseTime: '2017-09-18', time: '', url: '' },
-  ];
+  // Full Mojang Manifest versions (hundreds of versions)
+  const allVersions = manifest?.versions || [];
+  const filteredVersions = allVersions.filter((v) => {
+    if (versionTypeFilter === 'all') return true;
+    return v.type === versionTypeFilter;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +59,8 @@ export function CreateInstanceModal({
         loader,
         memory_min_mb: 2048,
         memory_max_mb: ramGb * 1024,
+        jvm_args: jvmArgs.trim() || undefined,
+        pre_launch_command: preLaunchCmd.trim() || undefined,
       });
       setName('');
       onClose();
@@ -65,105 +73,144 @@ export function CreateInstanceModal({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-ghost-950/80 backdrop-blur-md"
+            className="absolute inset-0 bg-ghost-950/80 backdrop-blur-sm"
           />
 
-          {/* Modal Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="relative w-full max-w-xl rounded-3xl bg-ghost-900 border border-ghost-700/80 shadow-2xl p-6 text-ghost-100 z-10 overflow-hidden"
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-ghost-900 border border-ghost-750 shadow-2xl p-6 text-ghost-100 z-10"
           >
-            {/* Modal Header */}
+            {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-ghost-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-spectral-cyan/15 border border-spectral-cyan/30 flex items-center justify-center text-spectral-cyan">
-                  <Layers className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-xl bg-spectral-cyan/15 border border-spectral-cyan/30 flex items-center justify-center text-spectral-cyan">
+                  <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ghost-100">Crear Nueva Estancia</h3>
-                  <p className="text-xs text-ghost-400">Configura tu perfil de Minecraft Java</p>
+                  <h3 className="text-base font-bold text-ghost-100">Crear Estancia</h3>
+                  <p className="text-xs text-ghost-400">Selecciona entre todas las versiones oficiales de Minecraft</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-ghost-400 hover:text-ghost-200 hover:bg-ghost-800 transition-colors"
+                className="p-1.5 rounded-lg text-ghost-400 hover:text-ghost-200 hover:bg-ghost-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
               {/* Instance Name */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-ghost-300 mb-1.5 font-mono">
-                  Nombre de la Estancia
+                <label className="block text-xs font-medium uppercase tracking-wider text-ghost-400 mb-1 font-mono">
+                  Nombre
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="ej. Survival 1.21 Mods, Pixelmon, Hardcore..."
+                  placeholder="ej. Hardcore 1.21, Create Modpack, Servidor Privado..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-ghost-850 border border-ghost-700 focus:border-spectral-cyan focus:outline-none text-sm text-ghost-100 transition-colors"
+                  className="w-full px-3.5 py-2 rounded-xl bg-ghost-850 border border-ghost-700 focus:border-spectral-cyan focus:outline-none text-xs text-ghost-100 transition-colors"
                 />
               </div>
 
-              {/* Version & Loader Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Version Selector */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-ghost-300 mb-1.5 font-mono">
-                    Versión de Minecraft
+              {/* Version Filters and Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-ghost-400 font-mono">
+                    Versión de Minecraft ({filteredVersions.length} disponibles)
                   </label>
-                  <select
-                    value={mcVersion}
-                    onChange={(e) => setMcVersion(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-ghost-850 border border-ghost-700 focus:border-spectral-cyan focus:outline-none text-sm text-ghost-100 transition-colors font-mono"
-                  >
-                    {availableVersions.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.id} (Release)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-1 text-[10px] font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setVersionTypeFilter('release')}
+                      className={`px-2 py-0.5 rounded ${
+                        versionTypeFilter === 'release'
+                          ? 'bg-spectral-cyan/20 text-spectral-cyan font-bold'
+                          : 'text-ghost-400 hover:text-ghost-200'
+                      }`}
+                    >
+                      Releases
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVersionTypeFilter('snapshot')}
+                      className={`px-2 py-0.5 rounded ${
+                        versionTypeFilter === 'snapshot'
+                          ? 'bg-spectral-cyan/20 text-spectral-cyan font-bold'
+                          : 'text-ghost-400 hover:text-ghost-200'
+                      }`}
+                    >
+                      Snapshots
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVersionTypeFilter('all')}
+                      className={`px-2 py-0.5 rounded ${
+                        versionTypeFilter === 'all'
+                          ? 'bg-spectral-cyan/20 text-spectral-cyan font-bold'
+                          : 'text-ghost-400 hover:text-ghost-200'
+                      }`}
+                    >
+                      Todas
+                    </button>
+                  </div>
                 </div>
 
-                {/* Mod Loader Selector */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-ghost-300 mb-1.5 font-mono">
-                    Mod Loader
-                  </label>
-                  <select
-                    value={loader}
-                    onChange={(e) => setLoader(e.target.value as any)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-ghost-850 border border-ghost-700 focus:border-spectral-cyan focus:outline-none text-sm text-ghost-100 transition-colors uppercase font-mono font-medium"
-                  >
-                    {loaderOptions.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                <select
+                  value={mcVersion}
+                  onChange={(e) => setMcVersion(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-ghost-850 border border-ghost-700 focus:border-spectral-cyan focus:outline-none text-xs text-ghost-100 transition-colors font-mono max-h-48"
+                >
+                  {filteredVersions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.id} ({v.type}) {v.releaseTime ? `• ${v.releaseTime.split('T')[0]}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Loader Grid */}
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-ghost-400 mb-1.5 font-mono">
+                  Mod Loader
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {loaderOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setLoader(opt.id as any)}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        loader === opt.id
+                          ? 'bg-ghost-800 border-spectral-cyan text-ghost-100 shadow-sm'
+                          : 'bg-ghost-850/60 border-ghost-750 text-ghost-400 hover:border-ghost-700'
+                      }`}
+                    >
+                      <div className="font-semibold text-xs capitalize">{opt.label}</div>
+                      <div className="text-[10px] text-ghost-400 truncate">{opt.desc}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* RAM Allocation Slider */}
-              <div className="p-4 rounded-2xl bg-ghost-850/80 border border-ghost-800">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-xs font-mono font-semibold text-ghost-300">
-                    <Cpu className="w-4 h-4 text-spectral-cyan" />
-                    <span>ASIGNACIÓN DE MEMORIA RAM</span>
-                  </div>
-                  <span className="text-sm font-bold font-mono text-spectral-mint">{ramGb} GB</span>
+              {/* RAM slider */}
+              <div className="p-3.5 rounded-xl bg-ghost-850 border border-ghost-750">
+                <div className="flex items-center justify-between mb-1.5 text-xs">
+                  <span className="flex items-center gap-1.5 font-medium text-ghost-300">
+                    <Cpu className="w-3.5 h-3.5 text-spectral-cyan" />
+                    Memoria RAM Máxima
+                  </span>
+                  <span className="font-mono font-bold text-spectral-mint">{ramGb} GB</span>
                 </div>
                 <input
                   type="range"
@@ -174,31 +221,73 @@ export function CreateInstanceModal({
                   onChange={(e) => setRamGb(Number(e.target.value))}
                   className="w-full accent-spectral-cyan cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] font-mono text-ghost-500 mt-1">
-                  <span>2 GB (Mínimo)</span>
-                  <span>4-8 GB (Recomendado)</span>
-                  <span>16 GB (Extremo)</span>
-                </div>
               </div>
 
-              {/* Actions Footer */}
-              <div className="flex items-center justify-end gap-3 pt-3">
+              {/* Advanced Settings Toggle */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-1.5 text-xs text-ghost-400 hover:text-ghost-200 transition-colors font-mono"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-spectral-cyan" />
+                  <span>Ajustes Avanzados (JVM Flags, Comandos Pre-Launch)</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {showAdvanced && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 space-y-3 pt-3 border-t border-ghost-800"
+                  >
+                    <div>
+                      <label className="block text-[11px] font-mono text-ghost-400 mb-1">
+                        Argumentos JVM Adicionales
+                      </label>
+                      <input
+                        type="text"
+                        value={jvmArgs}
+                        onChange={(e) => setJvmArgs(e.target.value)}
+                        placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled"
+                        className="w-full px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-700 text-xs font-mono text-ghost-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-mono text-ghost-400 mb-1">
+                        Comando Pre-Ejecución (Hook antes de abrir Java)
+                      </label>
+                      <input
+                        type="text"
+                        value={preLaunchCmd}
+                        onChange={(e) => setPreLaunchCmd(e.target.value)}
+                        placeholder="ej. mangohud, gamemoderun, optirun"
+                        className="w-full px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-700 text-xs font-mono text-ghost-200"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-ghost-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-ghost-400 hover:text-ghost-200 transition-colors"
+                  className="px-3.5 py-1.5 rounded-lg text-xs text-ghost-400 hover:text-ghost-200 transition-colors"
                 >
                   Cancelar
                 </button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   type="submit"
                   disabled={isSubmitting || !name.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-spectral-cyan to-spectral-mint text-ghost-950 font-bold text-xs uppercase tracking-wider shadow-lg glow-cyan disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-spectral-cyan hover:bg-spectral-cyan/90 text-ghost-950 font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Creando...' : 'Crear Estancia'}
-                </motion.button>
+                </button>
               </div>
             </form>
           </motion.div>

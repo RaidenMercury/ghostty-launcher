@@ -17,6 +17,7 @@ pub fn detect_java_installations() -> Vec<SystemJavaInfo> {
         };
 
         let path = which_java().unwrap_or_else(|| "java".to_string());
+        let _major = extract_major_version(&version_str);
 
         results.push(SystemJavaInfo {
             path,
@@ -53,6 +54,20 @@ pub fn detect_java_installations() -> Vec<SystemJavaInfo> {
     }
 
     results
+}
+
+fn extract_major_version(ver_str: &str) -> u32 {
+    if ver_str.contains("\"21.") || ver_str.contains(" 21.") {
+        21
+    } else if ver_str.contains("\"17.") || ver_str.contains(" 17.") {
+        17
+    } else if ver_str.contains("\"1.8.") || ver_str.contains(" 8.") {
+        8
+    } else if ver_str.contains("\"25.") {
+        25
+    } else {
+        21
+    }
 }
 
 fn which_java() -> Option<String> {
@@ -113,10 +128,14 @@ pub fn toggle_mod(instance_id: &str, filename: &str) -> Result<bool, String> {
         return Err("Mod file not found".to_string());
     }
 
+    // Clean stripping of ALL trailing .disabled extensions
+    let clean_base = filename.trim_end_matches(".disabled");
     let new_filename = if filename.ends_with(".disabled") {
-        filename.trim_end_matches(".disabled").to_string()
+        // Was disabled, strip .disabled to re-enable
+        clean_base.to_string()
     } else {
-        format!("{}.disabled", filename)
+        // Was enabled, append single .disabled to disable
+        format!("{}.disabled", clean_base)
     };
 
     let new_path = mods_dir.join(&new_filename);
@@ -126,14 +145,11 @@ pub fn toggle_mod(instance_id: &str, filename: &str) -> Result<bool, String> {
 }
 
 pub fn launch_instance(instance: &mut Instance, username: &str, uuid: &str) -> Result<String, String> {
-    // Record last played
     let now = chrono::Local::now().to_rfc3339();
     instance.last_played = Some(now);
     let _ = crate::instances::update_instance(instance.clone());
 
     let instance_dir = get_instances_dir().join(&instance.id);
-
-    // Prepare simulated/actual Java launch command
     let java_bin = instance.java_path.clone().unwrap_or_else(|| "java".to_string());
     let min_mem = format!("-Xms{}M", instance.memory_min_mb);
     let max_mem = format!("-Xmx{}M", instance.memory_max_mb);

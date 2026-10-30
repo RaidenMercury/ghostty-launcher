@@ -109,3 +109,4 @@ export function Sidebar({ currentTab, onTabChange, activeInstance }: SidebarProp
     </aside>
   );
 }
+

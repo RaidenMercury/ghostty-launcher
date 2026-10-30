@@ -1,3 +1,6 @@
+export type ModContentType = 'mod' | 'modpack' | 'resourcepack' | 'shader';
+export type ModProvider = 'modrinth' | 'curseforge' | 'ftb';
+
 export interface Account {
   id: string;
   username: string;
@@ -6,6 +9,17 @@ export interface Account {
   skin_url: string | null;
   is_active: boolean;
   access_token: string | null;
+}
+
+export interface InstanceResolution {
+  width: number;
+  height: number;
+  fullscreen: boolean;
+}
+
+export interface InstanceServerConnect {
+  host: string;
+  port?: number;
 }
 
 export interface Instance {
@@ -19,6 +33,11 @@ export interface Instance {
   memory_max_mb: number;
   java_path: string | null;
   jvm_args: string | null;
+  env_vars?: Record<string, string>;
+  resolution?: InstanceResolution;
+  server_auto_connect?: InstanceServerConnect | null;
+  pre_launch_command?: string | null;
+  post_exit_command?: string | null;
   total_playtime_secs: number;
   last_played: string | null;
 }
@@ -27,13 +46,17 @@ export interface CreateInstancePayload {
   name: string;
   mc_version: string;
   loader: string;
+  loader_version?: string;
   memory_min_mb?: number;
   memory_max_mb?: number;
+  java_path?: string;
+  jvm_args?: string;
+  pre_launch_command?: string;
 }
 
 export interface MojangVersion {
   id: string;
-  type: string;
+  type: 'release' | 'snapshot' | 'old_beta' | 'old_alpha';
   url: string;
   time: string;
   releaseTime: string;
@@ -58,11 +81,16 @@ export interface ModrinthSearchHit {
   downloads: number;
   follows: number;
   project_type: string;
+  date_modified?: string;
+  client_side?: string;
+  server_side?: string;
 }
 
 export interface ModrinthSearchResult {
   hits: ModrinthSearchHit[];
   total_hits: number;
+  offset: number;
+  limit: number;
 }
 
 export interface ModrinthVersion {
@@ -89,5 +117,16 @@ export interface ModFileInfo {
 export interface SystemJavaInfo {
   path: string;
   version: string;
+  major_version: number;
   is_valid: boolean;
+}
+
+export interface JavaDownloadable {
+  version: number;
+  name: string;
+  vendor: string;
+  os: string;
+  architecture: string;
+  download_url: string;
+  size_mb: number;
 }

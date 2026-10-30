@@ -124,3 +124,4 @@ pub fn toggle_instance_mod(instance_id: String, filename: String) -> Result<bool
 pub fn launch_game(mut instance: Instance, username: String, uuid: String) -> Result<String, String> {
     launcher::launch_instance(&mut instance, &username, &uuid)
 }
+

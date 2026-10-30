@@ -8,6 +8,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    host: true,
   },
   envPrefix: ['VITE_', 'TAURI_'],
 });
+

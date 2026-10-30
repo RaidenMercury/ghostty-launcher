@@ -149,3 +149,4 @@ pub fn get_fallback_manifest() -> MojangManifest {
         ],
     }
 }
+

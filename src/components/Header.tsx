@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { User, Cpu, Wifi } from 'lucide-react';
+import { User, Play } from 'lucide-react';
 import { Account, Instance } from '../types';
 
 interface HeaderProps {
@@ -18,64 +18,54 @@ export function Header({
   isLaunching,
 }: HeaderProps) {
   return (
-    <header className="h-16 border-b border-ghost-800/80 bg-ghost-900/60 backdrop-blur-xl flex items-center justify-between px-6 select-none shrink-0 z-20">
-      {/* Left indicator status */}
-      <div className="flex items-center gap-5">
-        <div className="flex items-center gap-2 text-xs font-mono text-ghost-400 bg-ghost-850 px-3 py-1.5 rounded-lg border border-ghost-800">
-          <div className="w-2 h-2 rounded-full bg-spectral-mint animate-pulse" />
-          <span>ENGINE: TAURI RUST READY</span>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono text-ghost-400">
-          <Cpu className="w-3.5 h-3.5 text-spectral-cyan" />
-          <span>JAVA 21 VM</span>
-        </div>
-
-        <div className="hidden lg:flex items-center gap-2 text-xs font-mono text-ghost-400">
-          <Wifi className="w-3.5 h-3.5 text-spectral-mint" />
-          <span>MODRINTH & MOJANG ONLINE</span>
-        </div>
+    <header className="h-14 border-b border-ghost-800/80 bg-ghost-900/60 backdrop-blur-md flex items-center justify-between px-6 select-none shrink-0 z-20">
+      {/* Left instance quick breadcrumb */}
+      <div className="flex items-center gap-3">
+        {activeInstance ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-semibold text-ghost-200">{activeInstance.name}</span>
+            <span className="text-[10px] font-mono text-ghost-400 bg-ghost-850 px-2 py-0.5 rounded border border-ghost-750">
+              {activeInstance.loader} {activeInstance.mc_version}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-ghost-500 font-mono">Sin estancia activa</span>
+        )}
       </div>
 
-      {/* Right controls: Account pill & Instant Launch button */}
-      <div className="flex items-center gap-4">
+      {/* Right controls */}
+      <div className="flex items-center gap-3">
         {/* Player Account Button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={onOpenAccounts}
-          className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-ghost-850/90 hover:bg-ghost-800 border border-ghost-700/60 transition-all text-xs group"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ghost-850 hover:bg-ghost-800 border border-ghost-750 transition-colors text-xs group"
         >
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-spectral-cyan to-spectral-mint flex items-center justify-center text-ghost-950 font-bold font-mono shadow-sm">
-            {activeAccount ? activeAccount.username.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
+          <div className="w-5 h-5 rounded-md bg-ghost-750 flex items-center justify-center text-ghost-200 font-bold font-mono text-[11px]">
+            {activeAccount ? activeAccount.username.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
           </div>
-          <div className="text-left">
-            <div className="font-semibold text-ghost-100 group-hover:text-spectral-cyan transition-colors">
-              {activeAccount?.username || 'Sin Cuenta'}
-            </div>
-            <div className="text-[10px] text-ghost-400 font-mono">
-              {activeAccount?.account_type || 'Invitado'}
-            </div>
-          </div>
-        </motion.button>
+          <span className="font-medium text-ghost-200 group-hover:text-ghost-100">
+            {activeAccount?.username || 'Sin Cuenta'}
+          </span>
+        </button>
 
         {/* Quick Launch CTA */}
         {activeInstance && (
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onLaunch}
             disabled={isLaunching}
-            className="flex items-center gap-2.5 px-5 py-2 rounded-xl bg-gradient-to-r from-spectral-cyan to-spectral-mint text-ghost-950 font-bold text-xs uppercase tracking-wider shadow-lg glow-cyan hover:opacity-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-spectral-cyan hover:bg-spectral-cyan/90 text-ghost-950 font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50"
           >
             {isLaunching ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-ghost-950 border-t-transparent rounded-full animate-spin" />
-                <span>INICIANDO...</span>
+                <div className="w-3 h-3 border-2 border-ghost-950 border-t-transparent rounded-full animate-spin" />
+                <span>Iniciando...</span>
               </>
             ) : (
               <>
-                <span>JUGAR {activeInstance.name}</span>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Jugar</span>
               </>
             )}
           </motion.button>

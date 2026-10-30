@@ -33,3 +33,4 @@ pub fn init_directories() -> Result<(), String> {
 
     Ok(())
 }
+

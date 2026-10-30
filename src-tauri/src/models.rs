@@ -139,3 +139,4 @@ pub struct SystemJavaInfo {
     pub version: String,
     pub is_valid: bool,
 }
+

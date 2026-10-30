@@ -68,6 +68,18 @@ export function App() {
     }
   };
 
+  const handleUpdateInstance = async (inst: Instance) => {
+    try {
+      await api.updateInstance(inst);
+      setInstances((prev) => prev.map((i) => (i.id === inst.id ? inst : i)));
+      if (activeInstance?.id === inst.id) {
+        setActiveInstance(inst);
+      }
+    } catch (e: any) {
+      addToast('error', 'Error al actualizar', e.toString());
+    }
+  };
+
   const handleCreateInstance = async (payload: CreateInstancePayload) => {
     try {
       const newInst = await api.createInstance(payload);
@@ -265,7 +277,11 @@ export function App() {
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 className="flex-1 flex overflow-hidden"
               >
-                <SettingsView onShowToast={addToast} />
+                <SettingsView
+                  activeInstance={activeInstance}
+                  onUpdateInstance={handleUpdateInstance}
+                  onShowToast={addToast}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -292,3 +308,4 @@ export function App() {
   );
 }
 export default App;
+
