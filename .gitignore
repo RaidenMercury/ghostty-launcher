@@ -1,0 +1,25 @@
+# Node
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Rust / Tauri
+src-tauri/target/
+
+# OS / Editor
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Reference (keep or ignore)
+reference/
