@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Play, Layers, Package, Clock, Cpu, Trash2, Download, Search } from 'lucide-react';
+import { Plus, Play, Layers, Package, Clock, Cpu, Trash2, Download, Search, Upload } from 'lucide-react';
 import { Instance } from '../types';
 
 interface InstancesViewProps {
@@ -8,6 +8,7 @@ interface InstancesViewProps {
   activeInstance: Instance | null;
   onSelectInstance: (instance: Instance) => void;
   onOpenCreate: () => void;
+  onImportModpack: (filePath: string) => Promise<void>;
   onOpenMods: (instance: Instance) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
@@ -20,6 +21,7 @@ export function InstancesView({
   activeInstance,
   onSelectInstance,
   onOpenCreate,
+  onImportModpack,
   onOpenMods,
   onLaunch,
   onDeleteInstance,
@@ -27,6 +29,23 @@ export function InstancesView({
   isLaunching,
 }: InstancesViewProps) {
   const [filter, setFilter] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      // In web / electron / tauri, file can have path or name
+      const path = (file as any).path || file.name;
+      await onImportModpack(path);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const filteredInstances = instances.filter(
     (i) =>
@@ -87,6 +106,26 @@ export function InstancesView({
               className="w-full pl-9 pr-4 py-2 rounded-xl bg-ghost-850/80 border border-ghost-800 text-xs text-ghost-100 placeholder-ghost-500 focus:outline-none focus:border-spectral-cyan transition-colors"
             />
           </div>
+
+          {/* Hidden File Input for Modpack Import */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".mrpack,.zip"
+            className="hidden"
+          />
+
+          {/* Import Pack Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ghost-850 hover:bg-ghost-800 border border-ghost-750 text-xs font-semibold text-ghost-200 transition-colors shrink-0"
+            title="Importar modpack .mrpack (Modrinth) o .zip (CurseForge)"
+          >
+            <Upload className={`w-3.5 h-3.5 text-spectral-cyan ${importing ? 'animate-bounce' : ''}`} />
+            <span>{importing ? 'Importando...' : 'Importar Pack'}</span>
+          </button>
 
           {/* New Instance Button */}
           <motion.button

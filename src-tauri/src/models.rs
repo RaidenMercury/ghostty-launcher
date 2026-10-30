@@ -51,6 +51,12 @@ pub struct Instance {
     pub memory_max_mb: u32,
     pub java_path: Option<String>,
     pub jvm_args: Option<String>,
+    #[serde(default)]
+    pub env_vars: Option<std::collections::HashMap<String, String>>,
+    #[serde(default)]
+    pub pre_launch_command: Option<String>,
+    #[serde(default)]
+    pub post_exit_command: Option<String>,
     pub total_playtime_secs: u64,
     pub last_played: Option<String>,
 }
@@ -62,6 +68,10 @@ pub struct CreateInstanceRequest {
     pub loader: String,
     pub memory_min_mb: Option<u32>,
     pub memory_max_mb: Option<u32>,
+    #[serde(default)]
+    pub jvm_args: Option<String>,
+    #[serde(default)]
+    pub pre_launch_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

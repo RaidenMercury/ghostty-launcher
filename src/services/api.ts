@@ -65,6 +65,14 @@ export const api = {
     return invokeTauri<string>('export_instance', { instanceId, targetPath });
   },
 
+  async importModpackFile(filePath: string, customName?: string): Promise<Instance> {
+    return invokeTauri<Instance>('import_modpack_file', { filePath, customName });
+  },
+
+  async installOnlineModpack(downloadUrl: string, name: string): Promise<Instance> {
+    return invokeTauri<Instance>('install_online_modpack', { downloadUrl, name });
+  },
+
   // Real-Time Mojang Manifest (All Minecraft Versions)
   async getMojangManifest(): Promise<MojangManifest> {
     try {
@@ -459,6 +467,38 @@ async function mockInvoke<T>(cmd: string, args: Record<string, unknown>): Promis
       mockInstances = mockInstances.filter((i) => i.id !== id);
       delete mockMods[id];
       return undefined as unknown as T;
+    }
+
+    case 'import_modpack_file':
+    case 'install_online_modpack': {
+      const name = (args.name as string) || (args.customName as string) || 'Modpack Importado';
+      const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-') || `pack-${Date.now()}`;
+      const inst: Instance = {
+        id,
+        name,
+        icon: 'ghostty',
+        mc_version: '1.21.4',
+        loader: 'fabric',
+        loader_version: '0.16.10',
+        memory_min_mb: 4096,
+        memory_max_mb: 6144,
+        java_path: null,
+        jvm_args: '-XX:+UseG1GC',
+        env_vars: {},
+        resolution: { width: 1920, height: 1080, fullscreen: false },
+        server_auto_connect: null,
+        pre_launch_command: null,
+        post_exit_command: null,
+        total_playtime_secs: 0,
+        last_played: null,
+      };
+      mockInstances.unshift(inst);
+      mockMods[id] = [
+        { filename: 'fabric-api-0.108.0+1.21.4.jar', size: 2150000, enabled: true },
+        { filename: 'sodium-fabric-0.6.0-beta.2+mc1.21.jar', size: 1250320, enabled: true },
+        { filename: 'iris-fabric-1.7.0+mc1.21.jar', size: 3410200, enabled: true },
+      ];
+      return inst as unknown as T;
     }
 
     case 'detect_java':

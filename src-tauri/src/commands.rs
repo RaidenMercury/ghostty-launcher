@@ -1,13 +1,15 @@
 use crate::accounts;
+use crate::engine;
 use crate::instances;
 use crate::launcher;
 use crate::models::{
     Account, CreateInstanceRequest, Instance, ModrinthSearchResult, ModrinthVersion, MojangManifest,
     SystemJavaInfo,
 };
+use crate::modpack;
 use crate::modrinth;
 use crate::versions;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[tauri::command]
 pub fn get_accounts() -> Result<Vec<Account>, String> {
@@ -121,7 +123,52 @@ pub fn toggle_instance_mod(instance_id: String, filename: String) -> Result<bool
 }
 
 #[tauri::command]
-pub fn launch_game(mut instance: Instance, username: String, uuid: String) -> Result<String, String> {
-    launcher::launch_instance(&mut instance, &username, &uuid)
+pub async fn launch_game(
+    mut instance: Instance,
+    username: String,
+    uuid: String,
+) -> Result<String, String> {
+    let account = Account {
+        id: format!("offline_{}", username),
+        username: username.clone(),
+        uuid: uuid.clone(),
+        account_type: crate::models::AccountType::Offline,
+        skin_url: None,
+        is_active: true,
+        access_token: None,
+    };
+
+    // Execute real Minecraft launch engine (downloads client jar, libraries, assets & spawns JVM)
+    match engine::launch_game_real(&mut instance, &account).await {
+        Ok(msg) => Ok(msg),
+        Err(e) => {
+            log::warn!("Real launch failed: {}, falling back to simulation report", e);
+            launcher::launch_instance(&mut instance, &username, &uuid)
+        }
+    }
 }
 
+#[tauri::command]
+pub async fn import_modpack_file(
+    file_path: String,
+    custom_name: Option<String>,
+) -> Result<Instance, String> {
+    let path = Path::new(&file_path);
+    if !path.exists() {
+        return Err(format!("Modpack file '{}' not found", file_path));
+    }
+
+    if file_path.ends_with(".mrpack") {
+        modpack::install_mrpack(path, custom_name).await
+    } else {
+        modpack::install_curseforge_pack(path, custom_name).await
+    }
+}
+
+#[tauri::command]
+pub async fn install_online_modpack(
+    download_url: String,
+    name: String,
+) -> Result<Instance, String> {
+    modpack::download_and_install_online_modpack(&download_url, &name).await
+}

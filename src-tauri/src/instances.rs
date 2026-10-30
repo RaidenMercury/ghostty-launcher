@@ -72,7 +72,10 @@ pub fn create_instance(req: CreateInstanceRequest) -> Result<Instance, String> {
         memory_min_mb: req.memory_min_mb.unwrap_or(2048),
         memory_max_mb: req.memory_max_mb.unwrap_or(4096),
         java_path: None,
-        jvm_args: None,
+        jvm_args: req.jvm_args,
+        env_vars: None,
+        pre_launch_command: req.pre_launch_command,
+        post_exit_command: None,
         total_playtime_secs: 0,
         last_played: None,
     };

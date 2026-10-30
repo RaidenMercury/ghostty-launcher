@@ -105,6 +105,17 @@ export function App() {
     }
   };
 
+  const handleImportModpack = async (filePath: string) => {
+    try {
+      const inst = await api.importModpackFile(filePath);
+      setInstances((prev) => [inst, ...prev]);
+      setActiveInstance(inst);
+      addToast('success', 'Modpack Importado', `Se creó la estancia "${inst.name}".`);
+    } catch (e: any) {
+      addToast('error', 'Error al importar modpack', e.toString());
+    }
+  };
+
   const handleExportInstance = async (id: string) => {
     try {
       const targetPath = `/home/rmercury/Descargas/${id}-export.zip`;
@@ -224,6 +235,7 @@ export function App() {
                   activeInstance={activeInstance}
                   onSelectInstance={setActiveInstance}
                   onOpenCreate={() => setIsCreateOpen(true)}
+                  onImportModpack={handleImportModpack}
                   onOpenMods={(inst) => {
                     setActiveInstance(inst);
                     setCurrentTab('mods');
@@ -248,6 +260,11 @@ export function App() {
                 <DiscoverView
                   activeInstance={activeInstance}
                   onShowToast={addToast}
+                  onModpackInstalled={(inst) => {
+                    setInstances((prev) => [inst, ...prev]);
+                    setActiveInstance(inst);
+                    setCurrentTab('instances');
+                  }}
                 />
               </motion.div>
             )}

@@ -26,3 +26,4 @@ uuid = { version = "1.10", features = ["v4", "v3"] }
 chrono = { version = "0.4", features = ["serde"] }
 walkdir = "2.5"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
+futures-util = "0.3"

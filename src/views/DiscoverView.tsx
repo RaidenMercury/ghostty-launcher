@@ -7,9 +7,10 @@ import { api } from '../services/api';
 interface DiscoverViewProps {
   activeInstance: Instance | null;
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
+  onModpackInstalled?: (instance: Instance) => void;
 }
 
-export function DiscoverView({ activeInstance, onShowToast }: DiscoverViewProps) {
+export function DiscoverView({ activeInstance, onShowToast, onModpackInstalled }: DiscoverViewProps) {
   const [query, setQuery] = useState('');
   const [contentType, setContentType] = useState<ModContentType>('mod');
   const [loaderFilter, setLoaderFilter] = useState<string>(activeInstance?.loader || 'all');
@@ -58,6 +59,34 @@ export function DiscoverView({ activeInstance, onShowToast }: DiscoverViewProps)
   };
 
   const handleInstall = async (hit: ModrinthSearchHit) => {
+    // If installing a modpack, install it as a brand new instance
+    if (hit.project_type === 'modpack' || contentType === 'modpack') {
+      try {
+        setInstallingId(hit.project_id);
+        const versions = await api.getModrinthVersions(hit.project_id);
+        if (!versions || versions.length === 0 || !versions[0].files.length) {
+          onShowToast('warning', 'Versión no encontrada', 'No se encontraron archivos de este modpack.');
+          return;
+        }
+        const file = versions[0].files[0];
+        const newInst = await api.installOnlineModpack(file.url, hit.title);
+        setInstalledMap((prev) => ({ ...prev, [hit.project_id]: true }));
+        onShowToast(
+          'success',
+          'Modpack Instalado con Éxito',
+          `Se creó la estancia "${newInst.name}" con todos sus mods y configuraciones.`
+        );
+        if (onModpackInstalled) {
+          onModpackInstalled(newInst);
+        }
+      } catch (e: any) {
+        onShowToast('error', 'Error al instalar modpack', e.toString());
+      } finally {
+        setInstallingId(null);
+      }
+      return;
+    }
+
     if (!activeInstance) {
       onShowToast('warning', 'Sin estancia seleccionada', 'Selecciona una estancia para instalar este elemento.');
       return;

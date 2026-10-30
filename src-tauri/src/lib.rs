@@ -1,9 +1,11 @@
 pub mod accounts;
 pub mod commands;
 pub mod config;
+pub mod engine;
 pub mod instances;
 pub mod launcher;
 pub mod models;
+pub mod modpack;
 pub mod modrinth;
 pub mod versions;
 
@@ -42,7 +44,9 @@ pub fn run() {
             detect_java,
             get_instance_mods,
             toggle_instance_mod,
-            launch_game
+            launch_game,
+            import_modpack_file,
+            install_online_modpack
         ])
         .run(tauri::generate_context!())
         .expect("error while running Ghostty Launcher");
