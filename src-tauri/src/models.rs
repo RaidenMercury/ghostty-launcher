@@ -163,3 +163,11 @@ pub struct ModFileInfo {
     pub enabled: bool,
     pub size: u64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SystemJavaInfo {
+    pub path: String,
+    pub version: String,
+    pub major_version: u32,
+    pub is_valid: bool,
+}

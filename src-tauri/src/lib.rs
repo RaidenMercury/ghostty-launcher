@@ -3,6 +3,7 @@ pub mod commands;
 pub mod discord;
 pub mod engine;
 pub mod instances;
+pub mod java;
 pub mod launcher;
 pub mod models;
 pub mod modpack;
@@ -73,6 +74,7 @@ pub fn run() {
             save_config,
             update_discord_rpc,
             get_mojang_versions,
+            detect_java,
             get_accounts,
             add_offline_account,
             iniciar_oauth_dispositivo,

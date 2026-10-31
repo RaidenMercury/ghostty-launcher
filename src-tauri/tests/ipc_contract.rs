@@ -10,7 +10,7 @@ const API_TS: &str = include_str!("../../src/services/api.ts");
 const LIB_RS: &str = include_str!("../src/lib.rs");
 
 /// Comandos invocados por la UI que aún no tienen backend. La lista solo puede encoger.
-const PENDING: &[&str] = &["detect_java"];
+const PENDING: &[&str] = &[];
 
 fn invoked_commands(src: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();

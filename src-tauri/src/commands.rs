@@ -2,8 +2,9 @@ use crate::accounts::{AccountManager, DeviceCodeResponse};
 use crate::discord::DiscordRpcManager;
 use crate::engine::GameEngine;
 use crate::instances::InstanceManager;
+use crate::java::JavaDetector;
 use crate::launcher::LauncherManager;
-use crate::models::{Account, Instance, LauncherConfig, ModFileInfo, MojangManifest};
+use crate::models::{Account, Instance, LauncherConfig, ModFileInfo, MojangManifest, SystemJavaInfo};
 use crate::modpack::ModpackEngine;
 use crate::modrinth::{ModrinthClient, ModrinthSearchResponse, ModrinthVersion};
 use crate::versions::VersionFetcher;
@@ -82,6 +83,14 @@ pub fn update_discord_rpc(enabled: bool, details: String, state: String) -> Resu
     }
     DiscordRpcManager::update_presence(enabled, &details, &state);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn detect_java() -> Result<Vec<SystemJavaInfo>, String> {
+    // Escanear y sondear JVMs lanza procesos: fuera del hilo de la UI.
+    tokio::task::spawn_blocking(JavaDetector::detect)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
