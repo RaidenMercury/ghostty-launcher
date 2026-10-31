@@ -5,8 +5,9 @@ export interface Account {
   id: string;
   username: string;
   uuid: string;
-  account_type: 'Offline' | 'Microsoft';
+  account_type: 'Offline' | 'Microsoft' | 'ElyBy';
   skin_url: string | null;
+  skin_model?: 'classic' | 'slim';
   is_active: boolean;
   access_token: string | null;
 }
@@ -35,7 +36,7 @@ export interface Instance {
   jvm_args: string | null;
   env_vars?: Record<string, string>;
   resolution?: InstanceResolution;
-  server_auto_connect?: InstanceServerConnect | null;
+  server_auto_connect?: InstanceServerConnect | string | null;
   pre_launch_command?: string | null;
   post_exit_command?: string | null;
   total_playtime_secs: number;
@@ -46,7 +47,8 @@ export interface CreateInstancePayload {
   name: string;
   mc_version: string;
   loader: string;
-  loader_version?: string;
+  loader_version?: string | null;
+  icon?: string;
   memory_min_mb?: number;
   memory_max_mb?: number;
   java_path?: string;
@@ -84,6 +86,10 @@ export interface ModrinthSearchHit {
   date_modified?: string;
   client_side?: string;
   server_side?: string;
+  provider?: ModProvider;
+  page_url?: string;
+  gallery?: string[];
+  license?: string;
 }
 
 export interface ModrinthSearchResult {
@@ -98,6 +104,8 @@ export interface ModrinthVersion {
   project_id: string;
   name: string;
   version_number: string;
+  version_type?: string;
+  date_published?: string;
   game_versions: string[];
   loaders: string[];
   files: {

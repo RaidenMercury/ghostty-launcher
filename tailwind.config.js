@@ -1,50 +1,68 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        ghost: {
-          950: "#08090b",
-          900: "#0e1116",
-          850: "#141820",
-          800: "#1c212b",
-          700: "#272e3b",
-          600: "#384252",
-          500: "#505e73",
-          400: "#7b8b9f",
-          300: "#a9b7c8",
-          200: "#d3dbe3",
-          100: "#f0f3f6",
+        obsidian: {
+          950: '#08060e',
+          900: '#100c1c',
+          850: '#161124',
+          800: '#1f1833',
+          750: '#2b2245',
+          700: '#392d5c',
+          600: '#564587',
+          500: '#7862b5',
+          400: '#9c88d4',
+        },
+        amethyst: {
+          light: '#d8b4fe',
+          DEFAULT: 'var(--accent, #a855f7)',
+          neon: 'var(--accent, #a855f7)',
+          deep: '#7e22ce',
+          dark: '#581c87',
         },
         spectral: {
-          cyan: "#38bdf8",
-          mint: "#10b981",
-          emerald: "#059669",
-          amber: "#f59e0b",
-          rose: "#f43f5e",
-        }
+          cyan: '#38bdf8',
+          ice: '#bae6fd',
+          deep: '#1e3a5f',
+          mint: '#10b981',
+          rose: '#f43f5e',
+          amber: '#f59e0b',
+        },
+        ghost: {
+          50: 'var(--text-primary, #f8fafc)',
+          100: 'var(--text-primary, #f1f5f9)',
+          200: 'var(--text-secondary, #e2e8f0)',
+          300: 'var(--text-secondary, #cbd5e1)',
+          400: 'var(--text-muted, #94a3b8)',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          750: '#283346',
+          800: '#1e293b',
+          850: '#141d2e',
+          900: '#0c1322',
+          950: 'var(--bg-void, #08060e)',
+        },
       },
       fontFamily: {
-        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
-      animation: {
-        "pulse-subtle": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "float": "float 4s ease-in-out infinite",
+      borderRadius: {
+        panel: '20px',
+        card: '16px',
+        control: '12px',
       },
-      keyframes: {
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-6px)" },
-        }
-      }
+      transitionTimingFunction: {
+        'ease-out-strong': 'cubic-bezier(0.23, 1, 0.32, 1)',
+        'spring-island': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      },
     },
   },
   plugins: [],
-}
-
+};

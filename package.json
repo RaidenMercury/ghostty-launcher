@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.2.0",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",
@@ -30,4 +32,3 @@
     "vite": "^6.1.0"
   }
 }
-

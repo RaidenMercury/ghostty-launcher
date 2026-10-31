@@ -1,90 +1,249 @@
-use crate::accounts;
-use crate::engine;
-use crate::instances;
-use crate::launcher;
-use crate::models::{
-    Account, CreateInstanceRequest, Instance, ModrinthSearchResult, ModrinthVersion, MojangManifest,
-    SystemJavaInfo,
-};
-use crate::modpack;
-use crate::modrinth;
-use crate::versions;
-use std::path::{Path, PathBuf};
-
-#[tauri::command]
-pub fn get_accounts() -> Result<Vec<Account>, String> {
-    accounts::load_accounts()
-}
-
-#[tauri::command]
-pub fn add_offline_account(username: String) -> Result<Account, String> {
-    accounts::add_offline_account(&username)
-}
-
-#[tauri::command]
-pub fn set_active_account(account_id: String) -> Result<(), String> {
-    accounts::set_active_account(&account_id)
-}
-
-#[tauri::command]
-pub fn delete_account(account_id: String) -> Result<(), String> {
-    accounts::delete_account(&account_id)
-}
+use crate::accounts::{AccountManager, DeviceCodeResponse};
+use crate::discord::DiscordRpcManager;
+use crate::engine::GameEngine;
+use crate::instances::InstanceManager;
+use crate::launcher::LauncherManager;
+use crate::models::{Account, Instance, LauncherConfig, ModFileInfo, MojangManifest};
+use crate::modpack::ModpackEngine;
+use crate::modrinth::{ModrinthClient, ModrinthSearchResponse, ModrinthVersion};
+use crate::versions::VersionFetcher;
+use std::path::Path;
+use std::process::Command;
+use tauri::AppHandle;
 
 #[tauri::command]
 pub fn get_instances() -> Result<Vec<Instance>, String> {
-    instances::list_instances()
+    LauncherManager::load_instances()
 }
 
 #[tauri::command]
-pub fn create_instance(request: CreateInstanceRequest) -> Result<Instance, String> {
-    instances::create_instance(request)
+pub fn create_instance(
+    name: String,
+    mc_version: String,
+    loader: String,
+    loader_version: Option<String>,
+    icon: Option<String>,
+) -> Result<Instance, String> {
+    InstanceManager::create_instance(name, mc_version, loader, loader_version, icon)
 }
 
 #[tauri::command]
-pub fn update_instance(instance: Instance) -> Result<(), String> {
-    instances::update_instance(instance)
+pub fn delete_instance(id: String) -> Result<Vec<Instance>, String> {
+    InstanceManager::delete_instance(&id)
 }
 
 #[tauri::command]
-pub fn delete_instance(instance_id: String) -> Result<(), String> {
-    instances::delete_instance(&instance_id)
-}
-
-#[tauri::command]
-pub fn export_instance(instance_id: String, target_path: String) -> Result<String, String> {
-    instances::export_instance_to_zip(&instance_id, &PathBuf::from(target_path))
-}
-
-#[tauri::command]
-pub async fn get_mojang_manifest() -> Result<MojangManifest, String> {
-    match versions::get_mojang_manifest().await {
-        Ok(m) => Ok(m),
-        Err(_) => Ok(versions::get_fallback_manifest()),
+pub fn update_instance(instance: Instance) -> Result<Vec<Instance>, String> {
+    let mut instances = LauncherManager::load_instances()?;
+    if let Some(idx) = instances.iter().position(|i| i.id == instance.id) {
+        instances[idx] = instance;
+        LauncherManager::save_instances(&instances)?;
     }
+    Ok(instances)
 }
 
 #[tauri::command]
-pub async fn get_fabric_loaders(mc_version: String) -> Result<Vec<String>, String> {
-    versions::get_fabric_loaders_for_mc(&mc_version).await
+pub fn get_instance_mods(instance_id: String) -> Result<Vec<ModFileInfo>, String> {
+    InstanceManager::list_mods(&instance_id)
+}
+
+#[tauri::command]
+pub fn toggle_instance_mod(instance_id: String, filename: String) -> Result<ModFileInfo, String> {
+    InstanceManager::toggle_mod(&instance_id, &filename)
+}
+
+#[tauri::command]
+pub fn delete_instance_mod(instance_id: String, filename: String) -> Result<(), String> {
+    InstanceManager::delete_mod(&instance_id, &filename)
+}
+
+#[tauri::command]
+pub fn get_config() -> Result<LauncherConfig, String> {
+    LauncherManager::load_config()
+}
+
+#[tauri::command]
+pub fn save_config(config: LauncherConfig) -> Result<(), String> {
+    DiscordRpcManager::update_presence(
+        config.enable_discord_rpc,
+        &config.discord_Rpc_details,
+        &config.discord_Rpc_state,
+    );
+    LauncherManager::save_config(&config)
+}
+
+#[tauri::command]
+pub fn update_discord_rpc(enabled: bool, details: String, state: String) -> Result<(), String> {
+    if let Ok(mut cfg) = LauncherManager::load_config() {
+        cfg.enable_discord_rpc = enabled;
+        cfg.discord_Rpc_details = details.clone();
+        cfg.discord_Rpc_state = state.clone();
+        let _ = LauncherManager::save_config(&cfg);
+    }
+    DiscordRpcManager::update_presence(enabled, &details, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_mojang_versions() -> Result<MojangManifest, String> {
+    VersionFetcher::fetch_mojang_manifest().await
+}
+
+#[tauri::command]
+pub fn get_accounts() -> Result<Vec<Account>, String> {
+    AccountManager::load_accounts()
+}
+
+#[tauri::command]
+pub fn add_offline_account(username: String) -> Result<Vec<Account>, String> {
+    AccountManager::add_account(&username)
+}
+
+#[tauri::command]
+pub async fn iniciar_oauth_dispositivo() -> Result<DeviceCodeResponse, String> {
+    AccountManager::iniciar_oauth_dispositivo().await
+}
+
+#[tauri::command]
+pub async fn esperar_autorizacion_microsoft(
+    device_code: String,
+    interval: u64,
+) -> Result<Account, String> {
+    AccountManager::esperar_autorizacion_microsoft(&device_code, interval).await
+}
+
+#[tauri::command]
+pub async fn login_elyby(
+    correo: String,
+    contrasena: String,
+    totp: Option<String>,
+) -> Result<Vec<Account>, String> {
+    AccountManager::login_elyby(&correo, &contrasena, totp).await
+}
+
+#[tauri::command]
+pub async fn login_elyby_account(
+    username: String,
+    password: String,
+    totp: Option<String>,
+) -> Result<Vec<Account>, String> {
+    AccountManager::login_elyby(&username, &password, totp).await
+}
+
+#[tauri::command]
+pub async fn login_microsoft_account(identifier: String) -> Result<Vec<Account>, String> {
+    AccountManager::login_microsoft(&identifier).await
+}
+
+#[tauri::command]
+pub fn set_active_account(id: String) -> Result<Vec<Account>, String> {
+    AccountManager::set_active_account(&id)
+}
+
+#[tauri::command]
+pub fn update_account_skin(
+    id: String,
+    skin_url: Option<String>,
+    skin_model: Option<String>,
+) -> Result<Vec<Account>, String> {
+    AccountManager::update_skin(&id, skin_url, skin_model)
+}
+
+#[tauri::command]
+pub fn remove_account(id: String) -> Result<Vec<Account>, String> {
+    AccountManager::remove_account(&id)
+}
+
+#[tauri::command]
+pub fn open_launcher_folder() -> Result<(), String> {
+    let dir = LauncherManager::get_root_dir()?;
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("explorer").arg(dir).spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("open").arg(dir).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("xdg-open").arg(dir).spawn();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_instance_folder(instance_id: String) -> Result<(), String> {
+    let dir = InstanceManager::get_instance_dir(&instance_id)?;
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("explorer").arg(dir).spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("open").arg(dir).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("xdg-open").arg(dir).spawn();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("URL no permitida".to_string());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("open").arg(&url).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("xdg-open").arg(&url).spawn();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn launch_instance(app: AppHandle, instance_id: String) -> Result<String, String> {
+    let instances = LauncherManager::load_instances()?;
+    let target = instances
+        .into_iter()
+        .find(|i| i.id == instance_id)
+        .ok_or("La instancia seleccionada no existe")?;
+
+    GameEngine::launch_game_real(app, target).await
+}
+
+#[tauri::command]
+pub fn stop_instance() -> Result<String, String> {
+    GameEngine::kill_running_game()
 }
 
 #[tauri::command]
 pub async fn search_modrinth(
     query: String,
     loader: Option<String>,
-    game_version: Option<String>,
-    project_type: String,
+    mc_version: Option<String>,
+    project_type: Option<String>,
     limit: Option<u32>,
     offset: Option<u32>,
-) -> Result<ModrinthSearchResult, String> {
-    modrinth::search_modrinth(
+    index: Option<String>,
+) -> Result<ModrinthSearchResponse, String> {
+    ModrinthClient::search_mods(
         &query,
         loader.as_deref(),
-        game_version.as_deref(),
-        &project_type,
+        mc_version.as_deref(),
+        project_type.as_deref(),
         limit.unwrap_or(20),
         offset.unwrap_or(0),
+        index.as_deref(),
     )
     .await
 }
@@ -93,9 +252,10 @@ pub async fn search_modrinth(
 pub async fn get_modrinth_versions(
     project_id: String,
     loader: Option<String>,
-    game_version: Option<String>,
+    mc_version: Option<String>,
 ) -> Result<Vec<ModrinthVersion>, String> {
-    modrinth::get_project_versions(&project_id, loader.as_deref(), game_version.as_deref()).await
+    ModrinthClient::get_project_versions(&project_id, loader.as_deref(), mc_version.as_deref())
+        .await
 }
 
 #[tauri::command]
@@ -103,72 +263,54 @@ pub async fn install_modrinth_mod(
     instance_id: String,
     download_url: String,
     filename: String,
-) -> Result<String, String> {
-    modrinth::download_and_install_mod(&instance_id, &download_url, &filename).await
+) -> Result<ModFileInfo, String> {
+    ModrinthClient::install_mod_file(&instance_id, &download_url, &filename).await
 }
 
 #[tauri::command]
-pub fn detect_java() -> Vec<SystemJavaInfo> {
-    launcher::detect_java_installations()
-}
-
-#[tauri::command]
-pub fn get_instance_mods(instance_id: String) -> Result<Vec<launcher::ModFileInfo>, String> {
-    launcher::list_instance_mods(&instance_id)
-}
-
-#[tauri::command]
-pub fn toggle_instance_mod(instance_id: String, filename: String) -> Result<bool, String> {
-    launcher::toggle_mod(&instance_id, &filename)
-}
-
-#[tauri::command]
-pub async fn launch_game(
-    mut instance: Instance,
-    username: String,
-    uuid: String,
-) -> Result<String, String> {
-    let account = Account {
-        id: format!("offline_{}", username),
-        username: username.clone(),
-        uuid: uuid.clone(),
-        account_type: crate::models::AccountType::Offline,
-        skin_url: None,
-        is_active: true,
-        access_token: None,
-    };
-
-    // Execute real Minecraft launch engine (downloads client jar, libraries, assets & spawns JVM)
-    match engine::launch_game_real(&mut instance, &account).await {
-        Ok(msg) => Ok(msg),
-        Err(e) => {
-            log::warn!("Real launch failed: {}, falling back to simulation report", e);
-            launcher::launch_instance(&mut instance, &username, &uuid)
-        }
-    }
-}
-
-#[tauri::command]
-pub async fn import_modpack_file(
-    file_path: String,
+pub async fn import_mrpack(
+    app: AppHandle,
+    path: String,
     custom_name: Option<String>,
 ) -> Result<Instance, String> {
-    let path = Path::new(&file_path);
-    if !path.exists() {
-        return Err(format!("Modpack file '{}' not found", file_path));
-    }
+    ModpackEngine::import_mrpack(&app, Path::new(&path), custom_name, None).await
+}
 
-    if file_path.ends_with(".mrpack") {
-        modpack::install_mrpack(path, custom_name).await
-    } else {
-        modpack::install_curseforge_pack(path, custom_name).await
-    }
+#[tauri::command]
+pub fn begin_modpack_upload(file_name: String) -> Result<String, String> {
+    ModpackEngine::begin_upload(&file_name)
+}
+
+#[tauri::command]
+pub fn append_modpack_chunk(temp_path: String, chunk_b64: String) -> Result<(), String> {
+    ModpackEngine::append_upload_chunk(&temp_path, &chunk_b64)
+}
+
+#[tauri::command]
+pub async fn finish_modpack_upload(
+    app: AppHandle,
+    temp_path: String,
+    custom_name: Option<String>,
+) -> Result<Instance, String> {
+    ModpackEngine::finish_upload(&app, &temp_path, custom_name).await
+}
+
+#[tauri::command]
+pub async fn import_mrpack_bytes(
+    app: AppHandle,
+    bytes: Vec<u8>,
+    file_name: String,
+    custom_name: Option<String>,
+) -> Result<Instance, String> {
+    ModpackEngine::import_mrpack_bytes(&app, &bytes, &file_name, custom_name, None).await
 }
 
 #[tauri::command]
 pub async fn install_online_modpack(
+    app: AppHandle,
     download_url: String,
     name: String,
+    icon_url: Option<String>,
 ) -> Result<Instance, String> {
-    modpack::download_and_install_online_modpack(&download_url, &name).await
+    ModpackEngine::install_online_modpack(&app, &download_url, Some(name), icon_url).await
 }

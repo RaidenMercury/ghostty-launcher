@@ -1,0 +1,293 @@
+import React, { useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Play,
+  Square,
+  Plus,
+  Upload,
+  Package,
+  Compass,
+  Sliders,
+  FolderOpen,
+  UserCheck,
+  Terminal,
+  Palette,
+  Settings,
+} from 'lucide-react';
+import { Instance } from '../types';
+import { THEME_PRESETS, ThemePresetId } from '../utils/theme';
+
+export interface ContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+}
+
+interface ContextMenuProps {
+  menu: ContextMenuState;
+  onClose: () => void;
+  activeInstance: Instance | null;
+  isPlaying: boolean;
+  currentThemePreset: ThemePresetId;
+  onLaunch: () => void;
+  onStopGame: () => void;
+  onOpenCreate: () => void;
+  onTriggerImportFile: () => void;
+  onOpenMods: () => void;
+  onOpenDiscover: () => void;
+  onOpenInstanceSettings: () => void;
+  onOpenInstanceFolder: () => void;
+  onOpenAccountsAndSkins: () => void;
+  onOpenLogs: () => void;
+  onCycleTheme: () => void;
+  onOpenGlobalSettings: () => void;
+}
+
+export const ContextMenu: React.FC<ContextMenuProps> = ({
+  menu,
+  onClose,
+  activeInstance,
+  isPlaying,
+  currentThemePreset,
+  onLaunch,
+  onStopGame,
+  onOpenCreate,
+  onTriggerImportFile,
+  onOpenMods,
+  onOpenDiscover,
+  onOpenInstanceSettings,
+  onOpenInstanceFolder,
+  onOpenAccountsAndSkins,
+  onOpenLogs,
+  onCycleTheme,
+  onOpenGlobalSettings,
+}) => {
+  useEffect(() => {
+    if (!menu.isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const handleScrollOrResize = () => onClose();
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [menu.isOpen, onClose]);
+
+  const menuWidth = 264;
+  const menuHeight = 385;
+  const safeX =
+    typeof window !== 'undefined'
+      ? Math.min(Math.max(8, menu.x), window.innerWidth - menuWidth - 12)
+      : menu.x;
+  const safeY =
+    typeof window !== 'undefined'
+      ? Math.min(Math.max(8, menu.y), window.innerHeight - menuHeight - 12)
+      : menu.y;
+
+  const runAction = (fn: () => void) => {
+    onClose();
+    fn();
+  };
+
+  return (
+    <AnimatePresence>
+      {menu.isOpen && (
+        <div
+          className="fixed inset-0 z-[100]"
+          onClick={onClose}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.93, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -2 }}
+            transition={{ duration: 0.13, ease: [0.23, 1, 0.32, 1] }}
+            style={{
+              left: safeX,
+              top: safeY,
+              width: menuWidth,
+              transformOrigin: 'top left',
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed sequoia-context-menu p-1.5 select-none text-xs"
+          >
+            
+            <div className="px-2.5 py-1 text-[10px] font-mono text-ghost-400 flex items-center justify-between truncate">
+              <span className="truncate">
+                {activeInstance ? activeInstance.name : 'GhosttyLauncher'}
+              </span>
+              {activeInstance && (
+                <span className="uppercase opacity-75 ml-2 shrink-0">
+                  {activeInstance.loader} {activeInstance.mc_version}
+                </span>
+              )}
+            </div>
+
+            <div className="my-1 border-t glass-divider" />
+
+            
+            {isPlaying ? (
+              <button
+                type="button"
+                onClick={() => runAction(onStopGame)}
+                className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-spectral-rose hover:bg-spectral-rose hover:text-white transition-colors font-medium group"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Detener Instancia en Juego</span>
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!activeInstance}
+                onClick={() => runAction(onLaunch)}
+                className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-50 hover:accent-bg hover:text-white transition-colors font-medium disabled:opacity-40 group"
+              >
+                <span className="flex items-center gap-2.5 truncate">
+                  <Play className="w-3.5 h-3.5 fill-current accent-text group-hover:text-white shrink-0" />
+                  <span className="truncate">
+                    Jugar {activeInstance ? activeInstance.name : 'Ahora'}
+                  </span>
+                </span>
+                <span className="text-[10px] font-mono opacity-60 ml-2 shrink-0">↵</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => runAction(onOpenCreate)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Plus className="w-3.5 h-3.5 opacity-80" />
+                <span>Nueva Instancia...</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">⌥N</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => runAction(onTriggerImportFile)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Upload className="w-3.5 h-3.5 opacity-80" />
+                <span>Importar Modpack (.mrpack)...</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">⌥I</span>
+            </button>
+
+            <div className="my-1 border-t glass-divider" />
+
+            
+            <button
+              type="button"
+              onClick={() => runAction(onOpenMods)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Package className="w-3.5 h-3.5 opacity-80" />
+                <span>Gestor de Mods</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">⌥3</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => runAction(onOpenDiscover)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Compass className="w-3.5 h-3.5 opacity-80" />
+                <span>Explorar Modrinth</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">⌥2</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(onOpenInstanceSettings)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              <span className="flex items-center gap-2.5">
+                <Sliders className="w-3.5 h-3.5 opacity-80" />
+                <span>Ajustes de la Instancia</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(onOpenInstanceFolder)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              <span className="flex items-center gap-2.5">
+                <FolderOpen className="w-3.5 h-3.5 opacity-80" />
+                <span>Abrir Carpeta de Archivos</span>
+              </span>
+            </button>
+
+            <div className="my-1 border-t glass-divider" />
+
+            
+            <button
+              type="button"
+              onClick={() => runAction(onOpenAccountsAndSkins)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <UserCheck className="w-3.5 h-3.5 opacity-80" />
+                <span>Cuentas y Estudio de Skin...</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => runAction(onOpenLogs)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Terminal className="w-3.5 h-3.5 opacity-80" />
+                <span>Consola de Logs JVM</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => runAction(onCycleTheme)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Palette className="w-3.5 h-3.5 opacity-80" />
+                <span>Cambiar Tema</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">
+                {THEME_PRESETS[currentThemePreset]?.name}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => runAction(onOpenGlobalSettings)}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center justify-between text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2.5">
+                <Settings className="w-3.5 h-3.5 opacity-80" />
+                <span>Configuración Global...</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-60">⌥4</span>
+            </button>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};

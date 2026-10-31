@@ -1,6 +1,6 @@
 pub mod accounts;
 pub mod commands;
-pub mod config;
+pub mod discord;
 pub mod engine;
 pub mod instances;
 pub mod launcher;
@@ -13,41 +13,91 @@ use commands::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    config::init_directories().expect("Failed to initialize launcher directories");
+    #[cfg(target_os = "linux")]
+    {
+        const BUILD_TAG: &str = "5";
+
+        if std::env::var_os("MALLOC_TRIM_THRESHOLD_").is_none() {
+            std::env::set_var("MALLOC_TRIM_THRESHOLD_", "65536");
+        }
+        if std::env::var_os("MALLOC_MMAP_THRESHOLD_").is_none() {
+            std::env::set_var("MALLOC_MMAP_THRESHOLD_", "65536");
+        }
+
+        // TextureMapper se descartó porque no implementa filtros CSS (el blur no se pinta), así que
+        // el default vuelve a Skia; `texturemapper` queda solo como diagnóstico.
+
+        let mut ghostty = String::new();
+        if let Some(raw) = std::env::var_os("GHOSTTY_COMPOSITOR") {
+            ghostty = raw.to_string_lossy().trim().to_string().to_lowercase();
+        }
+
+        let user_override = std::env::var_os("WEBKIT_USE_SKIA_FOR_COMPOSITION").is_some()
+            || std::env::var_os("WEBKIT_DMABUF_RENDERER_FORCE_SHM").is_some();
+
+        let mode;
+        if user_override {
+            mode = "override del usuario";
+        } else if ghostty == "shm" {
+            if std::env::var_os("WEBKIT_DMABUF_RENDERER_FORCE_SHM").is_none() {
+                std::env::set_var("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1");
+            }
+            mode = "shm";
+        } else if ghostty == "texturemapper" {
+            if std::env::var_os("WEBKIT_USE_SKIA_FOR_COMPOSITION").is_none() {
+                std::env::set_var("WEBKIT_USE_SKIA_FOR_COMPOSITION", "0");
+            }
+            mode = "texturemapper";
+        } else {
+            mode = "skia (default)";
+        }
+
+        eprintln!("[ghostty] build {} | webkit: {}", BUILD_TAG, mode);
+    }
 
     tauri::Builder::default()
-        .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+        .setup(|_app| {
+            let _ = launcher::LauncherManager::ensure_structure();
+            discord::DiscordRpcManager::init_from_config();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_accounts,
-            add_offline_account,
-            set_active_account,
-            delete_account,
             get_instances,
             create_instance,
-            update_instance,
             delete_instance,
-            export_instance,
-            get_mojang_manifest,
-            get_fabric_loaders,
+            update_instance,
+            get_instance_mods,
+            toggle_instance_mod,
+            delete_instance_mod,
+            get_config,
+            save_config,
+            update_discord_rpc,
+            get_mojang_versions,
+            get_accounts,
+            add_offline_account,
+            iniciar_oauth_dispositivo,
+            esperar_autorizacion_microsoft,
+            login_elyby,
+            login_elyby_account,
+            login_microsoft_account,
+            set_active_account,
+            update_account_skin,
+            remove_account,
+            open_launcher_folder,
+            open_instance_folder,
+            open_external_url,
+            launch_instance,
+            stop_instance,
             search_modrinth,
             get_modrinth_versions,
             install_modrinth_mod,
-            detect_java,
-            get_instance_mods,
-            toggle_instance_mod,
-            launch_game,
-            import_modpack_file,
+            import_mrpack,
+            begin_modpack_upload,
+            append_modpack_chunk,
+            finish_modpack_upload,
+            import_mrpack_bytes,
             install_online_modpack
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Ghostty Launcher");
+        .expect("error while running tauri application");
 }

@@ -1,200 +1,201 @@
-use crate::config::get_instances_dir;
-use crate::models::{ModrinthSearchHit, ModrinthSearchResult, ModrinthVersion};
+use crate::instances::InstanceManager;
+use crate::models::ModFileInfo;
+use serde::{Deserialize, Serialize};
 use std::fs;
 
-const MODRINTH_API: &str = "https://api.modrinth.com/v2";
-
-pub async fn search_modrinth(
-    query: &str,
-    loader: Option<&str>,
-    game_version: Option<&str>,
-    project_type: &str, // "mod" or "modpack"
-    limit: u32,
-    offset: u32,
-) -> Result<ModrinthSearchResult, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("GhosttyLauncher/0.1.0")
-        .build()
-        .map_err(|e| format!("Failed to build client: {}", e))?;
-
-    let mut facets = vec![format!("[\"project_type:{}\"]", project_type)];
-
-    if let Some(l) = loader {
-        if !l.is_empty() && l != "vanilla" {
-            facets.push(format!("[\"categories:{}\"]", l.to_lowercase()));
-        }
-    }
-
-    if let Some(v) = game_version {
-        if !v.is_empty() {
-            facets.push(format!("[\"versions:{}\"]", v));
-        }
-    }
-
-    let facets_query = format!("[{}]", facets.join(","));
-
-    let url = format!(
-        "{}/search?query={}&facets={}&limit={}&offset={}",
-        MODRINTH_API,
-        urlencoding::encode(query),
-        urlencoding::encode(&facets_query),
-        limit,
-        offset
-    );
-
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Modrinth search request failed: {}", e))?;
-
-    if !resp.status().is_success() {
-        return Err(format!("Modrinth API error status: {}", resp.status()));
-    }
-
-    #[derive(serde::Deserialize)]
-    struct RawHit {
-        project_id: String,
-        slug: String,
-        title: String,
-        description: String,
-        categories: Option<Vec<String>>,
-        icon_url: Option<String>,
-        author: String,
-        downloads: u64,
-        follows: u64,
-        project_type: String,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct RawSearchResponse {
-        hits: Vec<RawHit>,
-        total_hits: u64,
-    }
-
-    let raw: RawSearchResponse = resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse Modrinth JSON: {}", e))?;
-
-    let hits = raw
-        .hits
-        .into_iter()
-        .map(|h| ModrinthSearchHit {
-            project_id: h.project_id,
-            slug: h.slug,
-            title: h.title,
-            description: h.description,
-            categories: h.categories.unwrap_or_default(),
-            icon_url: h.icon_url,
-            author: h.author,
-            downloads: h.downloads,
-            follows: h.follows,
-            project_type: h.project_type,
-        })
-        .collect();
-
-    Ok(ModrinthSearchResult {
-        hits,
-        total_hits: raw.total_hits,
-    })
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModrinthSearchResponse {
+    pub hits: Vec<ModrinthSearchHit>,
+    pub offset: u32,
+    pub limit: u32,
+    pub total_hits: u32,
 }
 
-pub async fn get_project_versions(
-    project_id: &str,
-    loader: Option<&str>,
-    game_version: Option<&str>,
-) -> Result<Vec<ModrinthVersion>, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("GhosttyLauncher/0.1.0")
-        .build()
-        .map_err(|e| format!("Failed to build client: {}", e))?;
-
-    let mut query_params = Vec::new();
-    if let Some(l) = loader {
-        if !l.is_empty() && l != "vanilla" {
-            query_params.push(format!("loaders=[\"{}\"]", l.to_lowercase()));
-        }
-    }
-    if let Some(v) = game_version {
-        if !v.is_empty() {
-            query_params.push(format!("game_versions=[\"{}\"]", v));
-        }
-    }
-
-    let qs = if query_params.is_empty() {
-        "".to_string()
-    } else {
-        format!("?{}", query_params.join("&"))
-    };
-
-    let url = format!("{}/project/{}/version{}", MODRINTH_API, project_id, qs);
-
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to get project versions: {}", e))?;
-
-    if !resp.status().is_success() {
-        return Err(format!("Failed with status: {}", resp.status()));
-    }
-
-    let versions: Vec<ModrinthVersion> = resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse versions: {}", e))?;
-
-    Ok(versions)
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModrinthSearchHit {
+    pub project_id: String,
+    pub project_type: String,
+    pub slug: String,
+    pub author: String,
+    pub title: String,
+    pub description: String,
+    pub categories: Vec<String>,
+    pub display_categories: Option<Vec<String>>,
+    pub versions: Vec<String>,
+    pub downloads: u64,
+    pub follows: u64,
+    pub icon_url: Option<String>,
+    pub date_created: String,
+    pub date_modified: String,
+    pub latest_version: Option<String>,
+    pub license: String,
 }
 
-pub async fn download_and_install_mod(
-    instance_id: &str,
-    download_url: &str,
-    filename: &str,
-) -> Result<String, String> {
-    let instance_dir = get_instances_dir().join(instance_id);
-    if !instance_dir.exists() {
-        return Err("Instance directory does not exist".to_string());
-    }
-
-    let mods_dir = instance_dir.join("mods");
-    fs::create_dir_all(&mods_dir).map_err(|e| format!("Failed to create mods dir: {}", e))?;
-
-    let target_file = mods_dir.join(filename);
-
-    let client = reqwest::Client::builder()
-        .user_agent("GhosttyLauncher/0.1.0")
-        .build()
-        .map_err(|e| format!("Failed to build client: {}", e))?;
-
-    let bytes = client
-        .get(download_url)
-        .send()
-        .await
-        .map_err(|e| format!("Download failed: {}", e))?
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read downloaded bytes: {}", e))?;
-
-    fs::write(&target_file, bytes)
-        .map_err(|e| format!("Failed to save mod file: {}", e))?;
-
-    Ok(target_file.to_string_lossy().to_string())
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModrinthVersion {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub version_number: String,
+    pub game_versions: Vec<String>,
+    pub loaders: Vec<String>,
+    pub files: Vec<ModrinthFile>,
 }
 
-mod urlencoding {
-    pub fn encode(s: &str) -> String {
-        let mut encoded = String::new();
-        for b in s.bytes() {
-            match b {
-                b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                    encoded.push(b as char)
-                }
-                _ => encoded.push_str(&format!("%{:02X}", b)),
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModrinthFile {
+    pub url: String,
+    pub filename: String,
+    pub primary: bool,
+    pub size: u64,
+}
+
+pub struct ModrinthClient;
+
+fn url_encode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() * 2);
+    for b in input.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => {
+                out.push_str(&format!("%{:02X}", b));
             }
         }
-        encoded
     }
+    out
 }
 
+impl ModrinthClient {
+    fn get_http_client() -> Result<reqwest::Client, String> {
+        reqwest::Client::builder()
+            .user_agent("GhosttyLauncher/0.1.0 (github.com/ghostty-launcher)")
+            .build()
+            .map_err(|e| e.to_string())
+    }
+
+    pub async fn search_mods(
+        query: &str,
+        loader: Option<&str>,
+        mc_version: Option<&str>,
+        project_type: Option<&str>,
+        limit: u32,
+        offset: u32,
+        index: Option<&str>,
+    ) -> Result<ModrinthSearchResponse, String> {
+        let client = Self::get_http_client()?;
+
+        let p_type = project_type.unwrap_or("mod");
+        let mut facets = vec![vec![format!("project_type:{}", p_type)]];
+
+        if let Some(l) = loader {
+            if !l.is_empty() && l != "vanilla" && l != "all" && (p_type == "mod" || p_type == "modpack") {
+                facets.push(vec![format!("categories:{}", l.to_lowercase())]);
+            }
+        }
+        if let Some(v) = mc_version {
+            if !v.is_empty() && v != "all" {
+                facets.push(vec![format!("versions:{}", v)]);
+            }
+        }
+
+        let facets_json = serde_json::to_string(&facets).map_err(|e| e.to_string())?;
+        let sort_index = index.unwrap_or("downloads");
+
+        let url = format!(
+            "https://api.modrinth.com/v2/search?query={}&facets={}&limit={}&offset={}&index={}",
+            url_encode(query),
+            url_encode(&facets_json),
+            limit,
+            offset,
+            url_encode(sort_index)
+        );
+
+        let res = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Error conectando a Modrinth: {}", e))?;
+
+        if !res.status().is_success() {
+            return Err(format!("Modrinth API devolvió estado: {}", res.status()));
+        }
+
+        let data: ModrinthSearchResponse = res
+            .json()
+            .await
+            .map_err(|e| format!("Error parseando respuesta de Modrinth: {}", e))?;
+
+        Ok(data)
+    }
+
+    pub async fn get_project_versions(
+        project_id: &str,
+        loader: Option<&str>,
+        mc_version: Option<&str>,
+    ) -> Result<Vec<ModrinthVersion>, String> {
+        let client = Self::get_http_client()?;
+        let mut url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
+
+        let mut params = Vec::new();
+        if let Some(l) = loader {
+            if !l.is_empty() && l != "vanilla" {
+                let loaders_json = serde_json::to_string(&vec![l.to_lowercase()]).unwrap();
+                params.push(format!("loaders={}", url_encode(&loaders_json)));
+            }
+        }
+        if let Some(v) = mc_version {
+            if !v.is_empty() {
+                let vers_json = serde_json::to_string(&vec![v]).unwrap();
+                params.push(format!("game_versions={}", url_encode(&vers_json)));
+            }
+        }
+
+        if !params.is_empty() {
+            url = format!("{}?{}", url, params.join("&"));
+        }
+
+        let res = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| format!("Error obteniendo versiones de Modrinth: {}", e))?;
+
+        let versions: Vec<ModrinthVersion> = res
+            .json()
+            .await
+            .map_err(|e| format!("Error leyendo versiones: {}", e))?;
+
+        Ok(versions)
+    }
+
+    pub async fn install_mod_file(
+        instance_id: &str,
+        download_url: &str,
+        filename: &str,
+    ) -> Result<ModFileInfo, String> {
+        let client = Self::get_http_client()?;
+        let mods_dir = InstanceManager::get_mods_dir(instance_id)?;
+        let dest_path = mods_dir.join(filename);
+
+        let res = client
+            .get(download_url)
+            .send()
+            .await
+            .map_err(|e| format!("Fallo al descargar mod: {}", e))?;
+
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| format!("Error leyendo bytes del mod: {}", e))?;
+
+        fs::write(&dest_path, &bytes).map_err(|e| format!("Error guardando archivo .jar: {}", e))?;
+
+        Ok(ModFileInfo {
+            filename: filename.to_string(),
+            enabled: filename.ends_with(".jar"),
+            size: bytes.len() as u64,
+        })
+    }
+}

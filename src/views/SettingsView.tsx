@@ -1,385 +1,1015 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Cpu, Check, RefreshCw, Download, Plus, Trash2, Sliders } from 'lucide-react';
-import { SystemJavaInfo, JavaDownloadable, Instance } from '../types';
+import React, { useState, useEffect } from 'react';
+import {
+  Cpu,
+  Download,
+  Activity,
+  Save,
+  RefreshCw,
+  Sliders,
+  Palette,
+  Terminal,
+  MemoryStick,
+  FolderOpen,
+  Check,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import { Instance, SystemJavaInfo } from '../types';
 import { api } from '../services/api';
+import {
+  ThemeSettings,
+  THEME_PRESETS,
+  ACCENT_SWATCHES,
+  ThemePresetId,
+} from '../utils/theme';
+import { AccordionSection } from '../components/AccordionSection';
 
 interface SettingsViewProps {
   activeInstance: Instance | null;
-  onUpdateInstance: (inst: Instance) => Promise<void>;
+  onUpdateInstance: (updated: Instance) => Promise<void>;
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
+  themeSettings: ThemeSettings;
+  onUpdateThemeSettings: (next: ThemeSettings) => void;
+  onStartDownloadActivity?: (title: string) => void;
+  onEndDownloadActivity?: () => void;
 }
 
-export function SettingsView({ activeInstance, onUpdateInstance, onShowToast }: SettingsViewProps) {
-  const [javaList, setJavaList] = useState<SystemJavaInfo[]>([]);
-  const [downloadables, setDownloadables] = useState<JavaDownloadable[]>([]);
-  const [selectedJava, setSelectedJava] = useState<string>('');
-  const [customJavaPath, setCustomJavaPath] = useState<string>('');
-  const [loadingJava, setLoadingJava] = useState(false);
-  const [downloadingVersion, setDownloadingVersion] = useState<number | null>(null);
+type SettingsSectionId = 'general' | 'java' | 'memory' | 'discord' | 'appearance' | 'advanced';
 
-  // Instance specific settings
-  const [jvmArgs, setJvmArgs] = useState(activeInstance?.jvm_args || '-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
-  const [envKey, setEnvKey] = useState('');
-  const [envVal, setEnvVal] = useState('');
-  const [envVars, setEnvVars] = useState<Record<string, string>>(activeInstance?.env_vars || {});
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  activeInstance,
+  onUpdateInstance,
+  onShowToast,
+  themeSettings,
+  onUpdateThemeSettings,
+  onStartDownloadActivity,
+  onEndDownloadActivity,
+}) => {
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
+
+  const [detectedRuntimes, setDetectedRuntimes] = useState<SystemJavaInfo[]>([]);
+  const [isScanningJava, setIsScanningJava] = useState(false);
+  const [selectedJavaPath, setSelectedJavaPath] = useState(activeInstance?.java_path || '');
+  const [downloadVendor, setDownloadVendor] = useState<'temurin' | 'zulu' | 'mojang'>('temurin');
+  const [downloadMajorVer, setDownloadMajorVer] = useState<number>(21);
+  const [isDownloadingJava, setIsDownloadingJava] = useState(false);
+
+  const [minRamMb, setMinRamMb] = useState(activeInstance?.memory_min_mb || 2048);
+  const [maxRamMb, setMaxRamMb] = useState(activeInstance?.memory_max_mb || 4096);
+  const [jvmArgs, setJvmArgs] = useState(
+    activeInstance?.jvm_args || '-XX:+UseG1GC -XX:+ParallelRefProcEnabled'
+  );
+
+  const [resWidth, setResWidth] = useState(activeInstance?.resolution?.width || 1920);
+  const [resHeight, setResHeight] = useState(activeInstance?.resolution?.height || 1080);
+  const [fullscreen, setFullscreen] = useState(activeInstance?.resolution?.fullscreen || false);
+  const [serverConnect, setServerConnect] = useState<string>(
+    typeof activeInstance?.server_auto_connect === 'string'
+      ? activeInstance.server_auto_connect
+      : ''
+  );
+  const [launcherBehavior, setLauncherBehavior] = useState<'keep' | 'minimize' | 'close'>('keep');
+
+  const [discordEnabled, setDiscordEnabled] = useState(true);
+  const [discordDetails, setDiscordDetails] = useState('Jugando en GhosttyLauncher');
+  const [discordState, setDiscordState] = useState(
+    activeInstance ? `${activeInstance.name} (${activeInstance.loader})` : 'En el menú principal'
+  );
+
   const [preLaunch, setPreLaunch] = useState(activeInstance?.pre_launch_command || '');
   const [postExit, setPostExit] = useState(activeInstance?.post_exit_command || '');
+  const [envVars, setEnvVars] = useState<Record<string, string>>(activeInstance?.env_vars || {});
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvVal, setNewEnvVal] = useState('');
+  const [concurrentDownloads, setConcurrentDownloads] = useState(12);
 
-  // Discord RPC
-  const [discordRpc, setDiscordRpc] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    loadJavaData();
+    scanJavaRuntimes();
   }, []);
 
   useEffect(() => {
     if (activeInstance) {
-      setJvmArgs(activeInstance.jvm_args || '-XX:+UseG1GC');
-      setEnvVars(activeInstance.env_vars || {});
+      setSelectedJavaPath(activeInstance.java_path || '');
+      setMinRamMb(activeInstance.memory_min_mb);
+      setMaxRamMb(activeInstance.memory_max_mb);
+      setJvmArgs(activeInstance.jvm_args || '-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
       setPreLaunch(activeInstance.pre_launch_command || '');
       setPostExit(activeInstance.post_exit_command || '');
-      setSelectedJava(activeInstance.java_path || javaList[0]?.path || '');
+      setResWidth(activeInstance.resolution?.width || 1920);
+      setResHeight(activeInstance.resolution?.height || 1080);
+      setFullscreen(activeInstance.resolution?.fullscreen || false);
+      setServerConnect(
+        typeof activeInstance.server_auto_connect === 'string'
+          ? activeInstance.server_auto_connect
+          : ''
+      );
+      setEnvVars(activeInstance.env_vars || {});
+      setDiscordState(`${activeInstance.name} (${activeInstance.loader})`);
     }
   }, [activeInstance]);
 
-  const loadJavaData = async () => {
+  const scanJavaRuntimes = async () => {
     try {
-      setLoadingJava(true);
-      const [installed, available] = await Promise.all([
-        api.detectJava(),
-        api.getDownloadableJavaVersions(),
-      ]);
-      setJavaList(installed);
-      setDownloadables(available);
-
-      if (installed.length > 0 && !selectedJava) {
-        setSelectedJava(installed[0].path);
+      setIsScanningJava(true);
+      const list = await api.detectJava();
+      setDetectedRuntimes(list);
+      if (list.length > 0 && !selectedJavaPath) {
+        setSelectedJavaPath(list[0].path);
       }
     } catch (e: any) {
-      onShowToast('error', 'Error al consultar Java', e.toString());
+      console.warn('Java scan warning:', e);
     } finally {
-      setLoadingJava(false);
+      setIsScanningJava(false);
     }
   };
 
-  const handleSaveInstanceSettings = async () => {
-    if (!activeInstance) {
-      onShowToast('warning', 'Sin estancia', 'Selecciona una estancia para guardar estos ajustes.');
-      return;
-    }
-
+  const handleDownloadJava = async () => {
     try {
-      const updated: Instance = {
-        ...activeInstance,
-        java_path: selectedJava || null,
-        jvm_args: jvmArgs.trim() || null,
-        env_vars: envVars,
-        pre_launch_command: preLaunch.trim() || null,
-        post_exit_command: postExit.trim() || null,
-      };
-
-      await onUpdateInstance(updated);
-      onShowToast('success', 'Ajustes guardados', `Se actualizaron los parámetros de ${activeInstance.name}`);
+      setIsDownloadingJava(true);
+      onStartDownloadActivity?.(`Java ${downloadMajorVer} (${downloadVendor.toUpperCase()})`);
+      onShowToast(
+        'info',
+        'Descargando Runtime de Java',
+        `Instalando ${downloadVendor.toUpperCase()} OpenJDK ${downloadMajorVer}...`
+      );
+      const installed = await api.downloadJavaRuntime(downloadVendor, downloadMajorVer);
+      setDetectedRuntimes((prev) => [
+        installed,
+        ...prev.filter((r) => r.path !== installed.path),
+      ]);
+      setSelectedJavaPath(installed.path);
+      onShowToast(
+        'success',
+        'Java Instalado y Seleccionado',
+        `${installed.version} en ${installed.path}`
+      );
     } catch (e: any) {
-      onShowToast('error', 'Error al guardar', e.toString());
+      onShowToast('error', 'Error descargando Java', e.toString());
+    } finally {
+      setIsDownloadingJava(false);
+      onEndDownloadActivity?.();
     }
   };
 
   const handleAddEnvVar = () => {
-    if (!envKey.trim()) return;
-    setEnvVars((prev) => ({ ...prev, [envKey.trim()]: envVal.trim() }));
-    setEnvKey('');
-    setEnvVal('');
+    if (!newEnvKey.trim()) return;
+    setEnvVars((prev) => ({ ...prev, [newEnvKey.trim()]: newEnvVal.trim() }));
+    setNewEnvKey('');
+    setNewEnvVal('');
   };
 
-  const handleRemoveEnvVar = (k: string) => {
+  const handleRemoveEnvVar = (key: string) => {
     setEnvVars((prev) => {
-      const copy = { ...prev };
-      delete copy[k];
-      return copy;
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
   };
 
-  const handleSimulatedDownloadJava = (item: JavaDownloadable) => {
-    setDownloadingVersion(item.version);
-    setTimeout(() => {
-      setDownloadingVersion(null);
-      const simulatedPath = `/opt/temurin-jdk-${item.version}/bin/java`;
-      setJavaList((prev) => [
-        ...prev,
-        {
-          path: simulatedPath,
-          version: `${item.vendor} OpenJDK (build ${item.version}.0.1+1)`,
-          major_version: item.version,
-          is_valid: true,
-        },
-      ]);
-      setSelectedJava(simulatedPath);
-      onShowToast('success', 'Runtime Instalado', `${item.name} se descargó y seleccionó exitosamente.`);
-    }, 1500);
+  const handleOpenRootFolder = async () => {
+    try {
+      await api.openLauncherFolder();
+      onShowToast('info', 'Carpeta Raíz Abierta', 'Mostrando el directorio principal de GhosttyLauncher.');
+    } catch (e: any) {
+      onShowToast('error', 'Error al abrir carpeta raíz', e.toString());
+    }
   };
 
+  const handleSaveAll = async () => {
+    try {
+      await api.updateDiscordRpc(discordEnabled, discordDetails, discordState);
+    } catch {}
+
+    if (!activeInstance) {
+      onShowToast('success', 'Preferencias Globales Guardadas', 'Tema, Discord RPC y ajustes de sistema actualizados.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const updated: Instance = {
+        ...activeInstance,
+        java_path: selectedJavaPath.trim() || null,
+        memory_min_mb: minRamMb,
+        memory_max_mb: maxRamMb,
+        jvm_args: jvmArgs.trim() || null,
+        pre_launch_command: preLaunch.trim() || null,
+        post_exit_command: postExit.trim() || null,
+        env_vars: envVars,
+        server_auto_connect: serverConnect.trim() || null,
+        resolution: {
+          width: resWidth,
+          height: resHeight,
+          fullscreen,
+        },
+      };
+
+      await onUpdateInstance(updated);
+      onShowToast('success', 'Ajustes Guardados', `Configuración sincronizada con "${activeInstance.name}".`);
+    } catch (e: any) {
+      onShowToast('error', 'Error al guardar', e.toString());
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const navItems: { id: SettingsSectionId; label: string; icon: React.ComponentType<any> }[] = [
+    { id: 'general', label: 'General', icon: Sliders },
+    { id: 'java', label: 'Java Runtime', icon: Cpu },
+    { id: 'memory', label: 'Memoria & JVM', icon: MemoryStick },
+    { id: 'discord', label: 'Discord RPC', icon: Activity },
+    { id: 'appearance', label: 'Apariencia', icon: Palette },
+    { id: 'advanced', label: 'Avanzado', icon: Terminal },
+  ];
+
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-8 select-none max-w-5xl">
-      {/* Header */}
-      <div className="pb-5 border-b border-ghost-800/80">
-        <h1 className="text-xl font-bold tracking-tight text-ghost-100">
-          Entorno de Ejecución & Configuración Java
-        </h1>
-        <p className="text-xs text-ghost-400 mt-0.5">
-          Configuración avanzada de runtimes, variables de entorno, argumentos JVM y Discord RPC.
-        </p>
+    <div className="flex-1 flex flex-col overflow-hidden select-none">
+      
+      <div className="px-6 py-4 border-b glass-divider flex items-center justify-between shrink-0">
+        <div>
+          <h2 className="heading-display text-2xl font-extrabold text-ghost-50 tracking-wide">
+            CONFIGURACIÓN DEL LAUNCHER & ENTORNO
+          </h2>
+          <p className="text-xs text-ghost-400 font-mono">
+            {activeInstance
+              ? `Perfil vinculado: ${activeInstance.name} (${activeInstance.loader} ${activeInstance.mc_version})`
+              : 'Ajustes globales predeterminados'}
+          </p>
+        </div>
+
+        <button
+          onClick={handleSaveAll}
+          disabled={isSaving}
+          className="btn-tactile flex items-center gap-2 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs shadow-md disabled:opacity-50"
+        >
+          <Save className="w-3.5 h-3.5" />
+          <span>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</span>
+        </button>
       </div>
 
-      {/* Java Runtimes (Local & Temurin Catalog) */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-spectral-cyan/15 text-spectral-cyan border border-spectral-cyan/30 flex items-center justify-center">
-              <Cpu className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-xs text-ghost-100">Runtimes de Java en el Sistema</h3>
-              <p className="text-[11px] text-ghost-400">Escaneado en /usr/lib/jvm y ejecutables de PATH</p>
-            </div>
-          </div>
-          <button
-            onClick={loadJavaData}
-            disabled={loadingJava}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ghost-850 hover:bg-ghost-800 border border-ghost-750 text-xs text-ghost-300 font-medium"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingJava ? 'animate-spin' : ''}`} />
-            <span>Re-escanear</span>
-          </button>
-        </div>
-
-        {/* Installed Java Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {javaList.map((j) => {
-            const isSelected = selectedJava === j.path;
-
-            return (
-              <div
-                key={j.path}
-                onClick={() => setSelectedJava(j.path)}
-                className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  isSelected
-                    ? 'bg-ghost-850 border-spectral-cyan shadow-sm'
-                    : 'bg-ghost-900/60 border-ghost-800 hover:border-ghost-700'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-ghost-800 flex items-center justify-center text-ghost-300 font-mono text-xs shrink-0">
-                    {j.major_version ? `v${j.major_version}` : 'JDK'}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-xs text-ghost-100 truncate">{j.version}</div>
-                    <div className="text-[10px] font-mono text-ghost-400 truncate mt-0.5">{j.path}</div>
-                  </div>
-                </div>
-
-                {isSelected && (
-                  <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-spectral-mint shrink-0 ml-2">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Activo</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Manual Custom Java Path */}
-        <div className="flex gap-2 pt-1">
-          <input
-            type="text"
-            placeholder="O escribe una ruta personalizada de ejecutable Java (ej. /opt/graalvm/bin/java)..."
-            value={customJavaPath}
-            onChange={(e) => setCustomJavaPath(e.target.value)}
-            className="flex-1 px-3.5 py-2 rounded-xl bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100 placeholder-ghost-500 focus:outline-none focus:border-spectral-cyan"
-          />
-          <button
-            onClick={() => {
-              if (customJavaPath.trim()) {
-                setSelectedJava(customJavaPath.trim());
-                onShowToast('info', 'Ruta Java personalizada asignada', customJavaPath.trim());
-              }
-            }}
-            className="px-4 py-2 rounded-xl bg-ghost-800 hover:bg-ghost-750 border border-ghost-700 text-xs font-semibold text-ghost-200"
-          >
-            Usar Ruta
-          </button>
-        </div>
-
-        {/* Downloadable Official Temurin OpenJDK Catalog */}
-        <div className="pt-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-ghost-400 font-mono mb-2">
-            Descargar Runtimes Oficiales (Eclipse Temurin / Azul Zulu)
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-            {downloadables.map((item) => (
-              <div
-                key={item.name}
-                className="p-3 rounded-xl bg-ghost-900 border border-ghost-800 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="font-semibold text-xs text-ghost-200 truncate">{item.name}</div>
-                  <div className="text-[10px] text-ghost-400 font-mono mt-0.5">{item.vendor} • {item.os}</div>
-                </div>
+      
+      <div className="flex-1 flex overflow-hidden">
+        
+        <aside className="w-48 sm:w-56 border-r glass-divider p-4 flex flex-col justify-between shrink-0">
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeSection === item.id;
+              return (
                 <button
-                  onClick={() => handleSimulatedDownloadJava(item)}
-                  disabled={downloadingVersion === item.version}
-                  className="mt-3 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-ghost-800 hover:bg-ghost-750 border border-ghost-700 text-xs font-medium text-spectral-cyan transition-colors"
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`btn-tactile w-full px-3.5 py-2.5 rounded-control text-xs font-medium flex items-center gap-2.5 transition-colors ${
+                    active
+                      ? 'accent-bg text-white font-semibold'
+                      : 'text-ghost-300 hover:text-ghost-50 hover:bg-white/[0.04]'
+                  }`}
                 >
-                  {downloadingVersion === item.version ? (
-                    <div className="w-3.5 h-3.5 border-2 border-spectral-cyan border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Instalar ({item.size_mb} MB)</span>
-                    </>
-                  )}
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <button
+            type="button"
+            onClick={handleOpenRootFolder}
+            className="btn-tactile w-full px-3 py-2 glass-control text-xs font-mono text-ghost-300 hover:text-ghost-50 flex items-center gap-2 justify-center"
+            title="Abrir directorio raíz de datos de GhosttyLauncher"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span>Carpeta Raíz</span>
+          </button>
+        </aside>
+
+        
+        <div className="flex-1 overflow-y-auto px-7 py-6 space-y-6">
+          
+          {activeSection === 'general' && (
+            <div className="space-y-6 divide-y glass-divider">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    VENTANA Y RESOLUCIÓN DE JUEGO
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Dimensiones iniciales de la ventana de Minecraft al lanzarse.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 max-w-md">
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Ancho (px)
+                    </label>
+                    <input
+                      type="number"
+                      value={resWidth}
+                      onChange={(e) => setResWidth(Number(e.target.value) || 1280)}
+                      className="w-full px-3 py-2 glass-control text-xs font-mono tabular-nums"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Alto (px)
+                    </label>
+                    <input
+                      type="number"
+                      value={resHeight}
+                      onChange={(e) => setResHeight(Number(e.target.value) || 720)}
+                      className="w-full px-3 py-2 glass-control text-xs font-mono tabular-nums"
+                    />
+                  </div>
+                </div>
+
+                
+                <label className="flex items-center gap-3 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={fullscreen}
+                    onChange={(e) => setFullscreen(e.target.checked)}
+                    className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer"
+                  />
+                  <span className="text-xs text-ghost-100 font-medium">
+                    Iniciar Minecraft directamente en Pantalla Completa (<code>--fullscreen</code>)
+                  </span>
+                </label>
+              </div>
+
+              <div className="pt-5 space-y-4">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    CONEXIÓN DIRECTA Y COMPORTAMIENTO
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Servidor automático al entrar y acción de la ventana del launcher.
+                  </p>
+                </div>
+
+                <div className="max-w-md">
+                  <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                    Servidor Auto-Conectar (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ej. play.hypixel.net:25565"
+                    value={serverConnect}
+                    onChange={(e) => setServerConnect(e.target.value)}
+                    className="w-full px-3 py-2 glass-control text-xs font-mono"
+                  />
+                </div>
+
+                <div className="max-w-md">
+                  <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
+                    Al iniciar el juego:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {(
+                      [
+                        { id: 'keep', label: 'Mantener Abierto' },
+                        { id: 'minimize', label: 'Minimizar Isla' },
+                        { id: 'close', label: 'Cerrar Launcher' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setLauncherBehavior(opt.id)}
+                        className={`btn-tactile px-3 py-1.5 rounded-control text-xs border ${
+                          launcherBehavior === opt.id
+                            ? 'accent-pill-tint font-semibold'
+                            : 'glass-control text-ghost-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          
+          {activeSection === 'java' && (
+            <div className="space-y-6 divide-y glass-divider">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="heading-display text-xl font-bold text-ghost-50">
+                      SELECCIÓN DE EJECUTABLE JAVA
+                    </h3>
+                    <p className="text-xs text-ghost-400">
+                      Elige una instalación detectada en tu equipo o especifica una ruta manual.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={scanJavaRuntimes}
+                    className="btn-tactile px-3 py-1.5 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isScanningJava ? 'animate-spin' : ''}`} />
+                    <span>Detectar JVMs</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Instalaciones Detectadas ({detectedRuntimes.length})
+                    </label>
+                    <select
+                      value={selectedJavaPath}
+                      onChange={(e) => setSelectedJavaPath(e.target.value)}
+                      className="w-full px-3 py-2 glass-control text-xs font-mono cursor-pointer"
+                    >
+                      <option value="">
+                        Java predeterminado del sistema (/usr/bin/java)
+                      </option>
+                      {detectedRuntimes.map((rt) => (
+                        <option key={rt.path} value={rt.path}>
+                          {rt.version} — {rt.path}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Ruta del Binario Java
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedJavaPath}
+                      onChange={(e) => setSelectedJavaPath(e.target.value)}
+                      placeholder="/usr/lib/jvm/java-21-openjdk/bin/java"
+                      className="w-full px-3 py-2 glass-control text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              
+              <div className="pt-5 space-y-4">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    DESCARGADOR OFICIAL DE RUNTIMES
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Descarga e instala distribuciones oficiales en el directorio aislado del launcher.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
+                      Proveedor
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(
+                        [
+                          { id: 'temurin', label: 'Eclipse Temurin' },
+                          { id: 'zulu', label: 'Azul Zulu' },
+                          { id: 'mojang', label: 'Mojang Oficial' },
+                        ] as const
+                      ).map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setDownloadVendor(v.id)}
+                          className={`btn-tactile px-3 py-1.5 rounded-control text-xs border ${
+                            downloadVendor === v.id
+                              ? 'accent-pill-tint font-semibold'
+                              : 'glass-control text-ghost-300'
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
+                      Versión Mayor
+                    </span>
+                    <div className="flex items-center gap-1.5 font-mono tabular-nums">
+                      {([21, 17, 8] as const).map((ver) => (
+                        <button
+                          key={ver}
+                          type="button"
+                          onClick={() => setDownloadMajorVer(ver)}
+                          className={`btn-tactile px-3 py-1.5 rounded-control text-xs border ${
+                            downloadMajorVer === ver
+                              ? 'accent-pill-tint font-semibold'
+                              : 'glass-control text-ghost-300'
+                          }`}
+                        >
+                          Java {ver}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadJava}
+                  disabled={isDownloadingJava}
+                  className="btn-tactile px-4 py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>
+                    {isDownloadingJava
+                      ? 'Descargando e instalando...'
+                      : `Instalar ${downloadVendor.toUpperCase()} Java ${downloadMajorVer}`}
+                  </span>
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Advanced Instance Flags & Environment Variables */}
-      {activeInstance && (
-        <div className="p-5 rounded-2xl bg-ghost-900/90 border border-ghost-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-spectral-cyan" />
-              <h3 className="font-semibold text-xs text-ghost-100">
-                Parámetros de Ejecución para "{activeInstance.name}"
-              </h3>
             </div>
-            <button
-              onClick={handleSaveInstanceSettings}
-              className="px-4 py-1.5 rounded-lg bg-spectral-cyan hover:bg-spectral-cyan/90 text-ghost-950 font-bold text-xs uppercase tracking-wider"
-            >
-              Guardar Cambios
-            </button>
-          </div>
+          )}
 
-          {/* JVM Args */}
-          <div>
-            <label className="block text-[11px] font-mono text-ghost-400 mb-1">
-              Argumentos JVM (Garbage Collection, Optimizaciones)
-            </label>
-            <input
-              type="text"
-              value={jvmArgs}
-              onChange={(e) => setJvmArgs(e.target.value)}
-              placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled"
-              className="w-full px-3 py-2 rounded-lg bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100"
-            />
-          </div>
+          
+          {activeSection === 'memory' && (
+            <div className="space-y-6 divide-y glass-divider">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="heading-display text-xl font-bold text-ghost-50">
+                      ASIGNACIÓN DE MEMORIA RAM
+                    </h3>
+                    <p className="text-xs text-ghost-400">
+                      Memoria reservada para el heap de Java (<code>-Xms</code> y <code>-Xmx</code>).
+                    </p>
+                  </div>
+                  <span className="text-sm font-mono font-bold accent-text tabular-nums">
+                    {(minRamMb / 1024).toFixed(1)} GB – {(maxRamMb / 1024).toFixed(1)} GB
+                  </span>
+                </div>
 
-          {/* Hooks pre/post */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-mono text-ghost-400 mb-1">
-                Comando Pre-Ejecución (Ej. gamemoderun, mangohud)
-              </label>
-              <input
-                type="text"
-                value={preLaunch}
-                onChange={(e) => setPreLaunch(e.target.value)}
-                placeholder="gamemoderun"
-                className="w-full px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-mono text-ghost-400 mb-1">
-                Comando Post-Salida (Hook al cerrar el juego)
-              </label>
-              <input
-                type="text"
-                value={postExit}
-                onChange={(e) => setPostExit(e.target.value)}
-                placeholder="echo 'Minecraft finalizado'"
-                className="w-full px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100"
-              />
-            </div>
-          </div>
+                
+                <div className="w-full h-2.5 rounded-full bg-black/35 overflow-hidden border border-white/10">
+                  <div
+                    style={{ width: `${Math.min(100, (maxRamMb / 32768) * 100)}%` }}
+                    className="h-full accent-bg transition-all duration-150"
+                  />
+                </div>
 
-          {/* Environment Variables Table */}
-          <div>
-            <label className="block text-[11px] font-mono text-ghost-400 mb-1.5">
-              Variables de Entorno Personalizadas
-            </label>
-            <div className="space-y-1.5 mb-2">
-              {Object.entries(envVars).map(([k, v]) => (
-                <div
-                  key={k}
-                  className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-800 text-xs font-mono"
-                >
-                  <span className="text-spectral-cyan">{k}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-ghost-300">{v}</span>
-                    <button
-                      onClick={() => handleRemoveEnvVar(k)}
-                      className="text-ghost-500 hover:text-spectral-rose"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
+                  <div>
+                    <div className="flex justify-between text-xs font-mono mb-1.5 tabular-nums">
+                      <span className="text-ghost-300">RAM Mínima (-Xms)</span>
+                      <span className="text-ghost-50 font-semibold">{minRamMb} MB</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1024"
+                      max="16384"
+                      step="512"
+                      value={minRamMb}
+                      onChange={(e) => setMinRamMb(Number(e.target.value))}
+                      className="w-full accent-[var(--accent)] cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-mono mb-1.5 tabular-nums">
+                      <span className="text-ghost-300">RAM Máxima (-Xmx)</span>
+                      <span className="text-ghost-50 font-semibold">{maxRamMb} MB</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1024"
+                      max="32768"
+                      step="512"
+                      value={maxRamMb}
+                      onChange={(e) => setMaxRamMb(Number(e.target.value))}
+                      className="w-full accent-[var(--accent)] cursor-pointer"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="CLAVE (ej. MESA_GL_VERSION_OVERRIDE)"
-                value={envKey}
-                onChange={(e) => setEnvKey(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100"
-              />
-              <input
-                type="text"
-                placeholder="VALOR (ej. 4.5)"
-                value={envVal}
-                onChange={(e) => setEnvVal(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-ghost-850 border border-ghost-750 text-xs font-mono text-ghost-100"
-              />
-              <button
-                type="button"
-                onClick={handleAddEnvVar}
-                className="px-3 py-1.5 rounded-lg bg-ghost-800 hover:bg-ghost-750 border border-ghost-700 text-xs font-semibold text-ghost-200 flex items-center gap-1"
+              <div className="pt-5 space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    PERFILES DE RECOLECTOR DE BASURA (GC) & FLAGS JVM
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Optimiza los tirones de FPS según el tamaño de tu modpack.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setJvmArgs(
+                        '-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC'
+                      )
+                    }
+                    className="btn-tactile px-3 py-1.5 glass-control text-xs font-mono"
+                  >
+                    G1GC (Aikar Standard)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setJvmArgs('-XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:+AlwaysPreTouch')
+                    }
+                    className="btn-tactile px-3 py-1.5 glass-control text-xs font-mono"
+                  >
+                    Shenandoah (Baja Latencia)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJvmArgs('-XX:+UseZGC -XX:+ZGenerational -XX:+AlwaysPreTouch')}
+                    className="btn-tactile px-3 py-1.5 glass-control text-xs font-mono"
+                  >
+                    ZGC Generacional (Java 21+)
+                  </button>
+                </div>
+
+                <textarea
+                  rows={3}
+                  value={jvmArgs}
+                  onChange={(e) => setJvmArgs(e.target.value)}
+                  className="w-full px-3.5 py-2.5 glass-control text-xs font-mono resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          
+          {activeSection === 'discord' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    DISCORD RICH PRESENCE PERSONALIZADO
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Muestra tu actividad en tiempo real con el icono oficial de GhosttyLauncher.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !discordEnabled;
+                    setDiscordEnabled(nextVal);
+                    api.updateDiscordRpc(nextVal, discordDetails, discordState).catch(() => {});
+                  }}
+                  role="switch"
+                  aria-checked={discordEnabled}
+                  className={`btn-tactile relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors ${
+                    discordEnabled ? 'accent-bg border-transparent' : 'bg-black/40 border-white/15'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white transition-transform mt-0.5 ${
+                      discordEnabled ? 'translate-x-5' : 'translate-x-1 opacity-60'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                    Línea Principal (Detalles)
+                  </label>
+                  <input
+                    type="text"
+                    value={discordDetails}
+                    onChange={(e) => setDiscordDetails(e.target.value)}
+                    className="w-full px-3 py-2 glass-control text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                    Línea Secundaria (Estado)
+                  </label>
+                  <input
+                    type="text"
+                    value={discordState}
+                    onChange={(e) => setDiscordState(e.target.value)}
+                    className="w-full px-3 py-2 glass-control text-xs"
+                  />
+                </div>
+              </div>
+
+              
+              <div className="p-4 rounded-card glass-card max-w-md flex items-center gap-4">
+                <div className="relative shrink-0">
+                  <div className="w-16 h-16 rounded-control bg-black/40 p-2 flex items-center justify-center border border-white/10">
+                    <img src="/ghostty.png" alt="Ghostty" className="w-full h-full object-contain" />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-spectral-mint border-2 border-obsidian-950" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] uppercase font-mono font-bold text-ghost-400 tracking-wider">
+                    Jugando a un juego
+                  </div>
+                  <div className="text-sm font-bold text-ghost-50 truncate">{discordDetails}</div>
+                  <div className="text-xs text-ghost-200 truncate">{discordState}</div>
+                  <div className="text-[11px] text-spectral-mint font-mono mt-0.5 tabular-nums">
+                    00:42:18 transcurrido
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          
+          {activeSection === 'appearance' && (
+            <div className="space-y-6 divide-y glass-divider">
+              
+              <div className="space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    TEMAS DE VIDRIO ESMERILADO (VISIONOS)
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Cambia la atmósfera base de las capas translúcidas del launcher.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {(Object.keys(THEME_PRESETS) as ThemePresetId[]).map((presetKey) => {
+                    const meta = THEME_PRESETS[presetKey];
+                    const active = themeSettings.preset === presetKey;
+                    return (
+                      <button
+                        key={presetKey}
+                        type="button"
+                        onClick={() =>
+                          onUpdateThemeSettings({ ...themeSettings, preset: presetKey })
+                        }
+                        className={`btn-tactile p-3 rounded-card text-left border transition-all ${
+                          active
+                            ? 'accent-ring border-transparent bg-white/[0.08]'
+                            : 'glass-control'
+                        }`}
+                      >
+                        <div
+                          className="w-full h-10 rounded-lg mb-2.5 border border-white/15 flex items-center justify-end p-1.5"
+                          style={{ background: meta.previewBg }}
+                        >
+                          <div
+                            className="w-1/2 h-full rounded border border-white/20"
+                            style={{ background: meta.previewGlass }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-ghost-50">{meta.name}</span>
+                          {active && <Check className="w-3.5 h-3.5 accent-text" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              
+              <div className="pt-5 space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    COLOR DE ACENTO ÚNICO
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Se aplica con moderación al botón Jugar, selección activa, foco e indicadores.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {ACCENT_SWATCHES.map((swatch) => {
+                    const active =
+                      themeSettings.accentHex.toLowerCase() === swatch.hex.toLowerCase();
+                    return (
+                      <button
+                        key={swatch.id}
+                        type="button"
+                        onClick={() =>
+                          onUpdateThemeSettings({ ...themeSettings, accentHex: swatch.hex })
+                        }
+                        className={`btn-tactile px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 border ${
+                          active
+                            ? 'border-white text-ghost-50 bg-white/10 font-semibold'
+                            : 'glass-control text-ghost-300'
+                        }`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full shrink-0"
+                          style={{ backgroundColor: swatch.hex }}
+                        />
+                        <span>{swatch.label}</span>
+                      </button>
+                    );
+                  })}
+
+                  
+                  <label className="btn-tactile px-3 py-1.5 rounded-full glass-control text-xs font-mono flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="color"
+                      value={themeSettings.accentHex}
+                      onChange={(e) =>
+                        onUpdateThemeSettings({ ...themeSettings, accentHex: e.target.value })
+                      }
+                      className="w-4 h-4 rounded border-0 bg-transparent cursor-pointer"
+                    />
+                    <span>{themeSettings.accentHex.toUpperCase()}</span>
+                  </label>
+                </div>
+              </div>
+
+              
+              <div className="pt-5 space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    EFECTOS CINÉTICOS Y PARTÍCULAS
+                  </h3>
+                </div>
+
+                <div className="space-y-2.5">
+                  <label className="flex items-center justify-between py-1.5 cursor-pointer">
+                    <span className="text-xs text-ghost-100">
+                      Partículas flotantes de fondo
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={themeSettings.particlesEnabled}
+                      onChange={(e) =>
+                        onUpdateThemeSettings({
+                          ...themeSettings,
+                          particlesEnabled: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 accent-[var(--accent)]"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-1.5 cursor-pointer">
+                    <span className="text-xs text-ghost-100">
+                      Explosión de partículas al pulsar Jugar o Instalar
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={themeSettings.launchBurstEnabled}
+                      onChange={(e) =>
+                        onUpdateThemeSettings({
+                          ...themeSettings,
+                          launchBurstEnabled: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 accent-[var(--accent)]"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-1.5 cursor-pointer">
+                    <span className="text-xs text-ghost-100">
+                      Arte del modpack difuminado y animado en el fondo
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={themeSettings.ambientArtworkEnabled}
+                      onChange={(e) =>
+                        onUpdateThemeSettings({
+                          ...themeSettings,
+                          ambientArtworkEnabled: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 accent-[var(--accent)]"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          
+          {activeSection === 'advanced' && (
+            <div className="divide-y glass-divider">
+              <AccordionSection
+                title="Comandos Pre-Lanzamiento y Post-Salida (Hooks)"
+                subtitle="Ejecuta scripts personalizados antes de iniciar o al cerrar Minecraft"
+                defaultOpen={true}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Añadir</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Comando Pre-Lanzamiento
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej. gamemoderun, mangohud"
+                      value={preLaunch}
+                      onChange={(e) => setPreLaunch(e.target.value)}
+                      className="w-full px-3 py-2 glass-control text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono text-ghost-300 mb-1">
+                      Comando Post-Salida
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej. backup-world.sh"
+                      value={postExit}
+                      onChange={(e) => setPostExit(e.target.value)}
+                      className="w-full px-3 py-2 glass-control text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </AccordionSection>
 
-      {/* Discord RPC Card */}
-      <div className="p-4 rounded-2xl bg-ghost-900 border border-ghost-800 flex items-center justify-between">
-        <div>
-          <h4 className="font-semibold text-xs text-ghost-100">Discord Rich Presence</h4>
-          <p className="text-[11px] text-ghost-400">Transmite el estado del juego, tiempo transcurrido y modpack a Discord IPC</p>
+              <AccordionSection
+                title="Variables de Entorno"
+                subtitle="Variables inyectadas al proceso de Java (ej. MESA_GL_VERSION_OVERRIDE)"
+                badge={`${Object.keys(envVars).length}`}
+                defaultOpen={true}
+              >
+                <div className="space-y-3 pt-1">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="CLAVE"
+                      value={newEnvKey}
+                      onChange={(e) => setNewEnvKey(e.target.value)}
+                      className="flex-1 px-3 py-1.5 glass-control text-xs font-mono"
+                    />
+                    <input
+                      type="text"
+                      placeholder="VALOR"
+                      value={newEnvVal}
+                      onChange={(e) => setNewEnvVal(e.target.value)}
+                      className="flex-1 px-3 py-1.5 glass-control text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddEnvVar}
+                      className="btn-tactile px-3 py-1.5 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Añadir</span>
+                    </button>
+                  </div>
+
+                  {Object.entries(envVars).length > 0 && (
+                    <div className="divide-y glass-divider">
+                      {Object.entries(envVars).map(([k, v]) => (
+                        <div
+                          key={k}
+                          className="py-2 flex items-center justify-between text-xs font-mono"
+                        >
+                          <span>
+                            <strong className="accent-text">{k}</strong> = {v}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEnvVar(k)}
+                            className="text-ghost-400 hover:text-spectral-rose"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AccordionSection>
+
+              <AccordionSection
+                title="Red y Concurrencia de Descargas"
+                subtitle="Hilos paralelos para descargar assets de Mojang y mods de Modrinth"
+                badge={`${concurrentDownloads} hilos`}
+                defaultOpen={false}
+              >
+                <div className="pt-2 max-w-md">
+                  <div className="flex justify-between text-xs font-mono mb-1.5 tabular-nums">
+                    <span className="text-ghost-300">Descargas Simultáneas</span>
+                    <span className="text-ghost-50 font-bold">{concurrentDownloads}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="2"
+                    max="32"
+                    step="2"
+                    value={concurrentDownloads}
+                    onChange={(e) => setConcurrentDownloads(Number(e.target.value))}
+                    className="w-full accent-[var(--accent)] cursor-pointer"
+                  />
+                </div>
+              </AccordionSection>
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => setDiscordRpc(!discordRpc)}
-          className={`w-11 h-6 rounded-full p-1 transition-colors ${
-            discordRpc ? 'bg-spectral-mint' : 'bg-ghost-800'
-          }`}
-        >
-          <motion.div
-            layout
-            className={`w-4 h-4 rounded-full bg-ghost-950 shadow-sm ${
-              discordRpc ? 'ml-auto' : ''
-            }`}
-          />
-        </button>
       </div>
     </div>
   );
-}
+};

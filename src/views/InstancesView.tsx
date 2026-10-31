@@ -1,280 +1,760 @@
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Play, Layers, Package, Clock, Cpu, Trash2, Download, Search, Upload } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Play,
+  Sliders,
+  Package,
+  Share2,
+  Trash2,
+  Clock,
+  Terminal,
+  Search,
+  Plus,
+  Upload,
+  FolderOpen,
+  Cpu,
+  GripVertical,
+  FolderPlus,
+  X,
+  Check,
+} from 'lucide-react';
 import { Instance } from '../types';
+import { triggerLaunchConfetti } from '../utils/confetti';
+import { InstanceIcon } from '../components/InstanceIcon';
+import { SpotlightCard } from '../components/SpotlightCard';
+import { AccordionSection } from '../components/AccordionSection';
+import { GhosttyMascot } from '../components/GhosttyMascot';
 
 interface InstancesViewProps {
   instances: Instance[];
   activeInstance: Instance | null;
   onSelectInstance: (instance: Instance) => void;
   onOpenCreate: () => void;
-  onImportModpack: (filePath: string) => Promise<void>;
+  onImportModpack: (fileOrPath: File | string) => void;
   onOpenMods: (instance: Instance) => void;
+  onOpenSettings: (instance: Instance) => void;
+  onOpenFolder?: (id: string) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
   onExportInstance: (id: string) => void;
   isLaunching: boolean;
+  launchBurstEnabled?: boolean;
+  ambientArtworkEnabled?: boolean;
 }
 
-export function InstancesView({
+function formatPlaytime(secs: number = 0): string {
+  if (!secs) return 'Sin registros';
+  const hours = (secs / 3600).toFixed(1);
+  return `${hours} h jugadas`;
+}
+
+export const InstancesView: React.FC<InstancesViewProps> = ({
   instances,
   activeInstance,
   onSelectInstance,
   onOpenCreate,
   onImportModpack,
   onOpenMods,
+  onOpenSettings,
+  onOpenFolder,
   onLaunch,
   onDeleteInstance,
   onExportInstance,
   isLaunching,
-}: InstancesViewProps) {
-  const [filter, setFilter] = useState('');
-  const [importing, setImporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  launchBurstEnabled = true,
+  ambientArtworkEnabled = true,
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showImportBar, setShowImportBar] = useState(false);
+  const [importPath, setImportPath] = useState('');
+  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const [customGroups, setCustomGroups] = useState<string[]>(() => {
     try {
-      setImporting(true);
-      // In web / electron / tauri, file can have path or name
-      const path = (file as any).path || file.name;
-      await onImportModpack(path);
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      const saved = localStorage.getItem('ghostty_launcher_groups');
+      return saved ? JSON.parse(saved) : ['Todos', 'Favoritos', 'Vanilla', 'Modpacks'];
+    } catch {
+      return ['Todos', 'Favoritos', 'Vanilla', 'Modpacks'];
+    }
+  });
+
+  const [activeGroup, setActiveGroup] = useState<string>('Todos');
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+
+  const [instanceGroups, setInstanceGroups] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('ghostty_instance_groups');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [orderedIds, setOrderedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('ghostty_instances_order');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const sortedInstances = useMemo(() => {
+    const list = [...instances];
+    if (orderedIds.length > 0) {
+      list.sort((a, b) => {
+        const idxA = orderedIds.indexOf(a.id);
+        const idxB = orderedIds.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    }
+    return list;
+  }, [instances, orderedIds]);
+
+  const filteredInstances = sortedInstances.filter((inst) => {
+    const matchesSearch = inst.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (activeGroup === 'Todos') return true;
+    const assigned =
+      instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+    return assigned.toLowerCase() === activeGroup.toLowerCase();
+  });
+
+  const handleCreateGroup = () => {
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      setIsCreatingGroup(false);
+      return;
+    }
+    if (!customGroups.includes(trimmed)) {
+      const next = [...customGroups, trimmed];
+      setCustomGroups(next);
+      localStorage.setItem('ghostty_launcher_groups', JSON.stringify(next));
+    }
+    setActiveGroup(trimmed);
+    setNewGroupName('');
+    setIsCreatingGroup(false);
+  };
+
+  const handleDeleteGroup = (groupName: string) => {
+    const next = customGroups.filter((g) => g !== groupName);
+    setCustomGroups(next);
+    localStorage.setItem('ghostty_launcher_groups', JSON.stringify(next));
+    if (activeGroup === groupName) {
+      setActiveGroup('Todos');
     }
   };
 
-  const filteredInstances = instances.filter(
-    (i) =>
-      i.name.toLowerCase().includes(filter.toLowerCase()) ||
-      i.mc_version.toLowerCase().includes(filter.toLowerCase()) ||
-      i.loader.toLowerCase().includes(filter.toLowerCase())
-  );
+  const handleCycleGroupForInstance = (e: React.MouseEvent, instId: string) => {
+    e.stopPropagation();
+    const available = customGroups.filter((g) => g !== 'Todos');
+    if (available.length === 0) return;
+    const current = instanceGroups[instId] || available[0];
+    const currIdx = available.indexOf(current);
+    const nextGroup = available[(currIdx + 1) % available.length];
+    const updated = { ...instanceGroups, [instId]: nextGroup };
+    setInstanceGroups(updated);
+    localStorage.setItem('ghostty_instance_groups', JSON.stringify(updated));
+  };
 
-  const getLoaderColor = (loader: string) => {
-    switch (loader.toLowerCase()) {
-      case 'fabric':
-        return 'bg-spectral-cyan/15 text-spectral-cyan border-spectral-cyan/30';
-      case 'neoforge':
-        return 'bg-spectral-amber/15 text-spectral-amber border-spectral-amber/30';
-      case 'forge':
-        return 'bg-orange-500/15 text-orange-400 border-orange-500/30';
-      case 'quilt':
-        return 'bg-indigo-400/15 text-indigo-300 border-indigo-400/30';
-      default:
-        return 'bg-spectral-mint/15 text-spectral-mint border-spectral-mint/30';
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== id) {
+      setDragOverId(id);
     }
   };
 
-  const formatPlaytime = (seconds: number) => {
-    if (!seconds) return 'Sin jugar';
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const currentOrder = sortedInstances.map((i) => i.id);
+    const fromIdx = currentOrder.indexOf(draggedId);
+    const toIdx = currentOrder.indexOf(targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      currentOrder.splice(fromIdx, 1);
+      currentOrder.splice(toIdx, 0, draggedId);
+      setOrderedIds(currentOrder);
+      localStorage.setItem('ghostty_instances_order', JSON.stringify(currentOrder));
+    }
+    setDraggedId(null);
+    setDragOverId(null);
   };
+
+  const handleDropOnGroup = (e: React.DragEvent, targetGroup: string) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain') || draggedId;
+    if (id && targetGroup !== 'Todos') {
+      const nextGroups = { ...instanceGroups, [id]: targetGroup };
+      setInstanceGroups(nextGroups);
+      localStorage.setItem('ghostty_instance_groups', JSON.stringify(nextGroups));
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleLaunchClick = (e: React.MouseEvent, inst: Instance) => {
+    if (launchBurstEnabled) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      triggerLaunchConfetti(x, y);
+    }
+    onLaunch(inst);
+  };
+
+  const handleImportSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedImportFile) {
+      onImportModpack(selectedImportFile);
+      setSelectedImportFile(null);
+      setImportPath('');
+      setShowImportBar(false);
+      return;
+    }
+    if (!importPath.trim()) return;
+    onImportModpack(importPath.trim());
+    setImportPath('');
+    setShowImportBar(false);
+  };
+
+  const currentHero = activeInstance || sortedInstances[0] || null;
+  const currentHeroGroup = currentHero
+    ? instanceGroups[currentHero.id] || (currentHero.loader === 'vanilla' ? 'Vanilla' : 'Modpacks')
+    : null;
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-8 select-none">
-      {/* Editorial Header / Hero */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-ghost-800">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-extrabold tracking-tight text-ghost-100">
-              Estancias de Juego
-            </h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-ghost-800 text-ghost-400 border border-ghost-700">
-              {instances.length} Perfiles
-            </span>
-          </div>
-          <p className="text-xs text-ghost-400 mt-1">
-            Administra tus instancias de Minecraft con aislamiento total de configuraciones y mods.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Filter Search */}
-          <div className="relative flex-1 sm:w-56">
-            <Search className="w-4 h-4 text-ghost-500 absolute left-3 top-2.5" />
+    <div className="flex-1 flex overflow-hidden px-6 py-4 gap-6 select-none relative z-10">
+      <div className="w-80 lg:w-[350px] flex flex-col gap-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-3.5 top-2.5 text-ghost-400" />
             <input
               type="text"
-              placeholder="Buscar estancia..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-ghost-850/80 border border-ghost-800 text-xs text-ghost-100 placeholder-ghost-500 focus:outline-none focus:border-spectral-cyan transition-colors"
+              placeholder="Buscar estancias..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 glass-control text-xs placeholder:text-ghost-400 font-sans"
             />
           </div>
 
-          {/* Hidden File Input for Modpack Import */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".mrpack,.zip"
-            className="hidden"
-          />
-
-          {/* Import Pack Button */}
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ghost-850 hover:bg-ghost-800 border border-ghost-750 text-xs font-semibold text-ghost-200 transition-colors shrink-0"
-            title="Importar modpack .mrpack (Modrinth) o .zip (CurseForge)"
+            onClick={() => setShowImportBar((v) => !v)}
+            className={`btn-tactile p-2 glass-control text-xs font-medium flex items-center gap-1.5 ${
+              showImportBar ? 'accent-border accent-text' : 'text-ghost-200'
+            }`}
+            title="Importar archivo Modpack (.mrpack o .zip)"
           >
-            <Upload className={`w-3.5 h-3.5 text-spectral-cyan ${importing ? 'animate-bounce' : ''}`} />
-            <span>{importing ? 'Importando...' : 'Importar Pack'}</span>
+            <Upload className="w-4 h-4" />
           </button>
 
-          {/* New Instance Button */}
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+          <button
             onClick={onOpenCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-spectral-cyan text-ghost-950 font-bold text-xs uppercase tracking-wider shadow-lg glow-cyan hover:opacity-95 transition-all shrink-0"
+            className="btn-tactile p-2 rounded-control accent-bg text-white font-bold shadow-md"
+            title="Crear Nueva Estancia"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Estancia</span>
-          </motion.button>
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showImportBar && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+              onSubmit={handleImportSubmit}
+              className="overflow-hidden"
+            >
+              <div className="p-3 glass-card space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-ghost-300">
+                  <span>Importar Modpack (.mrpack / .zip)</span>
+                  <label className="accent-text hover:underline cursor-pointer font-semibold">
+                    Seleccionar archivo...
+                    <input
+                      type="file"
+                      accept=".mrpack,.zip"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedImportFile(file);
+                          const path = (file as any).path || file.name;
+                          setImportPath(path);
+                          onImportModpack(file);
+                          setShowImportBar(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={importPath}
+                    onChange={(e) => {
+                      setSelectedImportFile(null);
+                      setImportPath(e.target.value);
+                    }}
+                    placeholder="/ruta/al/modpack.mrpack"
+                    className="flex-1 px-2.5 py-1.5 glass-control text-xs font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!importPath.trim() && !selectedImportFile}
+                    className="btn-tactile px-3 py-1.5 rounded-control accent-bg text-white text-xs font-semibold disabled:opacity-50"
+                  >
+                    Importar
+                  </button>
+                </div>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono">
+          {customGroups.map((g) => {
+            const active = activeGroup === g;
+            const count = sortedInstances.filter((inst) => {
+              if (g === 'Todos') return true;
+              const assigned =
+                instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+              return assigned.toLowerCase() === g.toLowerCase();
+            }).length;
+
+            return (
+              <div
+                key={g}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={(e) => handleDropOnGroup(e, g)}
+                className="relative group/tab shrink-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveGroup(g)}
+                  className={`btn-tactile px-3 py-1 rounded-full uppercase transition-colors border flex items-center gap-1.5 ${
+                    active
+                      ? 'accent-pill-tint font-bold'
+                      : 'glass-control text-ghost-300 hover:text-ghost-50'
+                  }`}
+                  title={`Filtrar por grupo "${g}" o arrastra una estancia aquí`}
+                >
+                  <span>{g}</span>
+                  <span className="opacity-60 text-[9px] tabular-nums">({count})</span>
+                </button>
+                {g !== 'Todos' && g !== 'Favoritos' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGroup(g);
+                    }}
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-spectral-rose text-white text-[9px] items-center justify-center hidden group-hover/tab:flex font-bold"
+                    title={`Eliminar grupo "${g}"`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {isCreatingGroup ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <input
+                type="text"
+                autoFocus
+                placeholder="Nombre grupo..."
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateGroup();
+                  if (e.key === 'Escape') {
+                    setIsCreatingGroup(false);
+                    setNewGroupName('');
+                  }
+                }}
+                className="w-28 px-2 py-0.5 rounded-full glass-control text-xs font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                className="btn-tactile p-1 rounded-full accent-bg text-white"
+                title="Guardar grupo"
+              >
+                <Check className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingGroup(false);
+                  setNewGroupName('');
+                }}
+                className="btn-tactile p-1 rounded-full glass-control text-ghost-300"
+                title="Cancelar"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsCreatingGroup(true)}
+              className="btn-tactile px-2.5 py-1 rounded-full border border-dashed border-white/20 text-ghost-400 hover:text-ghost-50 hover:border-white/40 flex items-center gap-1 shrink-0 text-[10px]"
+              title="Crear nuevo grupo para organizar tus modpacks"
+            >
+              <FolderPlus className="w-3 h-3" />
+              <span>+ Grupo</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2.5 px-3 -mx-3 py-1.5">
+          {filteredInstances.length === 0 ? (
+            <div className="py-16 text-center glass-card p-6">
+              <GhosttyMascot
+                mood="sad"
+                size="md"
+                caption="No encontramos estancias en este grupo."
+              />
+            </div>
+          ) : (
+            filteredInstances.map((inst) => {
+              const isSelected = currentHero?.id === inst.id;
+              const isDragOver = dragOverId === inst.id && draggedId !== inst.id;
+              const instGroup =
+                instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+
+              return (
+                <div
+                  key={inst.id}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, inst.id)}
+                  onDragOver={(e) => handleDragOver(e, inst.id)}
+                  onDrop={(e) => handleDrop(e, inst.id)}
+                  onDragEnd={() => {
+                    setDraggedId(null);
+                    setDragOverId(null);
+                  }}
+                  className={`transition-all ${
+                    isDragOver ? 'border-t-2 border-[var(--accent)] pt-1' : ''
+                  }`}
+                >
+                  <SpotlightCard
+                    onClick={() => onSelectInstance(inst)}
+                    isSelected={isSelected}
+                    className="glass-card p-3.5 cursor-pointer group relative"
+                  >
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div
+                        className="cursor-grab active:cursor-grabbing text-ghost-500 hover:text-ghost-300 transition-colors shrink-0 -ml-1 p-0.5"
+                        title="Arrastra para reordenar"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </div>
+
+                      <div className="w-11 h-11 rounded-control glass-control p-1.5 flex items-center justify-center shrink-0">
+                        <InstanceIcon icon={inst.icon} alt={inst.name} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3
+                            className={`text-sm font-semibold truncate transition-colors ${
+                              isSelected ? 'text-ghost-50' : 'text-ghost-200 group-hover:text-ghost-50'
+                            }`}
+                          >
+                            {inst.name}
+                          </h3>
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full accent-bg shrink-0" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono text-ghost-400 tabular-nums truncate">
+                            <span className="uppercase text-ghost-200 font-medium">
+                              {inst.loader}
+                            </span>
+                            <span>•</span>
+                            <span>{inst.mc_version}</span>
+                            <span>•</span>
+                            <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleCycleGroupForInstance(e, inst.id)}
+                            className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-white/10 hover:border-white/30 text-ghost-300 hover:text-ghost-50 bg-black/25 shrink-0"
+                            title="Haz clic para cambiar de grupo"
+                          >
+                            {instGroup}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </SpotlightCard>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* Grid of Instances */}
-      {filteredInstances.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredInstances.map((instance) => {
-            const isSelected = activeInstance?.id === instance.id;
-
-            return (
-              <motion.div
-                key={instance.id}
-                layout
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                onClick={() => onSelectInstance(instance)}
-                className={`relative rounded-3xl p-5 border cursor-pointer transition-all ${
-                  isSelected
-                    ? 'bg-ghost-850/95 border-spectral-cyan/60 shadow-[0_12px_35px_-10px_rgba(56,189,248,0.25)]'
-                    : 'bg-ghost-900/80 border-ghost-800/80 hover:border-ghost-700 hover:bg-ghost-850/50'
-                }`}
-              >
-                {/* Top Badge Row */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-lg border ${getLoaderColor(
-                        instance.loader
-                      )}`}
-                    >
-                      {instance.loader}
-                    </span>
-                    <span className="text-[11px] font-mono font-semibold text-ghost-300 bg-ghost-800 px-2 py-0.5 rounded-lg border border-ghost-700/60">
-                      v{instance.mc_version}
-                    </span>
+      <div className="flex-1 flex flex-col glass-panel overflow-hidden relative">
+        {currentHero ? (
+          <>
+            <div className="relative h-64 lg:h-72 w-full overflow-hidden shrink-0 flex flex-col justify-end p-8 border-b glass-divider">
+              {ambientArtworkEnabled && (
+                currentHero.icon &&
+                (currentHero.icon.startsWith('http') ||
+                  currentHero.icon.startsWith('data:image') ||
+                  currentHero.icon.startsWith('/')) ? (
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div
+                      className="hero-ambient absolute bg-cover bg-center opacity-35 pointer-events-none"
+                      style={{
+                        backgroundImage: `url(${currentHero.icon})`,
+                        filter: 'blur(54px) saturate(160%)',
+                        inset: '-20%',
+                        transform: 'translateZ(0)',
+                        backfaceVisibility: 'hidden',
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 70% 60% at 20% 30%, rgba(var(--accent-rgb), 0.25), transparent 70%)',
+                      }}
+                    />
                   </div>
+                ) : (
+                  <div
+                    className="absolute inset-0 opacity-40 pointer-events-none"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse 70% 60% at 15% 25%, rgba(var(--accent-rgb), 0.38), transparent 70%), radial-gradient(ellipse 60% 50% at 85% 65%, rgba(16, 185, 129, 0.22), transparent 65%), radial-gradient(ellipse 45% 40% at 50% 10%, rgba(139, 92, 246, 0.16), transparent 60%)',
+                    }}
+                  />
+                )
+              )}
+              <div className="absolute inset-0 smoked-scrim-hero pointer-events-none" />
 
-                  {isSelected && (
-                    <span className="text-[10px] uppercase font-mono font-bold text-spectral-mint flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-spectral-mint animate-pulse" />
-                      Activa
-                    </span>
-                  )}
-                </div>
+              <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+                <div className="flex items-center gap-5 min-w-0">
+                  <motion.div
+                    key={currentHero.id}
+                    initial={{ scale: 0.94, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                    className="w-20 h-20 lg:w-24 lg:h-24 rounded-card glass-control p-2.5 flex items-center justify-center shadow-2xl shrink-0"
+                  >
+                    <InstanceIcon icon={currentHero.icon} alt={currentHero.name} />
+                  </motion.div>
 
-                {/* Instance Name & Icon */}
-                <div className="flex items-start gap-3.5 mb-5">
-                  <div className="w-12 h-12 rounded-2xl bg-ghost-800 border border-ghost-700/60 flex items-center justify-center p-2 shrink-0">
-                    <img src="/ghostty.svg" alt="icon" className="w-full h-full object-contain" />
-                  </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-base text-ghost-100 truncate">{instance.name}</h3>
-                    <div className="flex items-center gap-3 text-[11px] text-ghost-400 font-mono mt-1">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-ghost-500" />
-                        {formatPlaytime(instance.total_playtime_secs)}
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="text-[11px] font-mono uppercase px-2.5 py-0.5 rounded-full accent-pill-tint border font-semibold tracking-wider tabular-nums">
+                        {currentHero.loader} {currentHero.mc_version}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Cpu className="w-3 h-3 text-spectral-cyan" />
-                        {Math.round(instance.memory_max_mb / 1024)} GB
+                      {currentHeroGroup && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/15 text-ghost-300 bg-black/25">
+                          {currentHeroGroup}
+                        </span>
+                      )}
+                      <span className="text-xs font-mono text-ghost-400 tabular-nums">
+                        {formatPlaytime(currentHero.total_playtime_secs)}
+                      </span>
+                    </div>
+
+                    <h2 className="heading-display text-4xl lg:text-5xl font-extrabold text-ghost-50 truncate drop-shadow-sm">
+                      {currentHero.name}
+                    </h2>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-ghost-300 mt-2 tabular-nums">
+                      <span className="flex items-center gap-1.5 text-spectral-mint">
+                        <Clock className="w-3.5 h-3.5" />
+                        Listo para jugar
+                      </span>
+                      <span className="opacity-40">•</span>
+                      <span>RAM: {currentHero.memory_max_mb ? (currentHero.memory_max_mb / 1024).toFixed(1) : '4.0'} GB</span>
+                      <span className="opacity-40">•</span>
+                      <span>
+                        {currentHero.resolution?.width || 1920}×{currentHero.resolution?.height || 1080}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom Action Bar */}
-                <div className="flex items-center justify-between pt-4 border-t border-ghost-800">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      title="Ver mods instalados"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenMods(instance);
-                      }}
-                      className="p-2 rounded-xl bg-ghost-800 hover:bg-ghost-750 text-ghost-300 hover:text-spectral-cyan transition-colors"
-                    >
-                      <Package className="w-4 h-4" />
-                    </button>
-                    <button
-                      title="Exportar estancia a Zip"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExportInstance(instance.id);
-                      }}
-                      className="p-2 rounded-xl bg-ghost-800 hover:bg-ghost-750 text-ghost-300 hover:text-ghost-100 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      title="Eliminar estancia"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteInstance(instance.id);
-                      }}
-                      className="p-2 rounded-xl bg-ghost-800 hover:bg-ghost-750 text-ghost-400 hover:text-spectral-rose transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                <motion.button
+                  whileHover={{ scale: 1.025, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+                  onClick={(e) => handleLaunchClick(e, currentHero)}
+                  disabled={isLaunching}
+                  className="group relative px-9 py-4 rounded-card accent-bg text-white heading-display font-extrabold text-xl tracking-wider shadow-[0_12px_32px_-6px_rgba(var(--accent-rgb),0.55)] flex items-center gap-3 border border-white/25 disabled:opacity-50 overflow-hidden shrink-0 cursor-pointer"
+                >
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12" />
+                  <Play className="w-5 h-5 fill-current relative z-10" />
+                  <span className="relative z-10">{isLaunching ? 'INICIANDO...' : 'JUGAR AHORA'}</span>
+                </motion.button>
+              </div>
+            </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLaunch(instance);
-                    }}
-                    disabled={isLaunching}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-spectral-cyan to-spectral-mint text-ghost-950 font-bold text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition-all"
+            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b glass-divider">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    onClick={() => onOpenMods(currentHero)}
+                    className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Jugar</span>
-                  </motion.button>
+                    <Package className="w-4 h-4 accent-text" />
+                    <span>Gestor de Mods</span>
+                  </button>
+
+                  <button
+                    onClick={() => onOpenSettings(currentHero)}
+                    className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
+                  >
+                    <Sliders className="w-4 h-4 text-ghost-300" />
+                    <span>Ajustes de la Estancia</span>
+                  </button>
+
+                  {onOpenFolder && (
+                    <button
+                      onClick={() => onOpenFolder(currentHero.id)}
+                      className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
+                    >
+                      <FolderOpen className="w-4 h-4 text-ghost-300" />
+                      <span>Abrir Carpeta</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onExportInstance(currentHero.id)}
+                    className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
+                  >
+                    <Share2 className="w-4 h-4 text-ghost-300" />
+                    <span>Exportar (.zip)</span>
+                  </button>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      ) : (
-        /* Empty State */
-        <div className="py-20 text-center rounded-3xl border border-dashed border-ghost-800 bg-ghost-900/40 p-8">
-          <div className="w-14 h-14 rounded-3xl bg-ghost-850 mx-auto flex items-center justify-center text-ghost-500 mb-3 border border-ghost-800">
-            <Layers className="w-6 h-6" />
+
+                <button
+                  onClick={() => onDeleteInstance(currentHero.id)}
+                  className="btn-tactile px-3.5 py-2.5 glass-control hover:border-spectral-rose/50 text-xs font-medium flex items-center gap-1.5 text-spectral-rose"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Eliminar</span>
+                </button>
+              </div>
+
+              <div className="divide-y glass-divider">
+                <AccordionSection
+                  title="Parámetros de Memoria y Máquina Virtual Java"
+                  subtitle="Configuración activa de ejecución para este perfil"
+                  badge={`${(currentHero.memory_min_mb / 1024).toFixed(1)}G – ${(currentHero.memory_max_mb / 1024).toFixed(1)}G`}
+                  icon={<Cpu className="w-4 h-4 accent-text" />}
+                  defaultOpen={true}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 text-xs font-mono">
+                    <div>
+                      <span className="text-[10px] uppercase text-ghost-400 block mb-1">
+                        Ejecutable Java
+                      </span>
+                      <span className="text-ghost-100 truncate block">
+                        {currentHero.java_path || 'Heredado del sistema (/usr/bin/java)'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase text-ghost-400 block mb-1">
+                        Argumentos JVM
+                      </span>
+                      <span className="text-ghost-200 truncate block">
+                        {currentHero.jvm_args || '-XX:+UseG1GC'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase text-ghost-400 block mb-1">
+                        Modo de Pantalla
+                      </span>
+                      <span className="text-ghost-100 tabular-nums block">
+                        {currentHero.resolution?.width || 1920}×{currentHero.resolution?.height || 1080}{' '}
+                        {currentHero.resolution?.fullscreen ? '(Pantalla Completa)' : '(Ventana)'}
+                      </span>
+                    </div>
+                  </div>
+                </AccordionSection>
+
+                <AccordionSection
+                  title="Hooks del Sistema & Variables de Entorno"
+                  subtitle="Comandos pre/post-lanzamiento y variables aisladas"
+                  badge={`${Object.keys(currentHero.env_vars || {}).length} vars`}
+                  icon={<Terminal className="w-4 h-4 text-ghost-300" />}
+                  defaultOpen={false}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 text-xs font-mono">
+                    <div>
+                      <span className="text-[10px] uppercase text-ghost-400 block mb-1">
+                        Hook Pre-Lanzamiento
+                      </span>
+                      <span className="text-ghost-200 block">
+                        {currentHero.pre_launch_command || 'Ninguno configurado'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase text-ghost-400 block mb-1">
+                        Hook Post-Salida
+                      </span>
+                      <span className="text-ghost-200 block">
+                        {currentHero.post_exit_command || 'Ninguno configurado'}
+                      </span>
+                    </div>
+                  </div>
+                </AccordionSection>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+            <GhosttyMascot
+              mood="idle"
+              size="lg"
+              caption="Crea tu primera estancia o importa un paquete .mrpack para empezar."
+            />
+            <button
+              onClick={onOpenCreate}
+              className="btn-tactile mt-5 px-6 py-2.5 rounded-control accent-bg text-white heading-display font-bold text-base tracking-wider"
+            >
+              CREAR PRIMERA ESTANCIA
+            </button>
           </div>
-          <h3 className="font-bold text-base text-ghost-200">No hay estancias que coincidan</h3>
-          <p className="text-xs text-ghost-400 mt-1 max-w-sm mx-auto">
-            Crea una nueva estancia para empezar a jugar o ajusta los términos de búsqueda.
-          </p>
-          <button
-            onClick={onOpenCreate}
-            className="mt-5 px-5 py-2.5 rounded-xl bg-spectral-cyan text-ghost-950 font-bold text-xs uppercase tracking-wider shadow-md"
-          >
-            Crear Estancia Ahora
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-}
-
+};

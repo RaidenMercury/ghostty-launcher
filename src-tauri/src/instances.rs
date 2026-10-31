@@ -1,150 +1,142 @@
-use crate::config::get_instances_dir;
-use crate::models::{CreateInstanceRequest, Instance};
+use crate::launcher::LauncherManager;
+use crate::models::{Instance, ModFileInfo};
+use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
+use uuid::Uuid;
 
-pub fn list_instances() -> Result<Vec<Instance>, String> {
-    let dir = get_instances_dir();
-    if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| format!("Failed to create instances dir: {}", e))?;
+pub struct InstanceManager;
+
+impl InstanceManager {
+    pub fn get_instance_dir(instance_id: &str) -> Result<PathBuf, String> {
+        let root = LauncherManager::get_root_dir()?;
+        let dir = root.join("instances").join(instance_id);
+        if !dir.exists() {
+            fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        }
+        Ok(dir)
     }
 
-    let mut instances = Vec::new();
+    pub fn get_mods_dir(instance_id: &str) -> Result<PathBuf, String> {
+        let dir = Self::get_instance_dir(instance_id)?.join("mods");
+        if !dir.exists() {
+            fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        }
+        Ok(dir)
+    }
 
-    let entries = fs::read_dir(&dir).map_err(|e| format!("Failed to read instances dir: {}", e))?;
+    pub fn create_instance(
+        name: String,
+        mc_version: String,
+        loader: String,
+        loader_version: Option<String>,
+        icon: Option<String>,
+    ) -> Result<Instance, String> {
+        let mut instances = LauncherManager::load_instances()?;
+        let id = Uuid::new_v4().to_string();
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            let json_path = path.join("instance.json");
-            if json_path.exists() {
-                if let Ok(content) = fs::read_to_string(&json_path) {
-                    if let Ok(instance) = serde_json::from_str::<Instance>(&content) {
-                        instances.push(instance);
+        let new_instance = Instance {
+            id: id.clone(),
+            name,
+            mc_version,
+            loader,
+            loader_version,
+            icon,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            last_played: None,
+            play_time_minutes: 0,
+            java_path: "java".to_string(),
+            custom_jvm_args: String::new(),
+            env_vars: HashMap::new(),
+            min_ram_mb: None,
+            max_ram_mb: None,
+            pre_launch_hook: None,
+            post_exit_command: None,
+            wrapper_command: None,
+            resolution: None,
+            server_auto_connect: None,
+        };
+
+        let inst_dir = Self::get_instance_dir(&id)?;
+        for sub in ["mods", "config", "resourcepacks", "shaderpacks", "saves"] {
+            fs::create_dir_all(inst_dir.join(sub)).map_err(|e| e.to_string())?;
+        }
+
+        instances.push(new_instance.clone());
+        LauncherManager::save_instances(&instances)?;
+        Ok(new_instance)
+    }
+
+    pub fn delete_instance(id: &str) -> Result<Vec<Instance>, String> {
+        let mut instances = LauncherManager::load_instances()?;
+        instances.retain(|i| i.id != id);
+        LauncherManager::save_instances(&instances)?;
+
+        let root = LauncherManager::get_root_dir()?;
+        let dir = root.join("instances").join(id);
+        if dir.exists() {
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        Ok(instances)
+    }
+
+    pub fn list_mods(instance_id: &str) -> Result<Vec<ModFileInfo>, String> {
+        let mods_dir = Self::get_mods_dir(instance_id)?;
+        let mut mods = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(mods_dir) {
+            for entry in entries.flatten() {
+                if let Ok(meta) = entry.metadata() {
+                    if meta.is_file() {
+                        let fname = entry.file_name().to_string_lossy().to_string();
+                        if fname.ends_with(".jar") || fname.ends_with(".jar.disabled") {
+                            let enabled = fname.ends_with(".jar");
+                            mods.push(ModFileInfo {
+                                filename: fname,
+                                enabled,
+                                size: meta.len(),
+                            });
+                        }
                     }
                 }
             }
         }
+
+        mods.sort_by(|a, b| a.filename.to_lowercase().cmp(&b.filename.to_lowercase()));
+        Ok(mods)
     }
 
-    // Sort by last_played desc or name
-    instances.sort_by(|a, b| b.last_played.cmp(&a.last_played));
-
-    Ok(instances)
-}
-
-pub fn create_instance(req: CreateInstanceRequest) -> Result<Instance, String> {
-    let name = req.name.trim();
-    if name.is_empty() {
-        return Err("Instance name cannot be empty".to_string());
-    }
-
-    // Slugify name for directory id
-    let id = name
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '-' })
-        .collect::<String>();
-    let id = id.trim_matches('-').to_string();
-    let id = if id.is_empty() { format!("instance-{}", uuid::Uuid::new_v4().simple()) } else { id };
-
-    let instance_dir = get_instances_dir().join(&id);
-    if instance_dir.exists() {
-        return Err(format!("An instance with id '{}' already exists", id));
-    }
-
-    fs::create_dir_all(&instance_dir)
-        .map_err(|e| format!("Failed to create instance directory: {}", e))?;
-    fs::create_dir_all(instance_dir.join("mods"))
-        .map_err(|e| format!("Failed to create mods directory: {}", e))?;
-    fs::create_dir_all(instance_dir.join("resourcepacks"))
-        .map_err(|e| format!("Failed to create resourcepacks directory: {}", e))?;
-    fs::create_dir_all(instance_dir.join("config"))
-        .map_err(|e| format!("Failed to create config directory: {}", e))?;
-
-    let instance = Instance {
-        id: id.clone(),
-        name: name.to_string(),
-        icon: "ghostty".to_string(),
-        mc_version: req.mc_version,
-        loader: req.loader,
-        loader_version: None,
-        memory_min_mb: req.memory_min_mb.unwrap_or(2048),
-        memory_max_mb: req.memory_max_mb.unwrap_or(4096),
-        java_path: None,
-        jvm_args: req.jvm_args,
-        env_vars: None,
-        pre_launch_command: req.pre_launch_command,
-        post_exit_command: None,
-        total_playtime_secs: 0,
-        last_played: None,
-    };
-
-    let json = serde_json::to_string_pretty(&instance)
-        .map_err(|e| format!("Failed to serialize instance: {}", e))?;
-
-    fs::write(instance_dir.join("instance.json"), json)
-        .map_err(|e| format!("Failed to write instance.json: {}", e))?;
-
-    Ok(instance)
-}
-
-pub fn update_instance(instance: Instance) -> Result<(), String> {
-    let instance_dir = get_instances_dir().join(&instance.id);
-    if !instance_dir.exists() {
-        return Err(format!("Instance '{}' not found", instance.id));
-    }
-
-    let json = serde_json::to_string_pretty(&instance)
-        .map_err(|e| format!("Failed to serialize instance: {}", e))?;
-
-    fs::write(instance_dir.join("instance.json"), json)
-        .map_err(|e| format!("Failed to write instance.json: {}", e))?;
-
-    Ok(())
-}
-
-pub fn delete_instance(instance_id: &str) -> Result<(), String> {
-    let instance_dir = get_instances_dir().join(instance_id);
-    if !instance_dir.exists() {
-        return Err(format!("Instance '{}' not found", instance_id));
-    }
-
-    fs::remove_dir_all(&instance_dir)
-        .map_err(|e| format!("Failed to remove instance directory: {}", e))?;
-
-    Ok(())
-}
-
-pub fn export_instance_to_zip(instance_id: &str, target_path: &Path) -> Result<String, String> {
-    let instance_dir = get_instances_dir().join(instance_id);
-    if !instance_dir.exists() {
-        return Err("Instance does not exist".to_string());
-    }
-
-    let file = fs::File::create(target_path)
-        .map_err(|e| format!("Failed to create zip file: {}", e))?;
-    let mut zip = zip::ZipWriter::new(file);
-
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
-
-    for entry in walkdir::WalkDir::new(&instance_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let name = path.strip_prefix(&instance_dir).unwrap();
-
-        if path.is_file() {
-            let relative_name = name.to_str().unwrap().replace('\\', "/");
-            zip.start_file(relative_name, options)
-                .map_err(|e| format!("Failed to add file to zip: {}", e))?;
-            let mut f = fs::File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-            std::io::copy(&mut f, &mut zip)
-                .map_err(|e| format!("Failed to write file to zip: {}", e))?;
+    pub fn toggle_mod(instance_id: &str, filename: &str) -> Result<ModFileInfo, String> {
+        let mods_dir = Self::get_mods_dir(instance_id)?;
+        let old_path = mods_dir.join(filename);
+        if !old_path.exists() {
+            return Err("El archivo del mod no existe".to_string());
         }
+
+        let new_filename = if filename.ends_with(".disabled") {
+            filename.trim_end_matches(".disabled").to_string()
+        } else {
+            format!("{}.disabled", filename)
+        };
+
+        let new_path = mods_dir.join(&new_filename);
+        fs::rename(&old_path, &new_path).map_err(|e| e.to_string())?;
+        let meta = fs::metadata(&new_path).map_err(|e| e.to_string())?;
+
+        Ok(ModFileInfo {
+            filename: new_filename.clone(),
+            enabled: new_filename.ends_with(".jar"),
+            size: meta.len(),
+        })
     }
 
-    zip.finish().map_err(|e| format!("Failed to finalize zip: {}", e))?;
-
-    Ok(target_path.to_string_lossy().to_string())
+    pub fn delete_mod(instance_id: &str, filename: &str) -> Result<(), String> {
+        let mods_dir = Self::get_mods_dir(instance_id)?;
+        let path = mods_dir.join(filename);
+        if path.exists() {
+            fs::remove_file(path).map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
 }
-

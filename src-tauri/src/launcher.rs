@@ -1,170 +1,131 @@
-use crate::config::get_instances_dir;
-use crate::models::{Instance, SystemJavaInfo};
+use crate::models::{Instance, LauncherConfig};
+use std::collections::HashMap;
 use std::fs;
-use std::process::Command;
+use std::path::PathBuf;
 
-pub fn detect_java_installations() -> Vec<SystemJavaInfo> {
-    let mut results = Vec::new();
+pub struct LauncherManager;
 
-    // Check `java` in PATH
-    if let Ok(output) = Command::new("java").arg("-version").output() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let version_str = if !stderr.is_empty() {
-            stderr.lines().next().unwrap_or("Java (unknown)").to_string()
-        } else {
-            stdout.lines().next().unwrap_or("Java (unknown)").to_string()
-        };
-
-        let path = which_java().unwrap_or_else(|| "java".to_string());
-        let _major = extract_major_version(&version_str);
-
-        results.push(SystemJavaInfo {
-            path,
-            version: version_str,
-            is_valid: true,
-        });
+impl LauncherManager {
+    pub fn get_root_dir() -> Result<PathBuf, String> {
+        let base_dir = dirs::data_local_dir()
+            .or_else(dirs::home_dir)
+            .ok_or("No se pudo determinar el directorio base del sistema")?;
+        let data_dir = base_dir.join("GhosttyLauncher");
+        if !data_dir.exists() {
+            fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+        }
+        Ok(data_dir)
     }
 
-    // Check common Linux /usr/lib/jvm locations
-    #[cfg(target_os = "linux")]
-    {
-        let jvm_dir = std::path::Path::new("/usr/lib/jvm");
-        if jvm_dir.exists() {
-            if let Ok(entries) = fs::read_dir(jvm_dir) {
-                for entry in entries.flatten() {
-                    let java_bin = entry.path().join("bin/java");
-                    if java_bin.exists() {
-                        let path_str = java_bin.to_string_lossy().to_string();
-                        if !results.iter().any(|r| r.path == path_str) {
-                            if let Ok(out) = Command::new(&java_bin).arg("-version").output() {
-                                let stderr = String::from_utf8_lossy(&out.stderr);
-                                let ver = stderr.lines().next().unwrap_or("Java").to_string();
-                                results.push(SystemJavaInfo {
-                                    path: path_str,
-                                    version: ver,
-                                    is_valid: true,
-                                });
-                            }
-                        }
-                    }
-                }
+    pub fn ensure_structure() -> Result<(), String> {
+        let root = Self::get_root_dir()?;
+        let subdirs = ["instances", "assets", "libraries", "runtimes", "versions", "caches"];
+        for dir in subdirs {
+            let p = root.join(dir);
+            if !p.exists() {
+                fs::create_dir_all(&p).map_err(|e| e.to_string())?;
             }
         }
+        Ok(())
     }
 
-    results
-}
-
-fn extract_major_version(ver_str: &str) -> u32 {
-    if ver_str.contains("\"21.") || ver_str.contains(" 21.") {
-        21
-    } else if ver_str.contains("\"17.") || ver_str.contains(" 17.") {
-        17
-    } else if ver_str.contains("\"1.8.") || ver_str.contains(" 8.") {
-        8
-    } else if ver_str.contains("\"25.") {
-        25
-    } else {
-        21
+    pub fn get_config_path() -> Result<PathBuf, String> {
+        Ok(Self::get_root_dir()?.join("config.json"))
     }
-}
 
-fn which_java() -> Option<String> {
-    #[cfg(unix)]
-    {
-        if let Ok(output) = Command::new("which").arg("java").output() {
-            if output.status.success() {
-                let p = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !p.is_empty() {
-                    return Some(p);
-                }
-            }
+    pub fn load_config() -> Result<LauncherConfig, String> {
+        Self::ensure_structure()?;
+        let path = Self::get_config_path()?;
+        if !path.exists() {
+            let default_cfg = LauncherConfig::default();
+            Self::save_config(&default_cfg)?;
+            return Ok(default_cfg);
         }
-    }
-    None
-}
 
-pub fn list_instance_mods(instance_id: &str) -> Result<Vec<ModFileInfo>, String> {
-    let mods_dir = get_instances_dir().join(instance_id).join("mods");
-    if !mods_dir.exists() {
-        return Ok(Vec::new());
+        let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let cfg: LauncherConfig = serde_json::from_str(&content).unwrap_or_default();
+        Ok(cfg)
     }
 
-    let mut mods = Vec::new();
-    let entries = fs::read_dir(&mods_dir).map_err(|e| format!("Failed to read mods dir: {}", e))?;
+    pub fn save_config(config: &LauncherConfig) -> Result<(), String> {
+        let path = Self::get_config_path()?;
+        let content = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
+        fs::write(&path, content).map_err(|e| e.to_string())?;
+        Ok(())
+    }
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() {
-            let name = path.file_name().unwrap().to_string_lossy().to_string();
-            let is_disabled = name.ends_with(".disabled");
-            let is_jar = name.ends_with(".jar") || is_disabled;
-            if is_jar {
-                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                mods.push(ModFileInfo {
-                    filename: name,
-                    size,
-                    enabled: !is_disabled,
-                });
+    pub fn get_instances_file_path() -> Result<PathBuf, String> {
+        Ok(Self::get_root_dir()?.join("instances.json"))
+    }
+
+    pub fn load_instances() -> Result<Vec<Instance>, String> {
+        Self::ensure_structure()?;
+        let path = Self::get_instances_file_path()?;
+        if !path.exists() {
+            let demo_instances = vec![
+                Instance {
+                    id: "vanilla-latest".to_string(),
+                    name: "Vanilla Survival".to_string(),
+                    mc_version: "1.21.4".to_string(),
+                    loader: "vanilla".to_string(),
+                    loader_version: None,
+                    icon: Some("grass".to_string()),
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                    last_played: None,
+                    play_time_minutes: 120,
+                    java_path: "java".to_string(),
+                    custom_jvm_args: String::new(),
+                    env_vars: HashMap::new(),
+                    min_ram_mb: None,
+                    max_ram_mb: None,
+                    pre_launch_hook: None,
+                    post_exit_command: None,
+                    wrapper_command: None,
+                    resolution: None,
+                    server_auto_connect: None,
+                },
+                Instance {
+                    id: "fabric-sodium".to_string(),
+                    name: "Fabric Optimizado".to_string(),
+                    mc_version: "1.20.4".to_string(),
+                    loader: "fabric".to_string(),
+                    loader_version: Some("0.16.9".to_string()),
+                    icon: Some("fabric".to_string()),
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                    last_played: None,
+                    play_time_minutes: 340,
+                    java_path: "java".to_string(),
+                    custom_jvm_args: String::new(),
+                    env_vars: HashMap::new(),
+                    min_ram_mb: None,
+                    max_ram_mb: None,
+                    pre_launch_hook: None,
+                    post_exit_command: None,
+                    wrapper_command: None,
+                    resolution: None,
+                    server_auto_connect: None,
+                },
+            ];
+            Self::save_instances(&demo_instances)?;
+            for inst in &demo_instances {
+                let inst_dir = Self::get_root_dir()?
+                    .join("instances")
+                    .join(&inst.id)
+                    .join("mods");
+                let _ = fs::create_dir_all(inst_dir);
             }
+            return Ok(demo_instances);
         }
+
+        let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let instances: Vec<Instance> = serde_json::from_str(&content).unwrap_or_default();
+        Ok(instances)
     }
 
-    Ok(mods)
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct ModFileInfo {
-    pub filename: String,
-    pub size: u64,
-    pub enabled: bool,
-}
-
-pub fn toggle_mod(instance_id: &str, filename: &str) -> Result<bool, String> {
-    let mods_dir = get_instances_dir().join(instance_id).join("mods");
-    let current_path = mods_dir.join(filename);
-    if !current_path.exists() {
-        return Err("Mod file not found".to_string());
+    pub fn save_instances(instances: &[Instance]) -> Result<(), String> {
+        let path = Self::get_instances_file_path()?;
+        let content = serde_json::to_string_pretty(instances).map_err(|e| e.to_string())?;
+        fs::write(&path, content).map_err(|e| e.to_string())?;
+        Ok(())
     }
-
-    // Clean stripping of ALL trailing .disabled extensions
-    let clean_base = filename.trim_end_matches(".disabled");
-    let new_filename = if filename.ends_with(".disabled") {
-        // Was disabled, strip .disabled to re-enable
-        clean_base.to_string()
-    } else {
-        // Was enabled, append single .disabled to disable
-        format!("{}.disabled", clean_base)
-    };
-
-    let new_path = mods_dir.join(&new_filename);
-    fs::rename(current_path, new_path).map_err(|e| format!("Failed to rename mod: {}", e))?;
-
-    Ok(!new_filename.ends_with(".disabled"))
-}
-
-pub fn launch_instance(instance: &mut Instance, username: &str, uuid: &str) -> Result<String, String> {
-    let now = chrono::Local::now().to_rfc3339();
-    instance.last_played = Some(now);
-    let _ = crate::instances::update_instance(instance.clone());
-
-    let instance_dir = get_instances_dir().join(&instance.id);
-    let java_bin = instance.java_path.clone().unwrap_or_else(|| "java".to_string());
-    let min_mem = format!("-Xms{}M", instance.memory_min_mb);
-    let max_mem = format!("-Xmx{}M", instance.memory_max_mb);
-
-    let info = format!(
-        "Instance '{}' ({}) initiated with player '{}' ({})\nJava: {}\nAllocated RAM: {} - {}\nGame directory: {}",
-        instance.name,
-        instance.mc_version,
-        username,
-        uuid,
-        java_bin,
-        min_mem,
-        max_mem,
-        instance_dir.display()
-    );
-
-    Ok(info)
 }

@@ -15,44 +15,41 @@ interface ToastProps {
 
 export function ToastContainer({ toasts, onDismiss }: ToastProps) {
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none max-w-sm w-full">
-      <AnimatePresence>
+    <div className="fixed bottom-12 right-5 z-50 flex flex-col gap-2.5 pointer-events-none max-w-sm w-full">
+      <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {
           const icons = {
-            success: <CheckCircle2 className="w-5 h-5 text-spectral-mint shrink-0" />,
-            warning: <AlertTriangle className="w-5 h-5 text-spectral-amber shrink-0" />,
-            error: <XCircle className="w-5 h-5 text-spectral-rose shrink-0" />,
-            info: <Info className="w-5 h-5 text-spectral-cyan shrink-0" />,
-          };
-
-          const borders = {
-            success: 'border-spectral-mint/30 shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)]',
-            warning: 'border-spectral-amber/30 shadow-[0_0_20px_-5px_rgba(245,158,11,0.3)]',
-            error: 'border-spectral-rose/30 shadow-[0_0_20px_-5px_rgba(244,63,94,0.3)]',
-            info: 'border-spectral-cyan/30 shadow-[0_0_20px_-5px_rgba(56,189,248,0.3)]',
+            success: <CheckCircle2 className="w-4 h-4 text-spectral-mint shrink-0" />,
+            warning: <AlertTriangle className="w-4 h-4 text-spectral-amber shrink-0" />,
+            error: <XCircle className="w-4 h-4 text-spectral-rose shrink-0" />,
+            info: <Info className="w-4 h-4 accent-text shrink-0" />,
           };
 
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              layout
+              initial={{ opacity: 0, y: 14, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 40, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className={`pointer-events-auto p-4 rounded-xl bg-ghost-900/95 backdrop-blur-md border ${borders[toast.type]} flex items-start gap-3 text-ghost-100`}
+              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.14 } }}
+              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+              className="pointer-events-auto px-4 py-3 glass-panel-strong flex items-start gap-3 text-ghost-100"
             >
               <div className="mt-0.5">{icons[toast.type]}</div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-ghost-100">{toast.title}</h4>
+                <h4 className="text-xs font-semibold text-ghost-50 leading-snug">{toast.title}</h4>
                 {toast.message && (
-                  <p className="text-xs text-ghost-400 mt-0.5 leading-relaxed">{toast.message}</p>
+                  <p className="text-[11px] text-ghost-300 mt-0.5 leading-relaxed font-mono break-words">
+                    {toast.message}
+                  </p>
                 )}
               </div>
               <button
                 onClick={() => onDismiss(toast.id)}
-                className="text-ghost-500 hover:text-ghost-300 p-1 rounded-md transition-colors"
+                className="btn-tactile text-ghost-400 hover:text-ghost-50 p-1 rounded"
+                aria-label="Cerrar notificación"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>
           );
@@ -61,4 +58,3 @@ export function ToastContainer({ toasts, onDismiss }: ToastProps) {
     </div>
   );
 }
-
