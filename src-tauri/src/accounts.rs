@@ -81,6 +81,18 @@ pub struct ElybyResponse {
     pub selected_profile: Option<ElybyProfile>,
 }
 
+fn microsoft_error(body: &str) -> String {
+    if let Ok(value) = serde_json::from_str::<Value>(body) {
+        if let Some(desc) = value.get("error_description").and_then(Value::as_str) {
+            return desc.lines().next().unwrap_or(desc).trim().to_string();
+        }
+        if let Some(code) = value.get("error").and_then(Value::as_str) {
+            return code.to_string();
+        }
+    }
+    body.chars().take(200).collect()
+}
+
 pub struct AccountManager;
 
 impl AccountManager {
@@ -287,7 +299,7 @@ impl AccountManager {
         ];
 
         let response = client
-            .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
+            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
             .form(&params)
             .send()
             .await
@@ -350,7 +362,7 @@ impl AccountManager {
         let params = [("client_id", client_id.as_str()), ("scope", scopes)];
 
         let response = client
-            .post("https://login.microsoftonline.com/common/oauth2/v2.0/devicecode")
+            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")
             .form(&params)
             .send()
             .await
@@ -362,8 +374,8 @@ impl AccountManager {
         } else {
             let err_txt = response.text().await.unwrap_or_default();
             Err(format!(
-                "No se pudo obtener el código de dispositivo de Microsoft: {}",
-                err_txt
+                "Microsoft rechazó el inicio de sesión: {}",
+                microsoft_error(&err_txt)
             ))
         }
     }
@@ -396,7 +408,7 @@ impl AccountManager {
             ];
 
             let response = client
-                .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
+                .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
                 .form(&params)
                 .send()
                 .await
@@ -418,7 +430,10 @@ impl AccountManager {
             } else if body_text.contains("slow_down") {
                 check_interval += Duration::from_secs(2);
             } else {
-                return Err("El proceso de login Premium expiró o fue cancelado".to_string());
+                return Err(format!(
+                    "Microsoft rechazó el inicio de sesión: {}",
+                    microsoft_error(&body_text)
+                ));
             }
         }
 

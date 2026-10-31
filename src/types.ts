@@ -129,6 +129,7 @@ export interface ModFileInfo {
   filename: string;
   size: number;
   enabled: boolean;
+  icon?: string | null;
 }
 
 export interface SystemJavaInfo {

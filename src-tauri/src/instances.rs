@@ -2,6 +2,7 @@ use crate::launcher::LauncherManager;
 use crate::models::{Instance, ModFileInfo};
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -117,6 +118,7 @@ impl InstanceManager {
                         if fname.ends_with(".jar") || fname.ends_with(".jar.disabled") {
                             let enabled = fname.ends_with(".jar");
                             mods.push(ModFileInfo {
+                                icon: mod_icon(&entry.path()),
                                 filename: fname,
                                 enabled,
                                 size: meta.len(),
@@ -149,6 +151,7 @@ impl InstanceManager {
         let meta = fs::metadata(&new_path).map_err(|e| e.to_string())?;
 
         Ok(ModFileInfo {
+            icon: None,
             filename: new_filename.clone(),
             enabled: new_filename.ends_with(".jar"),
             size: meta.len(),
@@ -163,4 +166,54 @@ impl InstanceManager {
         }
         Ok(())
     }
+}
+
+/// Icono del mod dentro del jar (`icon.png`, `logo.png`, `pack.png`), como data URI.
+fn mod_icon(path: &Path) -> Option<String> {
+    let file = fs::File::open(path).ok()?;
+    let mut archive = zip::ZipArchive::new(file).ok()?;
+
+    let mut best: Option<(u8, String)> = None;
+    for i in 0..archive.len() {
+        let Ok(entry) = archive.by_index(i) else {
+            continue;
+        };
+        let name = entry.name().to_string();
+        let lower = name.to_lowercase();
+        let rank = if lower == "icon.png" || lower == "pack.png" {
+            0
+        } else if lower.ends_with("/icon.png") {
+            1
+        } else if lower.ends_with("logo.png") {
+            2
+        } else {
+            continue;
+        };
+        if best.as_ref().map(|(r, _)| rank < *r).unwrap_or(true) {
+            best = Some((rank, name));
+        }
+    }
+
+    let (_, name) = best?;
+    let mut entry = archive.by_name(&name).ok()?;
+    if entry.size() > 256 * 1024 {
+        return None;
+    }
+    let mut bytes = Vec::with_capacity(entry.size() as usize);
+    std::io::Read::read_to_end(&mut entry, &mut bytes).ok()?;
+
+    Some(format!("data:image/png;base64,{}", encode_base64(&bytes)))
+}
+
+fn encode_base64(data: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        out.push(TABLE[(b[0] >> 2) as usize] as char);
+        out.push(TABLE[(((b[0] & 0x03) << 4) | (b[1] >> 4)) as usize] as char);
+        out.push(if chunk.len() > 1 { TABLE[(((b[1] & 0x0f) << 2) | (b[2] >> 6)) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 2 { TABLE[(b[2] & 0x3f) as usize] as char } else { '=' });
+    }
+    out
 }

@@ -193,6 +193,7 @@ impl ModrinthClient {
         fs::write(&dest_path, &bytes).map_err(|e| format!("Error guardando archivo .jar: {}", e))?;
 
         Ok(ModFileInfo {
+            icon: None,
             filename: filename.to_string(),
             enabled: filename.ends_with(".jar"),
             size: bytes.len() as u64,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { PackageOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DynamicIslandHeader,
@@ -71,6 +72,8 @@ export function App() {
     '[INFO] Listo para lanzar instancias de Minecraft.',
   ]);
   const [mascotMood, setMascotMood] = useState<MascotMood>('idle');
+  const [isDraggingPack, setIsDraggingPack] = useState(false);
+  const dragImportRef = useRef<((fileOrPath: File | string) => void) | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
@@ -315,19 +318,22 @@ export function App() {
     if (activeInstance?.id === updated.id) setActiveInstance(updated);
   };
 
-  const handleToggleFavorite = async () => {
-    if (!activeInstance) return;
+  const toggleFavoriteFor = async (target: Instance) => {
     try {
-      const updated = { ...activeInstance, favorite: !activeInstance.favorite };
+      const updated = { ...target, favorite: !target.favorite };
       await persistInstance(updated);
       addToast(
         'success',
         updated.favorite ? 'Añadida a Favoritos' : 'Quitada de Favoritos',
-        activeInstance.name
+        target.name
       );
     } catch (e: any) {
       addToast('error', 'No se pudo actualizar', String(e));
     }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (activeInstance) await toggleFavoriteFor(activeInstance);
   };
 
   const handleAddToGroup = async () => {
@@ -394,6 +400,41 @@ export function App() {
       endDownloadActivity();
     }
   };
+
+  dragImportRef.current = handleImportModpack;
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+
+    import('@tauri-apps/api/webview')
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview().onDragDropEvent((event) => {
+          const payload = event.payload as { type: string; paths?: string[] };
+          if (payload.type === 'enter' || payload.type === 'over') {
+            setIsDraggingPack(true);
+          } else if (payload.type === 'drop') {
+            setIsDraggingPack(false);
+            const path = payload.paths?.[0];
+            if (path) dragImportRef.current?.(path);
+          } else {
+            setIsDraggingPack(false);
+          }
+        })
+      )
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {
+        /* entorno web sin Tauri */
+      });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   const handleExportInstance = async (
     id: string,
@@ -716,6 +757,7 @@ export function App() {
             onLaunch={handleLaunch}
             onDeleteInstance={handleDeleteInstance}
             onExportInstance={handleExportInstance}
+            onToggleFavorite={toggleFavoriteFor}
             isLaunching={isLaunching}
             launchBurstEnabled={themeSettings.launchBurstEnabled}
             ambientArtworkEnabled={themeSettings.ambientArtworkEnabled}
@@ -780,6 +822,22 @@ export function App() {
             </div>
           )}
         </AnimatePresence>
+      {isDraggingPack && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70">
+          <div className="glass-panel-strong rounded-card px-10 py-8 text-center max-w-sm mx-6">
+            <div className="w-14 h-14 mx-auto rounded-full accent-pill-tint flex items-center justify-center mb-3">
+              <PackageOpen className="w-7 h-7 accent-text" />
+            </div>
+            <h2 className="heading-display text-xl font-bold text-ghost-50">
+              Suelta el modpack
+            </h2>
+            <p className="text-xs text-ghost-400 mt-1">
+              Se importará como instancia nueva (.mrpack o .zip de CurseForge).
+            </p>
+          </div>
+        </div>
+      )}
+
       </main>
 
       <StatusFooterDock

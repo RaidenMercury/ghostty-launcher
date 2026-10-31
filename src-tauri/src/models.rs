@@ -167,6 +167,8 @@ pub struct ModFileInfo {
     pub filename: String,
     pub enabled: bool,
     pub size: u64,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

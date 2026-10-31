@@ -5,6 +5,7 @@ import {
   FolderOpen,
   Download,
   Trash2,
+  Package,
 } from 'lucide-react';
 import { Instance, ModFileInfo } from '../types';
 import { api } from '../services/api';
@@ -257,6 +258,19 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                         }`}
                       />
                     </button>
+
+                    <div className="w-8 h-8 rounded-[6px] bg-black/30 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                      {mod.icon ? (
+                        <img
+                          src={mod.icon}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <Package className="w-4 h-4 text-ghost-400" />
+                      )}
+                    </div>
 
                     <div className="min-w-0">
                       <h4

@@ -13,6 +13,8 @@ import {
   Cpu,
   GripVertical,
   FolderPlus,
+  Folder,
+  Star,
   Share2,
   X,
   Check,
@@ -34,6 +36,7 @@ interface InstancesViewProps {
   onOpenSettings: (instance: Instance) => void;
   onOpenFolder?: (id: string) => void;
   onExportInstance?: (id: string, format: 'mrpack' | 'prism' | 'curseforge') => void;
+  onToggleFavorite?: (instance: Instance) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
   isLaunching: boolean;
@@ -57,6 +60,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onOpenSettings,
   onOpenFolder,
   onExportInstance,
+  onToggleFavorite,
   onLaunch,
   onDeleteInstance,
   isLaunching,
@@ -151,18 +155,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     if (activeGroup === groupName) {
       setActiveGroup('Todos');
     }
-  };
-
-  const handleCycleGroupForInstance = (e: React.MouseEvent, instId: string) => {
-    e.stopPropagation();
-    const available = customGroups.filter((g) => g !== 'Todos');
-    if (available.length === 0) return;
-    const current = instanceGroups[instId] || available[0];
-    const currIdx = available.indexOf(current);
-    const nextGroup = available[(currIdx + 1) % available.length];
-    const updated = { ...instanceGroups, [instId]: nextGroup };
-    setInstanceGroups(updated);
-    localStorage.setItem('ghostty_instance_groups', JSON.stringify(updated));
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -448,8 +440,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             filteredInstances.map((inst) => {
               const isSelected = currentHero?.id === inst.id;
               const isDragOver = dragOverId === inst.id && draggedId !== inst.id;
-              const instGroup =
-                instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+              const isFavorite = Boolean(inst.favorite);
 
               return (
                 <div
@@ -508,14 +499,34 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                             <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handleCycleGroupForInstance(e, inst.id)}
-                            className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-white/10 hover:border-white/30 text-ghost-300 hover:text-ghost-50 bg-black/25 shrink-0"
-                            title="Haz clic para cambiar de grupo"
-                          >
-                            {instGroup}
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite?.(inst);
+                              }}
+                              className={`p-0.5 transition-colors ${
+                                isFavorite
+                                  ? 'text-spectral-rose'
+                                  : 'text-spectral-rose/40 hover:text-spectral-rose'
+                              }`}
+                              title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                            >
+                              <Star
+                                className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                              />
+                            </button>
+
+                            {inst.group && (
+                              <span
+                                className="p-0.5 text-ghost-400"
+                                title={`Grupo: ${inst.group}`}
+                              >
+                                <Folder className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
