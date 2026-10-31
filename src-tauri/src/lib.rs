@@ -3,6 +3,7 @@ pub mod capes;
 pub mod commands;
 pub mod discord;
 pub mod engine;
+pub mod forge;
 pub mod game;
 pub mod instances;
 pub mod java;

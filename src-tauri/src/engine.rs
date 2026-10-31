@@ -257,10 +257,23 @@ impl GameEngine {
             Self::download_if_needed(&client, &ver_entry.url, &vanilla_json_path, None).await?;
         }
 
-        // Resuelve `inheritsFrom`: hoy vanilla no lo usa, pero es la ruta que
-        // necesitan Forge/NeoForge (F2) sin tocar el resto del motor.
-        let vanilla_json = crate::game::version::resolve(&versions_dir, &instance.mc_version)
-            .map_err(|e| format!("No se pudo resolver la versión {}: {}", instance.mc_version, e))?;
+        // Forge/NeoForge se lanzan desde su propio perfil instalado, que hereda de
+        // la versión vanilla mediante inheritsFrom.
+        let launch_version_id = match instance.loader.to_ascii_lowercase().as_str() {
+            "forge" => format!(
+                "{}-forge-{}",
+                instance.mc_version,
+                instance.loader_version.clone().unwrap_or_default()
+            ),
+            "neoforge" => format!(
+                "neoforge-{}",
+                instance.loader_version.clone().unwrap_or_default()
+            ),
+            _ => instance.mc_version.clone(),
+        };
+
+        let vanilla_json = crate::game::version::resolve(&versions_dir, &launch_version_id)
+            .map_err(|e| format!("No se pudo resolver la versión {}: {}", launch_version_id, e))?;
 
         let client_jar_path =
             vanilla_ver_dir.join(format!("{}.jar", instance.mc_version));
@@ -612,13 +625,57 @@ impl GameEngine {
             config.java_path.clone()
         };
 
-        let mut jvm_args: Vec<String> = vec![
-            format!("-Xms{}M", min_ram),
-            format!("-Xmx{}M", max_ram),
-            format!("-Djava.library.path={}", natives_dir.to_string_lossy()),
-            "-Dminecraft.launcher.brand=GhosttyLauncher".to_string(),
-            "-Dminecraft.launcher.version=0.1.0".to_string(),
-        ];
+        let access_token = active_account
+            .access_token
+            .clone()
+            .unwrap_or_else(|| "0".to_string());
+        let user_type = match active_account.account_type.as_str() {
+            "Microsoft" => "msa",
+            "ElyBy" => "mojang",
+            _ => "legacy",
+        };
+
+        // Contexto para las plantillas `${...}` del JSON de versión.
+        let mut ctx = crate::game::args::ArgContext::new();
+        ctx.insert("auth_player_name".into(), active_account.username.clone());
+        ctx.insert("version_name".into(), launch_version_id.clone());
+        ctx.insert("game_directory".into(), instance_dir.to_string_lossy().to_string());
+        ctx.insert("assets_root".into(), assets_dir.to_string_lossy().to_string());
+        ctx.insert("assets_index_name".into(), asset_index_id.clone());
+        ctx.insert("auth_uuid".into(), active_account.uuid.replace('-', ""));
+        ctx.insert("auth_access_token".into(), access_token.clone());
+        ctx.insert("user_type".into(), user_type.to_string());
+        ctx.insert("version_type".into(), "GhosttyLauncher".to_string());
+        ctx.insert("classpath".into(), classpath_str.clone());
+        ctx.insert("natives_directory".into(), natives_dir.to_string_lossy().to_string());
+        ctx.insert("launcher_name".into(), "GhosttyLauncher".to_string());
+        ctx.insert("launcher_version".into(), "0.1.0".to_string());
+        ctx.insert("library_directory".into(), libraries_dir.to_string_lossy().to_string());
+        ctx.insert("classpath_separator".into(), cp_sep.to_string());
+        ctx.insert("user_properties".into(), "{}".to_string());
+        // MC acepta vacíos; si faltaran, quedarían flags como --clientId sin valor.
+        ctx.insert("clientid".into(), String::new());
+        ctx.insert("auth_xuid".into(), String::new());
+
+        // Sin features activas: resolución y quickPlay se añaden a mano más abajo,
+        // así el JSON no las duplica.
+        let features = crate::game::rules::Features::new();
+        let arguments_json = vanilla_json.get("arguments");
+
+        let mut jvm_args: Vec<String> = vec![format!("-Xms{}M", min_ram), format!("-Xmx{}M", max_ram)];
+
+        let json_jvm = crate::game::args::build(arguments_json, "jvm", &ctx, &features);
+        let uses_json_jvm = !json_jvm.is_empty();
+        if uses_json_jvm {
+            jvm_args.extend(json_jvm);
+        } else {
+            jvm_args.push(format!(
+                "-Djava.library.path={}",
+                natives_dir.to_string_lossy()
+            ));
+            jvm_args.push("-Dminecraft.launcher.brand=GhosttyLauncher".to_string());
+            jvm_args.push("-Dminecraft.launcher.version=0.1.0".to_string());
+        }
 
         if active_account.account_type == "ElyBy" {
             jvm_args.push("-Dminecraft.api.env=custom".to_string());
@@ -640,40 +697,41 @@ impl GameEngine {
             jvm_args.push(arg);
         }
 
-        jvm_args.push("-cp".to_string());
-        jvm_args.push(classpath_str);
+        if !uses_json_jvm {
+            jvm_args.push("-cp".to_string());
+            jvm_args.push(classpath_str);
+        }
         jvm_args.push(main_class.clone());
 
-        let access_token = active_account
-            .access_token
-            .clone()
-            .unwrap_or_else(|| "0".to_string());
-        let user_type = match active_account.account_type.as_str() {
-            "Microsoft" => "msa",
-            "ElyBy" => "mojang",
-            _ => "legacy",
-        };
-
-        let mut game_args: Vec<String> = vec![
-            "--username".to_string(),
-            active_account.username.clone(),
-            "--version".to_string(),
-            instance.mc_version.clone(),
-            "--gameDir".to_string(),
-            instance_dir.to_string_lossy().to_string(),
-            "--assetsDir".to_string(),
-            assets_dir.to_string_lossy().to_string(),
-            "--assetIndex".to_string(),
-            asset_index_id,
-            "--uuid".to_string(),
-            active_account.uuid.replace('-', ""),
-            "--accessToken".to_string(),
-            access_token,
-            "--userType".to_string(),
-            user_type.to_string(),
-            "--versionType".to_string(),
-            "GhosttyLauncher".to_string(),
-        ];
+        let mut game_args = crate::game::args::build(arguments_json, "game", &ctx, &features);
+        if game_args.is_empty() {
+            if let Some(legacy) = vanilla_json.get("minecraftArguments").and_then(Value::as_str) {
+                game_args = crate::game::args::build_legacy(legacy, &ctx);
+            }
+        }
+        if game_args.is_empty() {
+            // Último recurso: lo mínimo que acepta el cliente.
+            game_args = vec![
+                "--username".to_string(),
+                active_account.username.clone(),
+                "--version".to_string(),
+                instance.mc_version.clone(),
+                "--gameDir".to_string(),
+                instance_dir.to_string_lossy().to_string(),
+                "--assetsDir".to_string(),
+                assets_dir.to_string_lossy().to_string(),
+                "--assetIndex".to_string(),
+                asset_index_id.clone(),
+                "--uuid".to_string(),
+                active_account.uuid.replace('-', ""),
+                "--accessToken".to_string(),
+                access_token.clone(),
+                "--userType".to_string(),
+                user_type.to_string(),
+                "--versionType".to_string(),
+                "GhosttyLauncher".to_string(),
+            ];
+        }
 
         if let Some(ref res) = instance.resolution {
             if let Some(s) = res.as_str() {
@@ -691,16 +749,14 @@ impl GameEngine {
             } else if let Some(obj) = res.as_object() {
                 if obj.get("fullscreen").and_then(|f| f.as_bool()).unwrap_or(false) {
                     game_args.push("--fullscreen".to_string());
-                } else {
-                    if let (Some(w), Some(h)) = (
-                        obj.get("width").and_then(|v| v.as_u64()),
-                        obj.get("height").and_then(|v| v.as_u64()),
-                    ) {
-                        game_args.push("--width".to_string());
-                        game_args.push(w.to_string());
-                        game_args.push("--height".to_string());
-                        game_args.push(h.to_string());
-                    }
+                } else if let (Some(w), Some(h)) = (
+                    obj.get("width").and_then(|v| v.as_u64()),
+                    obj.get("height").and_then(|v| v.as_u64()),
+                ) {
+                    game_args.push("--width".to_string());
+                    game_args.push(w.to_string());
+                    game_args.push("--height".to_string());
+                    game_args.push(h.to_string());
                 }
             }
         }

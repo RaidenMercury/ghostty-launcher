@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 /// Forge y NeoForge no tienen instalador todavía: mejor un error claro que una
 /// instancia que arranca vanilla y crashea (ver PLAN_REPARACION F2).
-pub const SUPPORTED_LOADERS: [&str; 3] = ["vanilla", "fabric", "quilt"];
+pub const SUPPORTED_LOADERS: [&str; 5] = ["vanilla", "fabric", "quilt", "forge", "neoforge"];
 
 pub fn ensure_supported_loader(loader: &str) -> Result<(), String> {
     if SUPPORTED_LOADERS.contains(&loader.to_ascii_lowercase().as_str()) {

@@ -19,7 +19,7 @@ pub fn get_instances() -> Result<Vec<Instance>, String> {
 }
 
 #[tauri::command]
-pub fn create_instance(
+pub async fn create_instance(
     name: String,
     mc_version: String,
     loader: String,
@@ -30,6 +30,24 @@ pub fn create_instance(
     jvm_args: Option<String>,
     pre_launch_command: Option<String>,
 ) -> Result<Instance, String> {
+    let mut loader_version = loader_version;
+    let loader_lower = loader.to_ascii_lowercase();
+
+    if loader_lower == "forge" || loader_lower == "neoforge" {
+        let id = crate::forge::ForgeInstaller::install(
+            &mc_version,
+            &loader_lower,
+            loader_version.as_deref(),
+        )
+        .await?;
+
+        loader_version = Some(if loader_lower == "forge" {
+            id.trim_start_matches(&format!("{mc_version}-forge-")).to_string()
+        } else {
+            id.trim_start_matches("neoforge-").to_string()
+        });
+    }
+
     InstanceManager::create_instance(
         name,
         mc_version,
@@ -278,6 +296,27 @@ pub async fn launch_instance(app: AppHandle, instance_id: String) -> Result<Stri
         .ok_or("La instancia seleccionada no existe")?;
 
     ensure_supported_loader(&target.loader)?;
+
+    let loader = target.loader.to_ascii_lowercase();
+    if loader == "forge" || loader == "neoforge" {
+        let version = target.loader_version.clone().unwrap_or_default();
+        let id = if loader == "forge" {
+            format!("{}-forge-{}", target.mc_version, version)
+        } else {
+            format!("neoforge-{}", version)
+        };
+        let profile = LauncherManager::get_root_dir()?
+            .join("versions")
+            .join(&id)
+            .join(format!("{id}.json"));
+        if !profile.exists() {
+            return Err(format!(
+                "El perfil de {} no está instalado ({}). Crea la instancia desde Nueva Instancia para instalarlo.",
+                target.loader, profile.display()
+            ));
+        }
+    }
+
     GameEngine::launch_game_real(app, target).await
 }
 
