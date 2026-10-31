@@ -22,7 +22,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://api.modrinth.com https://piston-meta.mojang.com https://api.modpacks.ch; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:5173 http://localhost:5173 https://api.modrinth.com https://piston-meta.mojang.com https://api.modpacks.ch"
     }
   },
   "bundle": {

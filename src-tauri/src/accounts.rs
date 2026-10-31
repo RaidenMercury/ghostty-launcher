@@ -2,8 +2,9 @@ use crate::launcher::LauncherManager;
 use crate::models::Account;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -73,6 +74,11 @@ impl AccountManager {
         Ok(root.join("accounts.json"))
     }
 
+    pub fn get_tokens_file_path() -> Result<PathBuf, String> {
+        let root = LauncherManager::get_root_dir()?;
+        Ok(root.join("tokens.json"))
+    }
+
     pub fn load_accounts() -> Result<Vec<Account>, String> {
         let path = Self::get_accounts_file_path()?;
         if !path.exists() {
@@ -82,17 +88,35 @@ impl AccountManager {
             return Ok(list);
         }
 
+        // Cierra la ventana de permisos heredados de versiones anteriores (0664).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&path, fs::Permissions::from_mode(0o600));
+        }
+
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let accounts: Vec<Account> = serde_json::from_str(&content).unwrap_or_else(|_| {
+        let mut accounts: Vec<Account> = serde_json::from_str(&content).unwrap_or_else(|_| {
             vec![Self::create_offline_account_obj("GhostPlayer", true)]
         });
+
+        // Las cuentas viejas traían el token dentro de accounts.json; se migra al leer.
+        if let Ok(tokens_raw) = fs::read_to_string(Self::get_tokens_file_path()?) {
+            if let Ok(tokens) = serde_json::from_str::<HashMap<String, String>>(&tokens_raw) {
+                for acc in &mut accounts {
+                    if acc.access_token.as_deref().unwrap_or("").is_empty() {
+                        acc.access_token = tokens.get(&acc.id).cloned();
+                    }
+                }
+            }
+        }
         Ok(accounts)
     }
 
     pub fn save_accounts(accounts: &[Account]) -> Result<(), String> {
-        let path = Self::get_accounts_file_path()?;
-        let content = serde_json::to_string_pretty(accounts).map_err(|e| e.to_string())?;
-        fs::write(&path, content).map_err(|e| e.to_string())?;
+        let (public, tokens) = split_tokens(accounts);
+        write_private_json(&Self::get_accounts_file_path()?, &public)?;
+        write_private_json(&Self::get_tokens_file_path()?, &tokens)?;
         Ok(())
     }
 
@@ -580,5 +604,75 @@ impl AccountManager {
         }
         Self::save_accounts(&accounts)?;
         Ok(accounts)
+    }
+}
+
+/// Separa los tokens de las cuentas para que `accounts.json` no los contenga.
+fn split_tokens(accounts: &[Account]) -> (Vec<Account>, HashMap<String, String>) {
+    let mut public = Vec::with_capacity(accounts.len());
+    let mut tokens = HashMap::new();
+    for acc in accounts {
+        let mut acc = acc.clone();
+        if let Some(token) = acc.access_token.take() {
+            if !token.is_empty() {
+                tokens.insert(acc.id.clone(), token);
+            }
+        }
+        public.push(acc);
+    }
+    (public, tokens)
+}
+
+/// Escribe JSON con permisos 0600 (contiene tokens de sesión).
+fn write_private_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .map_err(|e| e.to_string())?;
+        std::io::Write::write_all(&mut file, content.as_bytes()).map_err(|e| e.to_string())?;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(path, content).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_tokens;
+    use crate::models::Account;
+
+    fn account(id: &str, token: Option<&str>) -> Account {
+        Account {
+            id: id.to_string(),
+            username: "steve".into(),
+            uuid: "uuid".into(),
+            account_type: "Microsoft".into(),
+            is_active: true,
+            skin_url: None,
+            skin_model: None,
+            access_token: token.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn tokens_never_reach_accounts_json() {
+        let accounts = vec![account("a", Some("secret")), account("b", None)];
+        let (public, tokens) = split_tokens(&accounts);
+
+        assert!(public.iter().all(|acc| acc.access_token.is_none()));
+        assert_eq!(tokens.get("a").map(String::as_str), Some("secret"));
+        assert!(!tokens.contains_key("b"));
     }
 }
