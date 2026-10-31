@@ -352,6 +352,18 @@ export function App() {
     }
   };
 
+  const handleExportInstance = async (
+    id: string,
+    format: 'mrpack' | 'prism' | 'curseforge'
+  ) => {
+    try {
+      const path = await api.exportInstance(id, format);
+      addToast('success', 'Instancia exportada', path);
+    } catch (e: any) {
+      addToast('error', 'Error al exportar', String(e));
+    }
+  };
+
   const handleOpenInstanceFolder = async (instanceId: string) => {
     try {
       await api.openInstanceFolder(instanceId);
@@ -657,6 +669,7 @@ export function App() {
             onOpenFolder={handleOpenInstanceFolder}
             onLaunch={handleLaunch}
             onDeleteInstance={handleDeleteInstance}
+            onExportInstance={handleExportInstance}
             isLaunching={isLaunching}
             launchBurstEnabled={themeSettings.launchBurstEnabled}
             ambientArtworkEnabled={themeSettings.ambientArtworkEnabled}

@@ -8,12 +8,12 @@ import {
   Clock,
   Terminal,
   Search,
-  Plus,
   Upload,
   FolderOpen,
   Cpu,
   GripVertical,
   FolderPlus,
+  Share2,
   X,
   Check,
 } from 'lucide-react';
@@ -33,6 +33,7 @@ interface InstancesViewProps {
   onOpenMods: (instance: Instance) => void;
   onOpenSettings: (instance: Instance) => void;
   onOpenFolder?: (id: string) => void;
+  onExportInstance?: (id: string, format: 'mrpack' | 'prism' | 'curseforge') => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
   isLaunching: boolean;
@@ -55,6 +56,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onOpenMods,
   onOpenSettings,
   onOpenFolder,
+  onExportInstance,
   onLaunch,
   onDeleteInstance,
   isLaunching,
@@ -64,6 +66,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showImportBar, setShowImportBar] = useState(false);
   const [importPath, setImportPath] = useState('');
+  const [exportMenuFor, setExportMenuFor] = useState<string | null>(null);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
 
   const [customGroups, setCustomGroups] = useState<string[]>(() => {
@@ -263,11 +266,14 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           </button>
 
           <button
-            onClick={onOpenCreate}
-            className="btn-tactile p-2 rounded-control accent-bg text-white font-bold shadow-md"
-            title="Crear Nueva Estancia"
+            onClick={() =>
+              activeInstance && onExportInstance?.(activeInstance.id, 'mrpack')
+            }
+            disabled={!activeInstance || !onExportInstance}
+            className="btn-tactile p-2 rounded-control accent-bg text-white font-bold shadow-md disabled:opacity-40"
+            title="Exportar instancia activa (.mrpack)"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Share2 className="w-4 h-4" />
           </button>
         </div>
 
@@ -648,6 +654,43 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       <FolderOpen className="w-4 h-4 text-ghost-300" />
                       <span>Abrir Carpeta</span>
                     </button>
+                  )}
+
+                  {onExportInstance && (
+                    <div className="relative">
+                      <button
+                        onClick={() =>
+                          setExportMenuFor(exportMenuFor === currentHero.id ? null : currentHero.id)
+                        }
+                        className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
+                      >
+                        <Share2 className="w-4 h-4 text-ghost-300" />
+                        <span>Exportar</span>
+                      </button>
+
+                      {exportMenuFor === currentHero.id && (
+                        <div className="absolute right-0 mt-2 z-30 w-52 glass-panel-strong rounded-control p-1.5 space-y-1">
+                          {(
+                            [
+                              ['mrpack', 'Modrinth (.mrpack)'],
+                              ['prism', 'Prism / MultiMC (.zip)'],
+                              ['curseforge', 'CurseForge (.zip)'],
+                            ] as const
+                          ).map(([format, label]) => (
+                            <button
+                              key={format}
+                              onClick={() => {
+                                setExportMenuFor(null);
+                                onExportInstance(currentHero.id, format);
+                              }}
+                              className="w-full text-left px-3 py-1.5 rounded text-xs text-ghost-200 hover:bg-white/5"
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 

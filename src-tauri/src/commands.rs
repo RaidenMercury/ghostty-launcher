@@ -413,3 +413,8 @@ pub async fn install_online_modpack(
 ) -> Result<Instance, String> {
     ModpackEngine::install_online_modpack(&app, &download_url, Some(name), icon_url).await
 }
+
+#[tauri::command]
+pub async fn export_instance(instance_id: String, format: String) -> Result<String, String> {
+    crate::export::export(&instance_id, &format).await
+}

@@ -474,6 +474,10 @@ export const api = {
     return `Simulated download of ${filename} to ${instanceId}`;
   },
 
+  async exportInstance(instanceId: string, format: 'mrpack' | 'prism' | 'curseforge'): Promise<string> {
+    return invokeTauri<string>('export_instance', { instanceId, format });
+  },
+
   async getAccountCapes(accountId: string): Promise<Cape[]> {
     return invokeTauri<Cape[]>('get_account_capes', { accountId });
   },

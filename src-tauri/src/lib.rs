@@ -3,6 +3,7 @@ pub mod capes;
 pub mod commands;
 pub mod discord;
 pub mod engine;
+pub mod export;
 pub mod forge;
 pub mod game;
 pub mod instances;
@@ -105,7 +106,8 @@ pub fn run() {
             append_modpack_chunk,
             finish_modpack_upload,
             import_mrpack_bytes,
-            install_online_modpack
+            install_online_modpack,
+            export_instance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
