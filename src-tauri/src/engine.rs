@@ -135,27 +135,8 @@ impl GameEngine {
     }
 
     fn is_library_allowed(lib: &Value) -> bool {
-        let os_name = Self::current_os_name();
-        if let Some(rules) = lib.get("rules").and_then(|r| r.as_array()) {
-            let mut allowed = false;
-            for rule in rules {
-                let action = rule
-                    .get("action")
-                    .and_then(|a| a.as_str())
-                    .unwrap_or("allow");
-                if let Some(os_obj) = rule.get("os") {
-                    if let Some(rule_os) = os_obj.get("name").and_then(|n| n.as_str()) {
-                        if rule_os == os_name {
-                            allowed = action == "allow";
-                        }
-                    }
-                } else {
-                    allowed = action == "allow";
-                }
-            }
-            return allowed;
-        }
-        true
+        // Evaluador completo: os.name + os.arch + features (antes solo os.name).
+        crate::game::rules::allows(lib.get("rules"), &crate::game::rules::Features::new())
     }
 
     fn maven_to_path(coord: &str) -> Option<(String, String)> {
@@ -276,14 +257,10 @@ impl GameEngine {
             Self::download_if_needed(&client, &ver_entry.url, &vanilla_json_path, None).await?;
         }
 
-        let vanilla_json_str = fs::read_to_string(&vanilla_json_path).map_err(|e| {
-            format!(
-                "No se pudo leer el JSON de la versión {}: {}",
-                instance.mc_version, e
-            )
-        })?;
-        let vanilla_json: Value =
-            serde_json::from_str(&vanilla_json_str).map_err(|e| e.to_string())?;
+        // Resuelve `inheritsFrom`: hoy vanilla no lo usa, pero es la ruta que
+        // necesitan Forge/NeoForge (F2) sin tocar el resto del motor.
+        let vanilla_json = crate::game::version::resolve(&versions_dir, &instance.mc_version)
+            .map_err(|e| format!("No se pudo resolver la versión {}: {}", instance.mc_version, e))?;
 
         let client_jar_path =
             vanilla_ver_dir.join(format!("{}.jar", instance.mc_version));

@@ -2,6 +2,7 @@ pub mod accounts;
 pub mod commands;
 pub mod discord;
 pub mod engine;
+pub mod game;
 pub mod instances;
 pub mod java;
 pub mod launcher;
