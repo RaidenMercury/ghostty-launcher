@@ -138,9 +138,6 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span>{tab.label}</span>
-                <span className="text-[9px] font-mono opacity-60 hidden md:inline tabular-nums">
-                  {tab.shortcut}
-                </span>
               </button>
             );
           })}

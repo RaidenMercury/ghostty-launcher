@@ -8,7 +8,6 @@ import {
   Shield,
   Upload,
   RotateCcw,
-  Sparkles,
   User,
   Shirt,
   KeyRound,
@@ -796,29 +795,6 @@ export function AccountModal({
                         </div>
                       </form>
 
-                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                        <span className="text-[10px] font-mono text-ghost-400 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 accent-text" />
-                          Presets:
-                        </span>
-                        {['MHF_Steve', 'MHF_Alex', 'Technoblade', 'Notch'].map((presetNick) => (
-                          <button
-                            key={presetNick}
-                            type="button"
-                            onClick={() => {
-                              setSkinInput(presetNick);
-                              onUpdateSkin?.(
-                                activeAccount.id,
-                                `mc-user:${presetNick}`,
-                                presetNick === 'MHF_Alex' ? 'slim' : skinModel
-                              );
-                            }}
-                            className="btn-tactile px-2 py-0.5 rounded-full glass-control text-[10px] font-mono text-ghost-300 hover:text-ghost-50"
-                          >
-                            {presetNick.replace('MHF_', '')}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 )}

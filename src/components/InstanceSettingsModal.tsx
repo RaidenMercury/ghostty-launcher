@@ -5,14 +5,12 @@ import {
   FolderOpen,
   Sliders,
   Cpu,
-  Package,
   Monitor,
   Save,
   Trash2,
   Plus,
-  RefreshCw,
 } from 'lucide-react';
-import { Instance, ModFileInfo } from '../types';
+import { Instance } from '../types';
 import { api } from '../services/api';
 import { InstanceIcon, hasCustomPackIcon } from './InstanceIcon';
 
@@ -24,7 +22,7 @@ interface InstanceSettingsModalProps {
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
 }
 
-type SettingsTab = 'general' | 'mods' | 'java' | 'display';
+type SettingsTab = 'general' | 'java' | 'display';
 
 export function InstanceSettingsModal({
   isOpen,
@@ -58,8 +56,6 @@ export function InstanceSettingsModal({
   const [newEnvKey, setNewEnvKey] = useState('');
   const [newEnvVal, setNewEnvVal] = useState('');
 
-  const [mods, setMods] = useState<ModFileInfo[]>([]);
-  const [loadingMods, setLoadingMods] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -76,7 +72,6 @@ export function InstanceSettingsModal({
       setFullscreen(instance.resolution?.fullscreen || false);
       setServerConnect(formatServerConnect(instance.server_auto_connect));
       setEnvVars(instance.env_vars || {});
-      loadMods();
     }
   }, [instance]);
 
@@ -88,40 +83,6 @@ export function InstanceSettingsModal({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-
-  const loadMods = async () => {
-    if (!instance) return;
-    try {
-      setLoadingMods(true);
-      const list = await api.getInstanceMods(instance.id);
-      setMods(list);
-    } catch (e: any) {
-      console.warn('Error loading mods in settings:', e);
-    } finally {
-      setLoadingMods(false);
-    }
-  };
-
-  const handleToggleMod = async (mod: ModFileInfo) => {
-    if (!instance) return;
-    try {
-      const updatedMod = await api.toggleInstanceMod(instance.id, mod.filename);
-      setMods((prev) =>
-        prev.map((m) =>
-          m.filename.replace(/(\.disabled)+$/, '') === mod.filename.replace(/(\.disabled)+$/, '')
-            ? updatedMod
-            : m
-        )
-      );
-      onShowToast(
-        'info',
-        updatedMod.enabled ? 'Mod Activado' : 'Mod Desactivado',
-        updatedMod.filename
-      );
-    } catch (e: any) {
-      onShowToast('error', 'Error al alternar mod', e.toString());
-    }
-  };
 
   const handleOpenFolder = async () => {
     try {
@@ -193,7 +154,7 @@ export function InstanceSettingsModal({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
-            className="relative w-full max-w-2xl max-h-[88vh] flex flex-col glass-panel-strong text-ghost-100 z-10 overflow-hidden"
+            className="relative w-full max-w-2xl h-[min(88vh,720px)] flex flex-col glass-panel-strong text-ghost-100 z-10 overflow-hidden"
           >
             <div className="relative overflow-hidden border-b glass-divider">
               {isPackArt && (
@@ -249,7 +210,6 @@ export function InstanceSettingsModal({
               {(
                 [
                   { id: 'general', label: 'General & Hooks', icon: Sliders },
-                  { id: 'mods', label: `Mods (${mods.length})`, icon: Package },
                   { id: 'java', label: 'Java & Memoria', icon: Cpu },
                   { id: 'display', label: 'Pantalla & Red', icon: Monitor },
                 ] as const
@@ -316,76 +276,6 @@ export function InstanceSettingsModal({
                       />
                     </div>
                   </div>
-                </div>
-              )}
-
-              {activeTab === 'mods' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-ghost-200">
-                      Mods instalados ({mods.length})
-                    </span>
-                    <button
-                      onClick={loadMods}
-                      className="btn-tactile flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono glass-control"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${loadingMods ? 'animate-spin' : ''}`} />
-                      <span>Refrescar</span>
-                    </button>
-                  </div>
-
-                  {loadingMods ? (
-                    <div className="py-10 text-center text-xs text-ghost-400 font-mono">
-                      Escaneando carpeta mods/...
-                    </div>
-                  ) : mods.length === 0 ? (
-                    <div className="py-10 text-center text-xs text-ghost-400">
-                      No hay mods instalados en esta estancia todavía.
-                    </div>
-                  ) : (
-                    <div className="divide-y glass-divider border-t border-b glass-divider">
-                      {mods.map((mod) => {
-                        const cleanName = mod.filename.replace(/(\.disabled)+$/, '');
-                        return (
-                          <div
-                            key={mod.filename}
-                            className="flex items-center justify-between py-2.5 px-2"
-                          >
-                            <div className="min-w-0 pr-4">
-                              <span
-                                className={`text-xs font-mono truncate block ${
-                                  mod.enabled ? 'text-ghost-50 font-medium' : 'text-ghost-400 line-through'
-                                }`}
-                              >
-                                {cleanName}
-                              </span>
-                              <span className="text-[10px] text-ghost-400 font-mono tabular-nums">
-                                {(mod.size / (1024 * 1024)).toFixed(2)} MB
-                              </span>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleToggleMod(mod)}
-                              role="switch"
-                              aria-checked={mod.enabled}
-                              className={`btn-tactile relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition-colors duration-100 ${
-                                mod.enabled
-                                  ? 'accent-bg border-transparent'
-                                  : 'bg-black/40 border-white/15'
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-100 mt-0.5 ${
-                                  mod.enabled ? 'translate-x-4' : 'translate-x-0.5 opacity-60'
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               )}
 
