@@ -407,6 +407,15 @@ impl ModpackEngine {
                     }
                 }
 
+                if loader.eq_ignore_ascii_case("forge") || loader.eq_ignore_ascii_case("neoforge") {
+                    return Err(format!(
+                        "Este modpack requiere {} {} y ese loader todavía no está soportado.\
+                         Se puede importar cuando llegue el instalador (F2 del plan).",
+                        loader.to_uppercase(),
+                        loader_version.clone().unwrap_or_default()
+                    ));
+                }
+
                 let final_icon = custom_icon_clone
                     .or(embedded_icon)
                     .or_else(|| Some("minecraft".to_string()));

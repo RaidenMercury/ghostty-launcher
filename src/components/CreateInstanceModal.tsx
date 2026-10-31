@@ -21,7 +21,7 @@ export function CreateInstanceModal({
   const [name, setName] = useState('');
   const [mcVersion, setMcVersion] = useState('1.21.4');
   const [versionTypeFilter, setVersionTypeFilter] = useState<'all' | 'release' | 'snapshot'>('release');
-  const [loader, setLoader] = useState<'vanilla' | 'fabric' | 'forge' | 'neoforge' | 'quilt'>('fabric');
+  const [loader, setLoader] = useState<'vanilla' | 'fabric' | 'quilt'>('fabric');
   const [ramGb, setRamGb] = useState(4);
   const [jvmArgs, setJvmArgs] = useState('-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
   const [preLaunchCmd, setPreLaunchCmd] = useState('');
@@ -42,10 +42,9 @@ export function CreateInstanceModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Forge y NeoForge se ocultan hasta que el backend sepa instalarlos (F2).
   const loaderOptions = [
     { id: 'fabric', label: 'Fabric', desc: 'Ligero y modular' },
-    { id: 'neoforge', label: 'NeoForge', desc: 'Modding moderno' },
-    { id: 'forge', label: 'Forge', desc: 'Clásico compatible' },
     { id: 'quilt', label: 'Quilt', desc: 'Comunitario' },
     { id: 'vanilla', label: 'Vanilla', desc: 'Oficial puro' },
   ];

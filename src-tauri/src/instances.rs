@@ -32,6 +32,16 @@ impl InstanceManager {
         loader_version: Option<String>,
         icon: Option<String>,
     ) -> Result<Instance, String> {
+        // Forge y NeoForge no tienen instalador todavía: mejor un error claro que una
+        // instancia que arranca vanilla y crashea (ver PLAN_REPARACION F2).
+        const SUPPORTED: [&str; 3] = ["vanilla", "fabric", "quilt"];
+        if !SUPPORTED.contains(&loader.to_ascii_lowercase().as_str()) {
+            return Err(format!(
+                "El loader '{}' aún no está soportado. Por ahora: vanilla, Fabric y Quilt.",
+                loader
+            ));
+        }
+
         let mut instances = LauncherManager::load_instances()?;
         let id = Uuid::new_v4().to_string();
 
