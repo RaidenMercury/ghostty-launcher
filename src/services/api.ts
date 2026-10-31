@@ -486,6 +486,10 @@ export const api = {
     return invokeTauri<SystemJavaInfo[]>('detect_java');
   },
 
+  async getJavaReleases(): Promise<number[]> {
+    return invokeTauri<number[]>('get_java_releases');
+  },
+
   async downloadJavaRuntime(vendor: string, majorVersion: number): Promise<SystemJavaInfo> {
     return invokeTauri<SystemJavaInfo>('download_java_runtime', { vendor, majorVersion });
   },

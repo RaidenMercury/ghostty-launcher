@@ -13,6 +13,41 @@ use crate::java::{find_java_binary, JavaDetector};
 use crate::launcher::LauncherManager;
 use crate::models::SystemJavaInfo;
 
+/// Versiones mayores que Adoptium publica hoy (para el selector de Ajustes).
+pub async fn available_releases() -> Result<Vec<u32>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("GhosttyLauncher/0.1.0 (adoptium-releases)")
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let info: serde_json::Value = client
+        .get("https://api.adoptium.net/v3/info/available_releases")
+        .send()
+        .await
+        .map_err(|e| format!("No se pudo consultar Adoptium: {e}"))?
+        .json()
+        .await
+        .map_err(|e| format!("Respuesta de Adoptium ilegible: {e}"))?;
+
+    let mut releases: Vec<u32> = info
+        .get("available_releases")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_u64())
+                .map(|v| v as u32)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if releases.is_empty() {
+        return Err("Adoptium no devolvió versiones disponibles".to_string());
+    }
+    releases.sort_unstable();
+    Ok(releases)
+}
+
 pub async fn install(major: u32) -> Result<SystemJavaInfo, String> {
     let os = if cfg!(windows) {
         "windows"

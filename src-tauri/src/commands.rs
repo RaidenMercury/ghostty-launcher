@@ -105,6 +105,11 @@ pub fn update_discord_rpc(enabled: bool, details: String, state: String) -> Resu
 }
 
 #[tauri::command]
+pub async fn get_java_releases() -> Result<Vec<u32>, String> {
+    crate::java::adoptium::available_releases().await
+}
+
+#[tauri::command]
 pub async fn download_java_runtime(
     vendor: String,
     major_version: u32,

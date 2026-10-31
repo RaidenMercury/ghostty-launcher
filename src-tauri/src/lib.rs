@@ -78,6 +78,7 @@ pub fn run() {
             get_mojang_versions,
             detect_java,
             download_java_runtime,
+            get_java_releases,
             get_accounts,
             add_offline_account,
             iniciar_oauth_dispositivo,

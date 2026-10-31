@@ -7,7 +7,6 @@
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::accounts::AccountManager;
 
 const PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
 const CAPES_URL: &str = "https://api.minecraftservices.com/minecraft/profile/capes/active";
@@ -21,20 +20,20 @@ pub struct Cape {
 }
 
 pub async fn list(account_id: &str) -> Result<Vec<Cape>, String> {
-    let (_, profile) = fetch_profile(account_id).await?;
+    let profile = fetch_profile(account_id).await?;
     Ok(parse_capes(&profile))
 }
 
 pub async fn set(account_id: &str, cape_id: Option<String>) -> Result<Vec<Cape>, String> {
-    let token = access_token(account_id)?;
     let client = http_client()?;
+    let mut token = crate::accounts::AccountManager::ensure_access_token(account_id).await?;
 
-    let request = match cape_id.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
-        Some(id) => client.put(CAPES_URL).bearer_auth(&token).json(&json!({ "capeId": id })),
-        None => client.delete(CAPES_URL).bearer_auth(&token),
-    };
+    let mut response = send_set(&client, &token, cape_id.as_deref()).await?;
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        token = crate::accounts::AccountManager::refresh_access_token(account_id).await?;
+        response = send_set(&client, &token, cape_id.as_deref()).await?;
+    }
 
-    let response = request.send().await.map_err(|e| format!("Error contactando Minecraft Services: {e}"))?;
     let status = response.status();
     if status == reqwest::StatusCode::UNAUTHORIZED {
         return Err(session_expired());
@@ -52,16 +51,44 @@ pub async fn set(account_id: &str, cape_id: Option<String>) -> Result<Vec<Cape>,
     Ok(parse_capes(&profile))
 }
 
-async fn fetch_profile(account_id: &str) -> Result<(String, Value), String> {
-    let token = access_token(account_id)?;
-    let client = http_client()?;
+async fn send_set(
+    client: &reqwest::Client,
+    token: &str,
+    cape_id: Option<&str>,
+) -> Result<reqwest::Response, String> {
+    let request = match cape_id.map(str::trim).filter(|c| !c.is_empty()) {
+        Some(id) => client
+            .put(CAPES_URL)
+            .bearer_auth(token)
+            .json(&json!({ "capeId": id })),
+        None => client.delete(CAPES_URL).bearer_auth(token),
+    };
+    request
+        .send()
+        .await
+        .map_err(|e| format!("Error contactando Minecraft Services: {e}"))
+}
 
-    let response = client
+async fn fetch_profile(account_id: &str) -> Result<Value, String> {
+    let client = http_client()?;
+    let mut token = crate::accounts::AccountManager::ensure_access_token(account_id).await?;
+
+    let mut response = client
         .get(PROFILE_URL)
         .bearer_auth(&token)
         .send()
         .await
         .map_err(|e| format!("Error contactando Minecraft Services: {e}"))?;
+
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        token = crate::accounts::AccountManager::refresh_access_token(account_id).await?;
+        response = client
+            .get(PROFILE_URL)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .map_err(|e| format!("Error contactando Minecraft Services: {e}"))?;
+    }
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
         return Err(session_expired());
@@ -70,25 +97,7 @@ async fn fetch_profile(account_id: &str) -> Result<(String, Value), String> {
         return Err(format!("Minecraft Services devolvió {}", response.status()));
     }
 
-    let profile: Value = response.json().await.map_err(|e| e.to_string())?;
-    Ok((token, profile))
-}
-
-fn access_token(account_id: &str) -> Result<String, String> {
-    let accounts = AccountManager::load_accounts()?;
-    let account = accounts
-        .into_iter()
-        .find(|a| a.id == account_id)
-        .ok_or("La cuenta no existe")?;
-
-    if !account.account_type.eq_ignore_ascii_case("Microsoft") {
-        return Err("Las capas solo se pueden gestionar en cuentas de Microsoft.".to_string());
-    }
-
-    account
-        .access_token
-        .filter(|t| !t.is_empty())
-        .ok_or_else(session_expired)
+    response.json().await.map_err(|e| e.to_string())
 }
 
 fn session_expired() -> String {

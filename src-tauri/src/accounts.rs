@@ -26,6 +26,28 @@ fn default_poll_interval() -> u64 {
 #[derive(Deserialize)]
 struct MicrosoftTokenResponse {
     access_token: String,
+    #[serde(default)]
+    refresh_token: Option<String>,
+    #[serde(default)]
+    expires_in: Option<i64>,
+}
+
+/// Entrada de tokens por cuenta. Admite el formato viejo (string) al leer.
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct TokenEntry {
+    #[serde(default)]
+    access: Option<String>,
+    #[serde(default)]
+    refresh: Option<String>,
+    #[serde(default)]
+    expires_at: Option<i64>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StoredToken {
+    Legacy(String),
+    Full(TokenEntry),
 }
 
 #[derive(Serialize)]
@@ -107,12 +129,10 @@ impl AccountManager {
             .any(|acc| acc.access_token.as_deref().is_some_and(|t| !t.is_empty()));
 
         // Las cuentas viejas traían el token dentro de accounts.json; se migra al leer.
-        if let Ok(tokens_raw) = fs::read_to_string(Self::get_tokens_file_path()?) {
-            if let Ok(tokens) = serde_json::from_str::<HashMap<String, String>>(&tokens_raw) {
-                for acc in &mut accounts {
-                    if acc.access_token.as_deref().unwrap_or("").is_empty() {
-                        acc.access_token = tokens.get(&acc.id).cloned();
-                    }
+        if let Ok(entries) = Self::load_token_entries() {
+            for acc in &mut accounts {
+                if acc.access_token.as_deref().unwrap_or("").is_empty() {
+                    acc.access_token = entries.get(&acc.id).and_then(|e| e.access.clone());
                 }
             }
         }
@@ -125,12 +145,170 @@ impl AccountManager {
     }
 
     pub fn save_accounts(accounts: &[Account]) -> Result<(), String> {
-        let (public, tokens) = split_tokens(accounts);
+        let existing = Self::load_token_entries().unwrap_or_default();
+        let mut entries: HashMap<String, TokenEntry> = HashMap::new();
+        let mut public = Vec::with_capacity(accounts.len());
+
+        for acc in accounts {
+            let mut entry = existing.get(&acc.id).cloned().unwrap_or_default();
+            entry.access = acc.access_token.clone().filter(|t| !t.is_empty());
+            entries.insert(acc.id.clone(), entry);
+
+            let mut clean = acc.clone();
+            clean.access_token = None;
+            public.push(clean);
+        }
+
         // Tokens primero: si el proceso muere entre las dos escrituras, accounts.json
         // todavía conserva el token y la carga siguiente reintenta la migración.
-        write_private_json(&Self::get_tokens_file_path()?, &tokens)?;
+        Self::save_token_entries(&entries)?;
         write_private_json(&Self::get_accounts_file_path()?, &public)?;
         Ok(())
+    }
+
+    fn load_token_entries() -> Result<HashMap<String, TokenEntry>, String> {
+        let path = Self::get_tokens_file_path()?;
+        let Ok(raw) = fs::read_to_string(&path) else {
+            return Ok(HashMap::new());
+        };
+        let Ok(map) = serde_json::from_str::<HashMap<String, StoredToken>>(&raw) else {
+            return Ok(HashMap::new());
+        };
+
+        Ok(map
+            .into_iter()
+            .map(|(id, token)| {
+                let entry = match token {
+                    StoredToken::Legacy(access) => TokenEntry {
+                        access: Some(access),
+                        ..Default::default()
+                    },
+                    StoredToken::Full(entry) => entry,
+                };
+                (id, entry)
+            })
+            .collect())
+    }
+
+    fn save_token_entries(entries: &HashMap<String, TokenEntry>) -> Result<(), String> {
+        write_private_json(&Self::get_tokens_file_path()?, entries)
+    }
+
+    fn store_tokens(
+        account_id: &str,
+        access: Option<String>,
+        refresh: Option<String>,
+        expires_at: Option<i64>,
+    ) -> Result<(), String> {
+        let mut entries = Self::load_token_entries()?;
+        entries.insert(
+            account_id.to_string(),
+            TokenEntry { access, refresh, expires_at },
+        );
+        Self::save_token_entries(&entries)
+    }
+
+    /// Token de Minecraft vigente. Si expiró y hay refresh token, lo renueva.
+    pub async fn ensure_access_token(account_id: &str) -> Result<String, String> {
+        Self::token_for(account_id, false).await
+    }
+
+    /// Fuerza la renovación (p. ej. tras un 401 del servicio).
+    pub async fn refresh_access_token(account_id: &str) -> Result<String, String> {
+        Self::token_for(account_id, true).await
+    }
+
+    async fn token_for(account_id: &str, force: bool) -> Result<String, String> {
+        let accounts = Self::load_accounts()?;
+        let account = accounts
+            .iter()
+            .find(|a| a.id == account_id)
+            .ok_or("La cuenta no existe")?;
+
+        if !account.account_type.eq_ignore_ascii_case("Microsoft") {
+            return account
+                .access_token
+                .clone()
+                .filter(|t| !t.is_empty())
+                .ok_or_else(|| "La cuenta no tiene sesión activa".to_string());
+        }
+
+        let entry = Self::load_token_entries()?
+            .get(account_id)
+            .cloned()
+            .unwrap_or_default();
+        let now = chrono::Utc::now().timestamp();
+        let still_valid = entry.expires_at.is_some_and(|exp| exp - 120 > now);
+
+        if !force && still_valid {
+            if let Some(access) = entry.access.clone().filter(|a| !a.is_empty()) {
+                return Ok(access);
+            }
+        }
+
+        let refresh = entry.refresh.clone().ok_or(
+            "La sesión de Microsoft expiró y no hay refresh token guardado; vuelve a iniciar sesión.",
+        )?;
+
+        let (ms_access, new_refresh, expires_in) = Self::refresh_ms_token(&refresh).await?;
+        let client = reqwest::Client::builder()
+            .user_agent("GhosttyLauncher/0.1.0")
+            .timeout(Duration::from_secs(20))
+            .build()
+            .map_err(|e| e.to_string())?;
+        let renewed = Self::exchange_ms_token_to_account(&client, &ms_access).await?;
+        let access = renewed
+            .access_token
+            .clone()
+            .filter(|t| !t.is_empty())
+            .ok_or("Microsoft no devolvió un token de Minecraft")?;
+
+        Self::store_tokens(
+            account_id,
+            Some(access.clone()),
+            Some(new_refresh),
+            Some(now + expires_in),
+        )?;
+        Ok(access)
+    }
+
+    async fn refresh_ms_token(refresh_token: &str) -> Result<(String, String, i64), String> {
+        let client = reqwest::Client::builder()
+            .user_agent("GhosttyLauncher/0.1.0")
+            .timeout(Duration::from_secs(20))
+            .build()
+            .map_err(|e| e.to_string())?;
+
+        let params = vec![
+            ("client_id", Self::msa_client_id()),
+            ("grant_type", "refresh_token".to_string()),
+            ("refresh_token", refresh_token.to_string()),
+            ("scope", "XboxLive.signin offline_access".to_string()),
+        ];
+
+        let response = client
+            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+            .form(&params)
+            .send()
+            .await
+            .map_err(|e| format!("Fallo renovando la sesión de Microsoft: {e}"))?;
+
+        if !response.status().is_success() {
+            return Err(
+                "Microsoft rechazó la renovación de sesión; vuelve a iniciar sesión.".to_string(),
+            );
+        }
+
+        let data: MicrosoftTokenResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Respuesta de renovación ilegible: {e}"))?;
+
+        Ok((
+            data.access_token,
+            data.refresh_token.unwrap_or_else(|| refresh_token.to_string()),
+            data.expires_in.unwrap_or(3600),
+        ))
     }
 
     pub fn create_offline_account_obj(username: &str, is_active: bool) -> Account {
@@ -205,6 +383,8 @@ impl AccountManager {
         let max_attempts = 60;
 
         let mut ms_access_token = String::new();
+        let mut ms_refresh_token: Option<String> = None;
+        let mut ms_expires_in: Option<i64> = None;
 
         for _ in 0..max_attempts {
             tokio::time::sleep(check_interval).await;
@@ -229,6 +409,8 @@ impl AccountManager {
                 let token_data: MicrosoftTokenResponse =
                     serde_json::from_str(&body_text).map_err(|e| e.to_string())?;
                 ms_access_token = token_data.access_token;
+                ms_refresh_token = token_data.refresh_token;
+                ms_expires_in = token_data.expires_in;
                 break;
             } else if body_text.contains("authorization_pending") {
                 continue;
@@ -243,7 +425,20 @@ impl AccountManager {
             return Err("Tiempo de espera agotado para la autorización de Microsoft.".to_string());
         }
 
-        Self::exchange_ms_token_to_account(&client, &ms_access_token).await
+        let account = Self::exchange_ms_token_to_account(&client, &ms_access_token).await?;
+
+        if let (Some(refresh), Some(expires_in)) = (ms_refresh_token, ms_expires_in) {
+            let now = chrono::Utc::now().timestamp();
+            Self::store_tokens(
+                &account.id,
+                account.access_token.clone(),
+                Some(refresh),
+                Some(now + expires_in),
+            )
+            .ok();
+        }
+
+        Ok(account)
     }
 
     async fn exchange_ms_token_to_account(
@@ -620,22 +815,6 @@ impl AccountManager {
     }
 }
 
-/// Separa los tokens de las cuentas para que `accounts.json` no los contenga.
-fn split_tokens(accounts: &[Account]) -> (Vec<Account>, HashMap<String, String>) {
-    let mut public = Vec::with_capacity(accounts.len());
-    let mut tokens = HashMap::new();
-    for acc in accounts {
-        let mut acc = acc.clone();
-        if let Some(token) = acc.access_token.take() {
-            if !token.is_empty() {
-                tokens.insert(acc.id.clone(), token);
-            }
-        }
-        public.push(acc);
-    }
-    (public, tokens)
-}
-
 /// Escribe JSON con permisos 0600 (contiene tokens de sesión).
 fn write_private_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let content = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
@@ -663,29 +842,29 @@ fn write_private_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(),
 
 #[cfg(test)]
 mod tests {
-    use super::split_tokens;
-    use crate::models::Account;
-
-    fn account(id: &str, token: Option<&str>) -> Account {
-        Account {
-            id: id.to_string(),
-            username: "steve".into(),
-            uuid: "uuid".into(),
-            account_type: "Microsoft".into(),
-            is_active: true,
-            skin_url: None,
-            skin_model: None,
-            access_token: token.map(str::to_string),
-        }
-    }
-
     #[test]
-    fn tokens_never_reach_accounts_json() {
-        let accounts = vec![account("a", Some("secret")), account("b", None)];
-        let (public, tokens) = split_tokens(&accounts);
+    fn parses_legacy_and_structured_token_entries() {
+        use super::{StoredToken, TokenEntry};
+        use std::collections::HashMap;
 
-        assert!(public.iter().all(|acc| acc.access_token.is_none()));
-        assert_eq!(tokens.get("a").map(String::as_str), Some("secret"));
-        assert!(!tokens.contains_key("b"));
+        let legacy: HashMap<String, StoredToken> =
+            serde_json::from_str(r#"{"a":"access-only"}"#).unwrap();
+        match legacy.get("a").unwrap() {
+            StoredToken::Legacy(access) => assert_eq!(access, "access-only"),
+            StoredToken::Full(_) => panic!("formato viejo mal detectado"),
+        }
+
+        let full: HashMap<String, StoredToken> = serde_json::from_str(
+            r#"{"b":{"access":"at","refresh":"rt","expires_at":123}}"#,
+        )
+        .unwrap();
+        match full.get("b").unwrap() {
+            StoredToken::Full(TokenEntry { access, refresh, expires_at }) => {
+                assert_eq!(access.as_deref(), Some("at"));
+                assert_eq!(refresh.as_deref(), Some("rt"));
+                assert_eq!(*expires_at, Some(123));
+            }
+            StoredToken::Legacy(_) => panic!("formato nuevo mal detectado"),
+        }
     }
 }

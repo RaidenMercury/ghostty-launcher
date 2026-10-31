@@ -45,6 +45,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [detectedRuntimes, setDetectedRuntimes] = useState<SystemJavaInfo[]>([]);
   const [isScanningJava, setIsScanningJava] = useState(false);
   const [installingJava, setInstallingJava] = useState<number | null>(null);
+  const [javaReleases, setJavaReleases] = useState<number[]>([21, 17, 11, 8]);
+  const [javaMajor, setJavaMajor] = useState<number>(21);
+  const [javaVendor, setJavaVendor] = useState<'temurin'>('temurin');
   const [selectedJavaPath, setSelectedJavaPath] = useState(activeInstance?.java_path || '');
 
   const [minRamMb, setMinRamMb] = useState(activeInstance?.memory_min_mb || 2048);
@@ -103,6 +106,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   }, [activeInstance]);
 
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getJavaReleases()
+      .then((releases) => {
+        if (cancelled || releases.length === 0) return;
+        setJavaReleases(releases);
+        if (!releases.includes(javaMajor)) setJavaMajor(releases[releases.length - 1]);
+      })
+      .catch(() => {
+        /* sin red: se queda la lista estática */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const scanJavaRuntimes = async () => {
     try {
       setIsScanningJava(true);
@@ -122,7 +143,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setInstallingJava(major);
     onShowToast('info', 'Descargando Java', `Eclipse Temurin ${major} (puede tardar unos minutos)...`);
     try {
-      const info = await api.downloadJavaRuntime('temurin', major);
+      const info = await api.downloadJavaRuntime(javaVendor, major);
       setDetectedRuntimes((prev) => [info, ...prev.filter((r) => r.path !== info.path)]);
       setSelectedJavaPath(info.path);
       onShowToast('success', 'Java instalado', `${info.version} — ${info.path}`);
@@ -442,19 +463,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     Temurin JRE verificado por SHA-256, instalado en <code>runtimes/</code> del launcher.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[21, 17, 8].map((major) => (
-                    <button
-                      key={major}
-                      type="button"
-                      onClick={() => handleInstallJava(major)}
-                      disabled={installingJava !== null}
-                      className="btn-tactile px-4 py-2 rounded-control glass-control text-xs font-medium disabled:opacity-50"
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
+                      Vendor
+                    </span>
+                    <select
+                      value={javaVendor}
+                      onChange={(e) => setJavaVendor(e.target.value as 'temurin')}
+                      className="px-3 py-2 glass-control text-xs font-mono cursor-pointer"
                     >
-                      {installingJava === major ? `Instalando Java ${major}...` : `Instalar Java ${major}`}
-                    </button>
-                  ))}
+                      <option value="temurin">Eclipse Temurin (Adoptium)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
+                      Versión
+                    </span>
+                    <select
+                      value={javaMajor}
+                      onChange={(e) => setJavaMajor(Number(e.target.value))}
+                      className="px-3 py-2 glass-control text-xs font-mono cursor-pointer tabular-nums"
+                    >
+                      {javaReleases.map((major) => (
+                        <option key={major} value={major}>
+                          Java {major}
+                          {[8, 11, 17, 21, 25].includes(major) ? ' (LTS)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleInstallJava(javaMajor)}
+                    disabled={installingJava !== null}
+                    className="btn-tactile px-4 py-2 rounded-control accent-bg text-white text-xs font-semibold disabled:opacity-50"
+                  >
+                    {installingJava !== null
+                      ? `Instalando Java ${installingJava}...`
+                      : `Instalar Java ${javaMajor}`}
+                  </button>
                 </div>
+
+                <p className="text-[10px] text-ghost-400 font-mono">
+                  JRE para esta arquitectura, verificado por SHA-256 en runtimes/.
+                  Zulu y Mojang vendrán con sus propias APIs.
+                </p>
               </div>
             </div>
           )}
