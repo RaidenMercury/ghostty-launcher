@@ -37,8 +37,8 @@ export function InstanceSettingsModal({
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [name, setName] = useState(instance.name);
-  const [ramMinMb, setRamMinMb] = useState(instance.memory_min_mb);
-  const [ramMaxMb, setRamMaxMb] = useState(instance.memory_max_mb);
+  const [ramMinMb, setRamMinMb] = useState(instance.memory_min_mb || 2048);
+  const [ramMaxMb, setRamMaxMb] = useState(instance.memory_max_mb || 4096);
   const [javaPath, setJavaPath] = useState(instance.java_path || '');
   const [jvmArgs, setJvmArgs] = useState(instance.jvm_args || '-XX:+UseG1GC');
   const [preLaunch, setPreLaunch] = useState(instance.pre_launch_command || '');
@@ -65,8 +65,8 @@ export function InstanceSettingsModal({
   useEffect(() => {
     if (instance) {
       setName(instance.name);
-      setRamMinMb(instance.memory_min_mb);
-      setRamMaxMb(instance.memory_max_mb);
+      setRamMinMb(instance.memory_min_mb || 2048);
+      setRamMaxMb(instance.memory_max_mb || 4096);
       setJavaPath(instance.java_path || '');
       setJvmArgs(instance.jvm_args || '-XX:+UseG1GC');
       setPreLaunch(instance.pre_launch_command || '');

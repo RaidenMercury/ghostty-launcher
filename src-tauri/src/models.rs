@@ -14,15 +14,16 @@ pub struct Instance {
     pub play_time_minutes: u64,
     #[serde(default = "default_java_path")]
     pub java_path: String,
-    #[serde(default)]
+    // El frontend usa estos nombres; `alias` mantiene legibles los instances.json viejos.
+    #[serde(default, rename = "jvm_args", alias = "custom_jvm_args")]
     pub custom_jvm_args: String,
     #[serde(default)]
     pub env_vars: HashMap<String, String>,
-    #[serde(default)]
+    #[serde(default, rename = "memory_min_mb", alias = "min_ram_mb")]
     pub min_ram_mb: Option<u64>,
-    #[serde(default)]
+    #[serde(default, rename = "memory_max_mb", alias = "max_ram_mb")]
     pub max_ram_mb: Option<u64>,
-    #[serde(default)]
+    #[serde(default, rename = "pre_launch_command", alias = "pre_launch_hook")]
     pub pre_launch_hook: Option<String>,
     #[serde(default)]
     pub post_exit_command: Option<String>,
@@ -170,4 +171,31 @@ pub struct SystemJavaInfo {
     pub version: String,
     pub major_version: u32,
     pub is_valid: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Instance;
+
+    const LEGACY: &str = r#"{
+        "id": "x", "name": "n", "mc_version": "1.21.4", "loader": "fabric",
+        "loader_version": null, "icon": "minecraft", "created_at": "now",
+        "last_played": null, "play_time_minutes": 0,
+        "min_ram_mb": 2048, "max_ram_mb": 6144,
+        "custom_jvm_args": "-XX:+UseG1GC", "pre_launch_hook": "echo hola"
+    }"#;
+
+    #[test]
+    fn reads_legacy_names_and_writes_frontend_names() {
+        let inst: Instance = serde_json::from_str(LEGACY).unwrap();
+        assert_eq!(inst.min_ram_mb, Some(2048));
+        assert_eq!(inst.custom_jvm_args, "-XX:+UseG1GC");
+        assert_eq!(inst.pre_launch_hook.as_deref(), Some("echo hola"));
+
+        let json = serde_json::to_string(&inst).unwrap();
+        assert!(json.contains("\"memory_min_mb\":2048"));
+        assert!(json.contains("\"jvm_args\":"));
+        assert!(json.contains("\"pre_launch_command\":"));
+        assert!(!json.contains("\"min_ram_mb\""));
+    }
 }

@@ -84,8 +84,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   useEffect(() => {
     if (activeInstance) {
       setSelectedJavaPath(activeInstance.java_path || '');
-      setMinRamMb(activeInstance.memory_min_mb);
-      setMaxRamMb(activeInstance.memory_max_mb);
+      setMinRamMb(activeInstance.memory_min_mb || 2048);
+      setMaxRamMb(activeInstance.memory_max_mb || 4096);
       setJvmArgs(activeInstance.jvm_args || '-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
       setPreLaunch(activeInstance.pre_launch_command || '');
       setPostExit(activeInstance.post_exit_command || '');

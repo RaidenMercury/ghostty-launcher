@@ -36,7 +36,7 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
           <Cpu className="w-3.5 h-3.5 text-ghost-300" />
           <span>RAM:</span>
           <span className="text-ghost-100 font-semibold">
-            {activeInstance ? `${(activeInstance.memory_max_mb / 1024).toFixed(1)} GB` : '4.0 GB'}
+            {activeInstance ? `${((activeInstance.memory_max_mb || 4096) / 1024).toFixed(1)} GB` : '4.0 GB'}
           </span>
         </div>
 

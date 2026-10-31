@@ -664,7 +664,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                 <AccordionSection
                   title="Parámetros de Memoria y Máquina Virtual Java"
                   subtitle="Configuración activa de ejecución para este perfil"
-                  badge={`${(currentHero.memory_min_mb / 1024).toFixed(1)}G – ${(currentHero.memory_max_mb / 1024).toFixed(1)}G`}
+                  badge={`${((currentHero.memory_min_mb || 2048) / 1024).toFixed(1)}G – ${((currentHero.memory_max_mb || 4096) / 1024).toFixed(1)}G`}
                   icon={<Cpu className="w-4 h-4 accent-text" />}
                   defaultOpen={true}
                 >
