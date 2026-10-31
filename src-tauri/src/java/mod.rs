@@ -12,6 +12,31 @@ use crate::models::SystemJavaInfo;
 
 pub mod adoptium;
 
+/// Java mínimo que exige una versión de Minecraft.
+pub fn required_major(mc_version: &str) -> u32 {
+    let parts: Vec<u32> = mc_version
+        .split('.')
+        .filter_map(|p| p.parse().ok())
+        .collect();
+    match parts.as_slice() {
+        [1, minor, ..] if *minor >= 21 => 21,
+        [1, minor, ..] if *minor >= 17 => 17,
+        _ => 8,
+    }
+}
+
+/// Runtime gestionado/detectado más pequeño que cumpla la versión, o el mayor.
+pub fn pick_for(mc_version: &str) -> Option<String> {
+    let needed = required_major(mc_version);
+    let mut runtimes = JavaDetector::detect();
+    runtimes.sort_by_key(|r| r.major_version);
+    runtimes
+        .iter()
+        .find(|r| r.major_version >= needed)
+        .or_else(|| runtimes.last())
+        .map(|r| r.path.clone())
+}
+
 pub struct JavaDetector;
 
 impl JavaDetector {

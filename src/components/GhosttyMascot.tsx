@@ -11,6 +11,18 @@ interface GhosttyMascotProps {
   onClick?: () => void;
 }
 
+/** Emoji de temporada sobre la mascota (fechas locales). */
+function seasonalEmoji(date = new Date()): string | null {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  if (month === 12 && day >= 15) return '🎄';
+  if (month === 1 && day <= 6) return '🎉';
+  if (month === 10 && day >= 25) return '🎃';
+  if (month === 11 && day <= 2) return '💀';
+  if (month === 4 && day <= 20) return '🐣';
+  return null;
+}
+
 export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
   mood = 'idle',
   size = 'md',
@@ -18,9 +30,9 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
   onClick,
 }) => {
   const dimensions = {
-    sm: 'w-8 h-8',
-    md: 'w-12 h-12',
-    lg: 'w-20 h-20',
+    sm: 'w-[35px] h-[35px]',
+    md: 'w-14 h-14',
+    lg: 'w-[85px] h-[85px]',
   }[size];
 
   const glowColor =
@@ -113,6 +125,17 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
               mood === 'sad' ? 'grayscale-[40%] brightness-90' : ''
             }`}
           />
+
+          {seasonalEmoji() && (
+            <motion.span
+              className="absolute -top-1.5 -right-1 text-base select-none pointer-events-none"
+              animate={{ y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
+              aria-hidden
+            >
+              {seasonalEmoji()}
+            </motion.span>
+          )}
 
           <AnimatePresence>
             {moodIcon && (

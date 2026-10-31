@@ -287,7 +287,7 @@ impl AccountManager {
         ];
 
         let response = client
-            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+            .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .form(&params)
             .send()
             .await
@@ -350,7 +350,7 @@ impl AccountManager {
         let params = [("client_id", client_id.as_str()), ("scope", scopes)];
 
         let response = client
-            .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode")
+            .post("https://login.microsoftonline.com/common/oauth2/v2.0/devicecode")
             .form(&params)
             .send()
             .await
@@ -396,7 +396,7 @@ impl AccountManager {
             ];
 
             let response = client
-                .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+                .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
                 .form(&params)
                 .send()
                 .await
@@ -405,6 +405,7 @@ impl AccountManager {
             let status = response.status();
             let body_text = response.text().await.map_err(|e| e.to_string())?;
 
+            eprintln!("[msa] device poll: {status}");
             if status.is_success() {
                 let token_data: MicrosoftTokenResponse =
                     serde_json::from_str(&body_text).map_err(|e| e.to_string())?;

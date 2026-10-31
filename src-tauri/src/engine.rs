@@ -514,7 +514,7 @@ impl GameEngine {
             }
         }
 
-        classpath_entries.push(client_jar_path);
+        classpath_entries.push(client_jar_path.clone());
 
         let mut asset_index_id = instance.mc_version.clone();
         if let Some(asset_idx) = vanilla_json.get("assetIndex") {
@@ -619,11 +619,27 @@ impl GameEngine {
 
         let min_ram = instance.min_ram_mb.unwrap_or(config.min_ram_mb);
         let max_ram = instance.max_ram_mb.unwrap_or(config.max_ram_mb);
-        let java_bin = if !instance.java_path.trim().is_empty() && instance.java_path != "java" {
+        let configured_java = if !instance.java_path.trim().is_empty() {
             instance.java_path.clone()
         } else {
             config.java_path.clone()
         };
+        // "java" del PATH no sirve: el sistema puede tener 25 y Forge 1.21 necesita 21.
+        let java_bin = if configured_java.trim().is_empty() || configured_java == "java" {
+            crate::java::pick_for(&instance.mc_version).unwrap_or(configured_java)
+        } else {
+            configured_java
+        };
+        Self::emit_log(
+            &app,
+            &format!(
+                "[GhosttyEngine] Java: {} (MC {} requiere {}+)",
+                java_bin,
+                instance.mc_version,
+                crate::java::required_major(&instance.mc_version)
+            ),
+            "INFO",
+        );
 
         let access_token = active_account
             .access_token
@@ -783,6 +799,17 @@ impl GameEngine {
         for g in extra_game_args {
             game_args.push(g);
         }
+
+        Self::emit_log(
+            &app,
+            &format!(
+                "[GhosttyEngine] classpath: {} entradas; jar cliente {} ({})",
+                classpath_entries.len(),
+                if client_jar_path.exists() { "presente" } else { "FALTA" },
+                client_jar_path.display()
+            ),
+            if client_jar_path.exists() { "INFO" } else { "ERROR" },
+        );
 
         Self::emit_progress(
             &app,

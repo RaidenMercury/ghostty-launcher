@@ -201,8 +201,12 @@ impl DiscordRpcManager {
         let handshake = json!({ "v": 1, "client_id": Self::client_id() }).to_string();
         Self::write_frame(stream, 0, &handshake)?;
 
-        // Discord responde al handshake; si no llega, el SET_ACTIVITY fallará igual.
-        let _ = Self::read_frame(stream);
+        // Discord responde al handshake; si trae error (client_id inválido), se ve.
+        if let Ok((_, body)) = Self::read_frame(stream) {
+            if body.contains("error") || body.contains("Invalid") {
+                eprintln!("[discord] handshake rechazado: {body}");
+            }
+        }
 
         let nonce = format!(
             "ghostty-{}",
@@ -213,7 +217,11 @@ impl DiscordRpcManager {
         );
         let activity = Self::build_activity_packet(presence, &nonce);
         Self::write_frame(stream, 1, &activity)?;
-        let _ = Self::read_frame(stream);
+        if let Ok((_, body)) = Self::read_frame(stream) {
+            if body.contains("error") || body.contains("Invalid") {
+                eprintln!("[discord] SET_ACTIVITY rechazado: {body}");
+            }
+        }
         Ok(())
     }
 
