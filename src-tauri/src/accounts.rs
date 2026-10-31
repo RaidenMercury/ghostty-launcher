@@ -110,6 +110,15 @@ impl AccountManager {
                 }
             }
         }
+        // Migración inmediata: si quedaban tokens dentro de accounts.json, se mueven
+        // a tokens.json en la primera lectura en vez de esperar al siguiente guardado.
+        if accounts
+            .iter()
+            .any(|acc| acc.access_token.as_deref().is_some_and(|t| !t.is_empty()))
+        {
+            let _ = Self::save_accounts(&accounts);
+        }
+
         Ok(accounts)
     }
 
