@@ -30,7 +30,7 @@ static LAST_STATE: LazyLock<Mutex<(bool, String, String)>> = LazyLock::new(|| {
 
 static ACTIVITY_TX: LazyLock<Mutex<Option<Sender<Presence>>>> = LazyLock::new(|| Mutex::new(None));
 
-const DEFAULT_CLIENT_ID: &str = "1214986249080127518";
+const DEFAULT_CLIENT_ID: &str = "1566205071929385052";
 
 #[derive(Clone, Debug)]
 struct Presence {

@@ -470,14 +470,30 @@ impl GameEngine {
                 let url = artifact.get("url").and_then(|u| u.as_str()).unwrap_or("");
                 let sha1 = artifact.get("sha1").and_then(|s| s.as_str());
 
-                if !path_str.is_empty() && !url.is_empty() {
+                if !path_str.is_empty() {
                     let dest = libraries_dir.join(path_str);
-                    Self::download_if_needed(&client, url, &dest, sha1).await?;
 
-                    if lib_name.contains(":natives-") {
-                        Self::extract_native_jar(&dest, &natives_dir);
-                    } else {
-                        classpath_entries.push(dest);
+                    if !url.is_empty() {
+                        Self::download_if_needed(&client, url, &dest, sha1).await?;
+                    } else if !dest.exists() {
+                        // Librería generada por el instalador (p. ej. el jar cliente
+                        // parcheado de Forge): sin URL, pero debe estar en disco.
+                        Self::emit_log(
+                            &app,
+                            &format!(
+                                "[GhosttyEngine] Falta la librería local {}; reinstala el loader.",
+                                dest.display()
+                            ),
+                            "ERROR",
+                        );
+                    }
+
+                    if dest.exists() {
+                        if lib_name.contains(":natives-") {
+                            Self::extract_native_jar(&dest, &natives_dir);
+                        } else {
+                            classpath_entries.push(dest);
+                        }
                     }
                 }
             } else if let Some((rel_path, _)) = Self::maven_to_path(lib_name) {

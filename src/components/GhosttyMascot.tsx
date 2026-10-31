@@ -30,9 +30,9 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
   onClick,
 }) => {
   const dimensions = {
-    sm: 'w-[35px] h-[35px]',
-    md: 'w-14 h-14',
-    lg: 'w-[85px] h-[85px]',
+    sm: 'w-11 h-11',
+    md: 'w-16 h-16',
+    lg: 'w-28 h-28',
   }[size];
 
   const glowColor =
