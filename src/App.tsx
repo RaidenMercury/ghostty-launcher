@@ -309,6 +309,49 @@ export function App() {
     }
   };
 
+  const persistInstance = async (updated: Instance) => {
+    await api.updateInstance(updated);
+    setInstances((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    if (activeInstance?.id === updated.id) setActiveInstance(updated);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!activeInstance) return;
+    try {
+      const updated = { ...activeInstance, favorite: !activeInstance.favorite };
+      await persistInstance(updated);
+      addToast(
+        'success',
+        updated.favorite ? 'Añadida a Favoritos' : 'Quitada de Favoritos',
+        activeInstance.name
+      );
+    } catch (e: any) {
+      addToast('error', 'No se pudo actualizar', String(e));
+    }
+  };
+
+  const handleAddToGroup = async () => {
+    if (!activeInstance) return;
+    const name = window.prompt(
+      'Grupo (vacío para quitarla del grupo):',
+      activeInstance.group || ''
+    );
+    if (name === null) return;
+    try {
+      const group = name.trim() || null;
+      await persistInstance({ ...activeInstance, group });
+      addToast('success', 'Grupo actualizado', group || 'Sin grupo');
+    } catch (e: any) {
+      addToast('error', 'No se pudo actualizar', String(e));
+    }
+  };
+
+  const handleDeleteActive = () => {
+    if (!activeInstance) return;
+    if (!window.confirm(`¿Eliminar la instancia "${activeInstance.name}"?`)) return;
+    handleDeleteInstance(activeInstance.id);
+  };
+
   const handleDeleteInstance = async (id: string) => {
     try {
       await api.deleteInstance(id);
@@ -625,6 +668,9 @@ export function App() {
           setCurrentTab('settings');
           setIsIslandExpanded(true);
         }}
+        onToggleFavorite={handleToggleFavorite}
+        onAddToGroup={handleAddToGroup}
+        onDeleteInstance={handleDeleteActive}
       />
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />

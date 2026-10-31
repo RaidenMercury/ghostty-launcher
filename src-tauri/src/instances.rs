@@ -77,6 +77,8 @@ impl InstanceManager {
             wrapper_command: None,
             resolution: None,
             server_auto_connect: None,
+            favorite: false,
+            group: None,
         };
 
         let inst_dir = Self::get_instance_dir(&id)?;

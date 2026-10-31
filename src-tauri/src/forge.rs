@@ -48,13 +48,17 @@ impl ForgeInstaller {
         let root_for_log = root.clone();
 
         // El instalador descarga librerías y ejecuta processors: puede tardar.
+        let is_neoforge = loader == "neoforge";
         let output = tokio::task::spawn_blocking(move || {
-            Command::new(&java_for_log)
-                .arg("-jar")
+            let mut cmd = Command::new(&java_for_log);
+            cmd.arg("-jar")
                 .arg(&installer_for_log)
-                .arg("--installClient")
-                .current_dir(&root_for_log)
-                .output()
+                .arg("--installClient");
+            // El instalador de NeoForge ignora el cwd y usa ~/.minecraft por defecto.
+            if is_neoforge {
+                cmd.arg(&root_for_log);
+            }
+            cmd.current_dir(&root_for_log).output()
         })
         .await
         .map_err(|e| e.to_string())?
@@ -70,8 +74,18 @@ impl ForgeInstaller {
 
         let profile = root.join("versions").join(&id).join(format!("{id}.json"));
         if !profile.exists() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let tail: String = stderr.lines().rev().take(12).collect::<Vec<_>>().join("\n");
+            let mut combined = String::from_utf8_lossy(&output.stdout).to_string();
+            combined.push_str(&String::from_utf8_lossy(&output.stderr));
+            let tail: String = combined
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .rev()
+                .take(14)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join("\n");
             return Err(format!(
                 "El instalador de {loader} terminó sin crear {}. Salida:\n{tail}",
                 profile.display()

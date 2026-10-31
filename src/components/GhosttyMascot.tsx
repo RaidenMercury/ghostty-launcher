@@ -29,6 +29,12 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
   caption,
   onClick,
 }) => {
+  const sourceForSize: Record<string, string> = {
+    sm: '/ghostty-96.png',
+    md: '/ghostty-160.png',
+    lg: '/ghostty-256.png',
+  };
+
   const dimensions = {
     sm: 'w-11 h-11',
     md: 'w-16 h-16',
@@ -119,7 +125,7 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
           }`}
         >
           <img
-            src="/ghostty.png"
+            src={sourceForSize[size] || '/ghostty.png'}
             alt="Ghostty Mascot"
             className={`w-full h-full object-contain ${
               mood === 'sad' ? 'grayscale-[40%] brightness-90' : ''

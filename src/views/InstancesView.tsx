@@ -122,8 +122,9 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     const matchesSearch = inst.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
     if (activeGroup === 'Todos') return true;
+    if (activeGroup === 'Favoritos') return Boolean(inst.favorite);
     const assigned =
-      instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+      inst.group || instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
     return assigned.toLowerCase() === activeGroup.toLowerCase();
   });
 

@@ -33,6 +33,10 @@ pub struct Instance {
     pub resolution: Option< serde_json::Value >,
     #[serde(default)]
     pub server_auto_connect: Option< serde_json::Value >,
+    #[serde(default)]
+    pub favorite: bool,
+    #[serde(default)]
+    pub group: Option<String>,
 }
 
 fn default_java_path() -> String {

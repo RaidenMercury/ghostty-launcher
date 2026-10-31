@@ -13,6 +13,10 @@ import {
   Terminal,
   Palette,
   Settings,
+  Star,
+  StarOff,
+  FolderPlus,
+  Trash2,
 } from 'lucide-react';
 import { Instance } from '../types';
 import { THEME_PRESETS, ThemePresetId } from '../utils/theme';
@@ -41,6 +45,9 @@ interface ContextMenuProps {
   onOpenLogs: () => void;
   onCycleTheme: () => void;
   onOpenGlobalSettings: () => void;
+  onToggleFavorite?: () => void;
+  onAddToGroup?: () => void;
+  onDeleteInstance?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -61,6 +68,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onOpenLogs,
   onCycleTheme,
   onOpenGlobalSettings,
+  onToggleFavorite,
+  onAddToGroup,
+  onDeleteInstance,
 }) => {
   useEffect(() => {
     if (!menu.isOpen) return;
@@ -77,7 +87,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [menu.isOpen, onClose]);
 
   const menuWidth = 264;
-  const menuHeight = 385;
+  const menuHeight = 470;
   const safeX =
     typeof window !== 'undefined'
       ? Math.min(Math.max(8, menu.x), window.innerWidth - menuWidth - 12)
@@ -182,6 +192,42 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <span>Importar Modpack (.mrpack)...</span>
               </span>
               <span className="text-[10px] font-mono opacity-60">⌥I</span>
+            </button>
+
+            <div className="my-1 border-t glass-divider" />
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(() => onToggleFavorite?.())}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              {activeInstance?.favorite ? (
+                <StarOff className="w-3.5 h-3.5 opacity-80" />
+              ) : (
+                <Star className="w-3.5 h-3.5 opacity-80" />
+              )}
+              <span>{activeInstance?.favorite ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(() => onAddToGroup?.())}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              <FolderPlus className="w-3.5 h-3.5 opacity-80" />
+              <span>Añadir a grupo...</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(() => onDeleteInstance?.())}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-spectral-rose hover:bg-spectral-rose hover:text-white transition-colors disabled:opacity-40"
+            >
+              <Trash2 className="w-3.5 h-3.5 opacity-80" />
+              <span>Eliminar Instancia</span>
             </button>
 
             <div className="my-1 border-t glass-divider" />

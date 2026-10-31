@@ -83,6 +83,8 @@ impl LauncherManager {
                     wrapper_command: None,
                     resolution: None,
                     server_auto_connect: None,
+                    favorite: false,
+                    group: None,
                 },
                 Instance {
                     id: "fabric-sodium".to_string(),
@@ -104,6 +106,8 @@ impl LauncherManager {
                     wrapper_command: None,
                     resolution: None,
                     server_auto_connect: None,
+                    favorite: false,
+                    group: None,
                 },
             ];
             Self::save_instances(&demo_instances)?;

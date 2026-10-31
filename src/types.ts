@@ -41,6 +41,8 @@ export interface Instance {
   post_exit_command?: string | null;
   play_time_minutes: number;
   last_played: string | null;
+  favorite?: boolean;
+  group?: string | null;
 }
 
 export interface CreateInstancePayload {
