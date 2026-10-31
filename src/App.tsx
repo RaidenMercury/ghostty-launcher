@@ -352,16 +352,6 @@ export function App() {
     }
   };
 
-  const handleExportInstance = async (id: string) => {
-    try {
-      const targetPath = `/home/rmercury/Descargas/${id}-export.zip`;
-      await api.exportInstance(id, targetPath);
-      addToast('success', 'Estancia Exportada', `Guardada en ${targetPath}`);
-    } catch (e: any) {
-      addToast('error', 'Error al exportar', e.toString());
-    }
-  };
-
   const handleOpenInstanceFolder = async (instanceId: string) => {
     try {
       await api.openInstanceFolder(instanceId);
@@ -667,7 +657,6 @@ export function App() {
             onOpenFolder={handleOpenInstanceFolder}
             onLaunch={handleLaunch}
             onDeleteInstance={handleDeleteInstance}
-            onExportInstance={handleExportInstance}
             isLaunching={isLaunching}
             launchBurstEnabled={themeSettings.launchBurstEnabled}
             ambientArtworkEnabled={themeSettings.ambientArtworkEnabled}
@@ -724,8 +713,6 @@ export function App() {
                         onShowToast={addToast}
                         themeSettings={themeSettings}
                         onUpdateThemeSettings={handleUpdateThemeSettings}
-                        onStartDownloadActivity={startDownloadActivity}
-                        onEndDownloadActivity={endDownloadActivity}
                       />
                     )}
                   </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Cpu,
-  Download,
   Activity,
   Save,
   RefreshCw,
@@ -30,8 +29,6 @@ interface SettingsViewProps {
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
   themeSettings: ThemeSettings;
   onUpdateThemeSettings: (next: ThemeSettings) => void;
-  onStartDownloadActivity?: (title: string) => void;
-  onEndDownloadActivity?: () => void;
 }
 
 type SettingsSectionId = 'general' | 'java' | 'memory' | 'discord' | 'appearance' | 'advanced';
@@ -42,17 +39,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onShowToast,
   themeSettings,
   onUpdateThemeSettings,
-  onStartDownloadActivity,
-  onEndDownloadActivity,
 }) => {
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
 
   const [detectedRuntimes, setDetectedRuntimes] = useState<SystemJavaInfo[]>([]);
   const [isScanningJava, setIsScanningJava] = useState(false);
   const [selectedJavaPath, setSelectedJavaPath] = useState(activeInstance?.java_path || '');
-  const [downloadVendor, setDownloadVendor] = useState<'temurin' | 'zulu' | 'mojang'>('temurin');
-  const [downloadMajorVer, setDownloadMajorVer] = useState<number>(21);
-  const [isDownloadingJava, setIsDownloadingJava] = useState(false);
 
   const [minRamMb, setMinRamMb] = useState(activeInstance?.memory_min_mb || 2048);
   const [maxRamMb, setMaxRamMb] = useState(activeInstance?.memory_max_mb || 4096);
@@ -122,34 +114,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       console.warn('Java scan warning:', e);
     } finally {
       setIsScanningJava(false);
-    }
-  };
-
-  const handleDownloadJava = async () => {
-    try {
-      setIsDownloadingJava(true);
-      onStartDownloadActivity?.(`Java ${downloadMajorVer} (${downloadVendor.toUpperCase()})`);
-      onShowToast(
-        'info',
-        'Descargando Runtime de Java',
-        `Instalando ${downloadVendor.toUpperCase()} OpenJDK ${downloadMajorVer}...`
-      );
-      const installed = await api.downloadJavaRuntime(downloadVendor, downloadMajorVer);
-      setDetectedRuntimes((prev) => [
-        installed,
-        ...prev.filter((r) => r.path !== installed.path),
-      ]);
-      setSelectedJavaPath(installed.path);
-      onShowToast(
-        'success',
-        'Java Instalado y Seleccionado',
-        `${installed.version} en ${installed.path}`
-      );
-    } catch (e: any) {
-      onShowToast('error', 'Error descargando Java', e.toString());
-    } finally {
-      setIsDownloadingJava(false);
-      onEndDownloadActivity?.();
     }
   };
 
@@ -452,88 +416,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </div>
               </div>
-
-              
-              <div className="pt-5 space-y-4">
-                <div>
-                  <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    DESCARGADOR OFICIAL DE RUNTIMES
-                  </h3>
-                  <p className="text-xs text-ghost-400">
-                    Descarga e instala distribuciones oficiales en el directorio aislado del launcher.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
-                      Proveedor
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {(
-                        [
-                          { id: 'temurin', label: 'Eclipse Temurin' },
-                          { id: 'zulu', label: 'Azul Zulu' },
-                          { id: 'mojang', label: 'Mojang Oficial' },
-                        ] as const
-                      ).map((v) => (
-                        <button
-                          key={v.id}
-                          type="button"
-                          onClick={() => setDownloadVendor(v.id)}
-                          className={`btn-tactile px-3 py-1.5 rounded-control text-xs border ${
-                            downloadVendor === v.id
-                              ? 'accent-pill-tint font-semibold'
-                              : 'glass-control text-ghost-300'
-                          }`}
-                        >
-                          {v.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono uppercase text-ghost-400 block">
-                      Versión Mayor
-                    </span>
-                    <div className="flex items-center gap-1.5 font-mono tabular-nums">
-                      {([21, 17, 8] as const).map((ver) => (
-                        <button
-                          key={ver}
-                          type="button"
-                          onClick={() => setDownloadMajorVer(ver)}
-                          className={`btn-tactile px-3 py-1.5 rounded-control text-xs border ${
-                            downloadMajorVer === ver
-                              ? 'accent-pill-tint font-semibold'
-                              : 'glass-control text-ghost-300'
-                          }`}
-                        >
-                          Java {ver}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadJava}
-                  disabled={isDownloadingJava}
-                  className="btn-tactile px-4 py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-50"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>
-                    {isDownloadingJava
-                      ? 'Descargando e instalando...'
-                      : `Instalar ${downloadVendor.toUpperCase()} Java ${downloadMajorVer}`}
-                  </span>
-                </button>
-              </div>
             </div>
           )}
 
-          
           {activeSection === 'memory' && (
             <div className="space-y-6 divide-y glass-divider">
               <div className="space-y-4">

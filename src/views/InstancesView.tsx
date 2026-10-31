@@ -4,7 +4,6 @@ import {
   Play,
   Sliders,
   Package,
-  Share2,
   Trash2,
   Clock,
   Terminal,
@@ -36,7 +35,6 @@ interface InstancesViewProps {
   onOpenFolder?: (id: string) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
-  onExportInstance: (id: string) => void;
   isLaunching: boolean;
   launchBurstEnabled?: boolean;
   ambientArtworkEnabled?: boolean;
@@ -59,7 +57,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onOpenFolder,
   onLaunch,
   onDeleteInstance,
-  onExportInstance,
   isLaunching,
   launchBurstEnabled = true,
   ambientArtworkEnabled = true,
@@ -652,14 +649,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       <span>Abrir Carpeta</span>
                     </button>
                   )}
-
-                  <button
-                    onClick={() => onExportInstance(currentHero.id)}
-                    className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
-                  >
-                    <Share2 className="w-4 h-4 text-ghost-300" />
-                    <span>Exportar (.zip)</span>
-                  </button>
                 </div>
 
                 <button

@@ -8,37 +8,21 @@ import {
   ModrinthVersion,
   ModFileInfo,
   SystemJavaInfo,
-  JavaDownloadable,
   ModContentType,
   ModProvider,
 } from '../types';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+// El mock solo existe para `npm run dev` en el navegador. Dentro de Tauri un comando
+// ausente debe fallar a la vista: el fallback silencioso convirtió el bug de Java en
+// "datos" durante meses. `VITE_USE_MOCK=1` lo reactiva a propósito para demos.
+const useMock = !isTauri || (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === '1');
+
 async function invokeTauri<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
-  if (isTauri) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      return await invoke<T>(cmd, args);
-    } catch (e: any) {
-      if (
-        cmd === 'login_elyby' ||
-        cmd === 'login_elyby_account' ||
-        cmd === 'iniciar_oauth_dispositivo' ||
-        cmd === 'esperar_autorizacion_microsoft' ||
-        cmd === 'login_microsoft_account' ||
-        cmd === 'launch_instance' ||
-        cmd === 'begin_modpack_upload' ||
-        cmd === 'append_modpack_chunk' ||
-        cmd === 'finish_modpack_upload' ||
-        cmd === 'import_mrpack' ||
-        cmd === 'install_online_modpack'
-      ) {
-        throw e;
-      }
-      console.warn(`Tauri invoke failed for ${cmd}, falling back to web layer:`, e);
-      return mockInvoke<T>(cmd, args);
-    }
+  if (!useMock) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return invoke<T>(cmd, args);
   }
   return mockInvoke<T>(cmd, args);
 }
@@ -170,10 +154,6 @@ export const api = {
     await invokeTauri<unknown>('delete_instance', { id: instanceId, instanceId });
   },
 
-  async exportInstance(instanceId: string, targetPath: string): Promise<string> {
-    return invokeTauri<string>('export_instance', { instanceId, targetPath });
-  },
-
   async importModpackFile(fileOrPath: File | string, customName?: string): Promise<Instance> {
     if (typeof File !== 'undefined' && fileOrPath instanceof File) {
       const nativePath = (fileOrPath as any).path;
@@ -269,19 +249,6 @@ export const api = {
       console.warn('Direct Mojang manifest fetch failed, falling back to local/Tauri:', e);
     }
     return invokeTauri<MojangManifest>('get_mojang_versions');
-  },
-
-  async getFabricLoaders(mcVersion: string): Promise<string[]> {
-    try {
-      const res = await fetch(`https://meta.fabricmc.net/v2/versions/loader/${mcVersion}`);
-      if (res.ok) {
-        const data = await res.json();
-        return data.map((item: any) => item.loader.version);
-      }
-    } catch (e) {
-      console.warn('Fabric meta fetch fallback:', e);
-    }
-    return invokeTauri<string[]>('get_fabric_loaders', { mcVersion });
   },
 
   async searchModrinth(
@@ -507,25 +474,6 @@ export const api = {
     return invokeTauri<SystemJavaInfo[]>('detect_java');
   },
 
-  async downloadJavaRuntime(vendor: string, majorVersion: number): Promise<SystemJavaInfo> {
-    if (isTauri) {
-      return invokeTauri<SystemJavaInfo>('download_java_runtime', { vendor, majorVersion });
-    }
-    await new Promise((r) => setTimeout(r, 900));
-    const vendorLabel =
-      vendor === 'zulu'
-        ? 'Azul Zulu OpenJDK'
-        : vendor === 'mojang'
-        ? 'Mojang Official JRE'
-        : 'Eclipse Temurin';
-    return {
-      path: `/home/rmercury/.local/share/GhosttyLauncher/runtimes/${vendor}-java-${majorVersion}/bin/java`,
-      version: `${vendorLabel} ${majorVersion}.0.2 (64-Bit Server VM)`,
-      major_version: majorVersion,
-      is_valid: true,
-    };
-  },
-
   async deleteInstanceMod(instanceId: string, filename: string): Promise<void> {
     if (isTauri) {
       await invokeTauri<void>('delete_instance_mod', { instanceId, filename });
@@ -539,46 +487,6 @@ export const api = {
     saveMockStore();
   },
 
-  async getDownloadableJavaVersions(): Promise<JavaDownloadable[]> {
-    return [
-      {
-        version: 21,
-        name: 'Eclipse Temurin 21 (LTS)',
-        vendor: 'Adoptium',
-        os: 'Linux x64',
-        architecture: 'x64',
-        download_url: 'https://github.com/adoptium/temurin21-binaries/releases/latest',
-        size_mb: 48,
-      },
-      {
-        version: 17,
-        name: 'Eclipse Temurin 17 (LTS)',
-        vendor: 'Adoptium',
-        os: 'Linux x64',
-        architecture: 'x64',
-        download_url: 'https://github.com/adoptium/temurin17-binaries/releases/latest',
-        size_mb: 45,
-      },
-      {
-        version: 8,
-        name: 'Eclipse Temurin 8 (LTS)',
-        vendor: 'Adoptium',
-        os: 'Linux x64',
-        architecture: 'x64',
-        download_url: 'https://github.com/adoptium/temurin8-binaries/releases/latest',
-        size_mb: 42,
-      },
-      {
-        version: 25,
-        name: 'Azul Zulu OpenJDK 25 (Early Access)',
-        vendor: 'Azul Systems',
-        os: 'Linux x64',
-        architecture: 'x64',
-        download_url: 'https://www.azul.com/downloads/?package=jdk',
-        size_mb: 52,
-      },
-    ];
-  },
 
   async getInstanceMods(instanceId: string): Promise<ModFileInfo[]> {
     return invokeTauri<ModFileInfo[]>('get_instance_mods', { instanceId });

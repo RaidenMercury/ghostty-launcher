@@ -129,12 +129,3 @@ export interface SystemJavaInfo {
   is_valid: boolean;
 }
 
-export interface JavaDownloadable {
-  version: number;
-  name: string;
-  vendor: string;
-  os: string;
-  architecture: string;
-  download_url: string;
-  size_mb: number;
-}
