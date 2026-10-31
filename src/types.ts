@@ -56,6 +56,13 @@ export interface CreateInstancePayload {
   pre_launch_command?: string;
 }
 
+export interface Cape {
+  id: string;
+  alias: string | null;
+  url: string;
+  active: boolean;
+}
+
 export interface MojangVersion {
   id: string;
   type: 'release' | 'snapshot' | 'old_beta' | 'old_alpha';

@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod capes;
 pub mod commands;
 pub mod discord;
 pub mod engine;
@@ -85,6 +86,8 @@ pub fn run() {
             login_elyby_account,
             login_microsoft_account,
             set_active_account,
+            get_account_capes,
+            set_account_cape,
             update_account_skin,
             remove_account,
             open_launcher_folder,

@@ -1,4 +1,5 @@
 use crate::accounts::{AccountManager, DeviceCodeResponse};
+use crate::capes::Cape;
 use crate::discord::DiscordRpcManager;
 use crate::engine::GameEngine;
 use crate::instances::{ensure_supported_loader, InstanceManager};
@@ -173,6 +174,19 @@ pub async fn login_elyby_account(
 #[tauri::command]
 pub async fn login_microsoft_account(identifier: String) -> Result<Vec<Account>, String> {
     AccountManager::login_microsoft(&identifier).await
+}
+
+#[tauri::command]
+pub async fn get_account_capes(account_id: String) -> Result<Vec<Cape>, String> {
+    crate::capes::list(&account_id).await
+}
+
+#[tauri::command]
+pub async fn set_account_cape(
+    account_id: String,
+    cape_id: Option<String>,
+) -> Result<Vec<Cape>, String> {
+    crate::capes::set(&account_id, cape_id).await
 }
 
 #[tauri::command]

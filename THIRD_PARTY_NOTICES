@@ -1,0 +1,49 @@
+THIRD-PARTY NOTICES — GhosttyLauncher
+====================================
+
+1) minecraft-launcher-core-node (traducción a Rust)
+----------------------------------------------------
+Parte del backend de este launcher es una traducción a Rust de
+https://github.com/Voxelum/minecraft-launcher-core-node
+
+    MIT License
+
+    Copyright (c) 2023 CI010
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Este proyecto se distribuye bajo GPL-3.0. El código MIT anterior se incorpora
+bajo sus propios términos, que son compatibles con GPL-3.0; este aviso se
+conserva en cumplimiento de la cláusula de copyright.
+
+2) Prism Launcher
+-----------------
+No se ha copiado código de Prism Launcher (GPL-3.0). El cambio de capas y la
+detección de Java usan APIs públicas documentadas; si en el futuro se reutiliza
+código suyo, al ser ambos GPL-3.0 la combinación es válida manteniendo la
+atribución correspondiente.
+
+3) APIs de terceros
+-------------------
+- Mojang / Microsoft: manifiesto de versiones, autenticación y servicios de
+  perfil/capas. Uso bajo los términos de la API de Mojang; no se redistribuyen
+  assets ni binarios del juego.
+- Modrinth: búsqueda y descarga de mods según sus términos de API.
+- Eclipse Adoptium: descarga de JRE Temurin verificada por SHA-256.
+- Discord: Rich Presence por IPC local con un client_id propio.

@@ -8,6 +8,7 @@ import {
   ModrinthVersion,
   ModFileInfo,
   SystemJavaInfo,
+  Cape,
   ModContentType,
   ModProvider,
 } from '../types';
@@ -471,6 +472,14 @@ export const api = {
       saveMockStore();
     }
     return `Simulated download of ${filename} to ${instanceId}`;
+  },
+
+  async getAccountCapes(accountId: string): Promise<Cape[]> {
+    return invokeTauri<Cape[]>('get_account_capes', { accountId });
+  },
+
+  async setAccountCape(accountId: string, capeId: string | null): Promise<Cape[]> {
+    return invokeTauri<Cape[]>('set_account_cape', { accountId, capeId });
   },
 
   async detectJava(): Promise<SystemJavaInfo[]> {

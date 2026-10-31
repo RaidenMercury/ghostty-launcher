@@ -16,7 +16,7 @@ import {
   Copy,
   Loader2,
 } from 'lucide-react';
-import { Account } from '../types';
+import { Account, Cape } from '../types';
 import { getAccountAvatarUrl } from './DynamicIslandHeader';
 import { api } from '../services/api';
 
@@ -162,6 +162,10 @@ export function AccountModal({
     activeAccount?.skin_model || 'classic'
   );
   const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
+  const [capes, setCapes] = useState<Cape[]>([]);
+  const [loadingCapes, setLoadingCapes] = useState(false);
+  const [savingCape, setSavingCape] = useState(false);
+  const [capeError, setCapeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeAccount) {
@@ -173,6 +177,48 @@ export function AccountModal({
       }
     }
   }, [activeAccount]);
+
+  useEffect(() => {
+    if (!activeAccount || activeAccount.account_type !== 'Microsoft') {
+      setCapes([]);
+      setCapeError(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCapes(true);
+    setCapeError(null);
+    api
+      .getAccountCapes(activeAccount.id)
+      .then((list) => {
+        if (!cancelled) setCapes(list);
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          setCapes([]);
+          setCapeError(String(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCapes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAccount?.id, activeAccount?.account_type]);
+
+  const handleSetCape = async (capeId: string | null) => {
+    if (!activeAccount || savingCape) return;
+    setSavingCape(true);
+    setCapeError(null);
+    try {
+      const list = await api.setAccountCape(activeAccount.id, capeId);
+      setCapes(list);
+    } catch (e: any) {
+      setCapeError(String(e));
+    } finally {
+      setSavingCape(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -796,6 +842,66 @@ export function AccountModal({
                       </form>
 
                     </div>
+                  </div>
+                )}
+
+                {activeAccount && (
+                  <div className="mt-4 pt-4 border-t glass-divider space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-mono uppercase text-ghost-400">
+                        Capas de la cuenta
+                      </label>
+                      {activeAccount.account_type === 'Microsoft' && capes.some((c) => c.active) && (
+                        <button
+                          type="button"
+                          disabled={savingCape}
+                          onClick={() => handleSetCape(null)}
+                          className="btn-tactile px-2.5 py-1 rounded-control glass-control text-[10px] font-mono text-ghost-300 disabled:opacity-50"
+                        >
+                          Quitar capa
+                        </button>
+                      )}
+                    </div>
+
+                    {activeAccount.account_type !== 'Microsoft' ? (
+                      <p className="text-[11px] text-ghost-400">
+                        Solo disponible para cuentas Microsoft. Ely.by gestiona sus capas en su web.
+                      </p>
+                    ) : loadingCapes ? (
+                      <p className="text-[11px] text-ghost-400 flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Cargando capas...
+                      </p>
+                    ) : capeError ? (
+                      <p className="text-[11px] text-spectral-rose/90">{capeError}</p>
+                    ) : capes.length === 0 ? (
+                      <p className="text-[11px] text-ghost-400">Esta cuenta no tiene capas.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {capes.map((cape) => (
+                          <button
+                            key={cape.id}
+                            type="button"
+                            disabled={savingCape}
+                            onClick={() => handleSetCape(cape.id)}
+                            title={cape.alias || 'Capa'}
+                            className={`btn-tactile relative rounded-control border px-2 py-1.5 flex flex-col items-center gap-1 disabled:opacity-50 ${
+                              cape.active
+                                ? 'accent-pill-tint border-[var(--accent)]'
+                                : 'glass-control border-white/10 text-ghost-300'
+                            }`}
+                          >
+                            <img
+                              src={cape.url.replace(/^http:/, 'https:')}
+                              alt={cape.alias || 'Capa'}
+                              className="h-12 w-auto object-contain"
+                            />
+                            <span className="text-[9px] font-mono">
+                              {cape.active ? 'Activa' : cape.alias || 'Capa'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
