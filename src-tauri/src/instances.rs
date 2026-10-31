@@ -5,6 +5,21 @@ use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
 
+/// Forge y NeoForge no tienen instalador todavía: mejor un error claro que una
+/// instancia que arranca vanilla y crashea (ver PLAN_REPARACION F2).
+pub const SUPPORTED_LOADERS: [&str; 3] = ["vanilla", "fabric", "quilt"];
+
+pub fn ensure_supported_loader(loader: &str) -> Result<(), String> {
+    if SUPPORTED_LOADERS.contains(&loader.to_ascii_lowercase().as_str()) {
+        Ok(())
+    } else {
+        Err(format!(
+            "El loader '{}' aún no está soportado. Por ahora: vanilla, Fabric y Quilt.",
+            loader
+        ))
+    }
+}
+
 pub struct InstanceManager;
 
 impl InstanceManager {
@@ -25,22 +40,19 @@ impl InstanceManager {
         Ok(dir)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_instance(
         name: String,
         mc_version: String,
         loader: String,
         loader_version: Option<String>,
         icon: Option<String>,
+        memory_min_mb: Option<u64>,
+        memory_max_mb: Option<u64>,
+        jvm_args: Option<String>,
+        pre_launch_command: Option<String>,
     ) -> Result<Instance, String> {
-        // Forge y NeoForge no tienen instalador todavía: mejor un error claro que una
-        // instancia que arranca vanilla y crashea (ver PLAN_REPARACION F2).
-        const SUPPORTED: [&str; 3] = ["vanilla", "fabric", "quilt"];
-        if !SUPPORTED.contains(&loader.to_ascii_lowercase().as_str()) {
-            return Err(format!(
-                "El loader '{}' aún no está soportado. Por ahora: vanilla, Fabric y Quilt.",
-                loader
-            ));
-        }
+        ensure_supported_loader(&loader)?;
 
         let mut instances = LauncherManager::load_instances()?;
         let id = Uuid::new_v4().to_string();
@@ -56,11 +68,11 @@ impl InstanceManager {
             last_played: None,
             play_time_minutes: 0,
             java_path: "java".to_string(),
-            custom_jvm_args: String::new(),
+            custom_jvm_args: jvm_args.unwrap_or_default(),
             env_vars: HashMap::new(),
-            min_ram_mb: None,
-            max_ram_mb: None,
-            pre_launch_hook: None,
+            min_ram_mb: memory_min_mb,
+            max_ram_mb: memory_max_mb,
+            pre_launch_hook: pre_launch_command,
             post_exit_command: None,
             wrapper_command: None,
             resolution: None,

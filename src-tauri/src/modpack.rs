@@ -426,6 +426,10 @@ impl ModpackEngine {
                     loader,
                     loader_version,
                     final_icon,
+                    None,
+                    None,
+                    None,
+                    None,
                 )?;
 
                 let inst_dir = InstanceManager::get_instance_dir(&instance.id)?;

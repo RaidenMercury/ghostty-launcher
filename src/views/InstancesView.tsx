@@ -583,7 +583,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                         </span>
                       )}
                       <span className="text-xs font-mono text-ghost-400 tabular-nums">
-                        {formatPlaytime(currentHero.total_playtime_secs)}
+                        {formatPlaytime((currentHero.play_time_minutes || 0) * 60)}
                       </span>
                     </div>
 

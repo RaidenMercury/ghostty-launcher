@@ -142,7 +142,10 @@ export const api = {
       loader: request.loader,
       loaderVersion: request.loader_version || null,
       icon: request.icon || 'minecraft',
-      request,
+      memoryMinMb: request.memory_min_mb ?? null,
+      memoryMaxMb: request.memory_max_mb ?? null,
+      jvmArgs: request.jvm_args ?? null,
+      preLaunchCommand: request.pre_launch_command ?? null,
     });
   },
 
@@ -620,7 +623,7 @@ let mockInstances: Instance[] = [
     server_auto_connect: null,
     pre_launch_command: null,
     post_exit_command: null,
-    total_playtime_secs: 28400,
+    play_time_minutes: 473,
     last_played: new Date(Date.now() - 3600000 * 2).toISOString(),
   },
   {
@@ -639,7 +642,7 @@ let mockInstances: Instance[] = [
     server_auto_connect: null,
     pre_launch_command: null,
     post_exit_command: null,
-    total_playtime_secs: 14200,
+    play_time_minutes: 236,
     last_played: new Date(Date.now() - 3600000 * 4).toISOString(),
   },
   {
@@ -658,7 +661,7 @@ let mockInstances: Instance[] = [
     server_auto_connect: null,
     pre_launch_command: null,
     post_exit_command: null,
-    total_playtime_secs: 7800,
+    play_time_minutes: 130,
     last_played: new Date(Date.now() - 3600000 * 48).toISOString(),
   },
 ];
@@ -1020,7 +1023,7 @@ async function importModpackFromBuffer(
     server_auto_connect: null,
     pre_launch_command: null,
     post_exit_command: null,
-    total_playtime_secs: 0,
+    play_time_minutes: 0,
     last_played: null,
   };
 
@@ -1239,7 +1242,7 @@ async function mockInvoke<T>(cmd: string, args: Record<string, unknown>): Promis
         server_auto_connect: null,
         pre_launch_command: req.pre_launch_command || null,
         post_exit_command: null,
-        total_playtime_secs: 0,
+        play_time_minutes: 0,
         last_played: null,
       };
       mockInstances.unshift(inst);
@@ -1305,7 +1308,7 @@ async function mockInvoke<T>(cmd: string, args: Record<string, unknown>): Promis
         server_auto_connect: null,
         pre_launch_command: null,
         post_exit_command: null,
-        total_playtime_secs: 0,
+        play_time_minutes: 0,
         last_played: null,
       };
       mockInstances.unshift(inst);

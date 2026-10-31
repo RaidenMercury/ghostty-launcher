@@ -1,7 +1,7 @@
 use crate::accounts::{AccountManager, DeviceCodeResponse};
 use crate::discord::DiscordRpcManager;
 use crate::engine::GameEngine;
-use crate::instances::InstanceManager;
+use crate::instances::{ensure_supported_loader, InstanceManager};
 use crate::java::JavaDetector;
 use crate::launcher::LauncherManager;
 use crate::models::{Account, Instance, LauncherConfig, ModFileInfo, MojangManifest, SystemJavaInfo};
@@ -24,8 +24,22 @@ pub fn create_instance(
     loader: String,
     loader_version: Option<String>,
     icon: Option<String>,
+    memory_min_mb: Option<u64>,
+    memory_max_mb: Option<u64>,
+    jvm_args: Option<String>,
+    pre_launch_command: Option<String>,
 ) -> Result<Instance, String> {
-    InstanceManager::create_instance(name, mc_version, loader, loader_version, icon)
+    InstanceManager::create_instance(
+        name,
+        mc_version,
+        loader,
+        loader_version,
+        icon,
+        memory_min_mb,
+        memory_max_mb,
+        jvm_args,
+        pre_launch_command,
+    )
 }
 
 #[tauri::command]
@@ -37,6 +51,10 @@ pub fn delete_instance(id: String) -> Result<Vec<Instance>, String> {
 pub fn update_instance(instance: Instance) -> Result<Vec<Instance>, String> {
     let mut instances = LauncherManager::load_instances()?;
     if let Some(idx) = instances.iter().position(|i| i.id == instance.id) {
+        // Cambiar a un loader sin motor dejaría una instancia que arranca vanilla.
+        if !instances[idx].loader.eq_ignore_ascii_case(&instance.loader) {
+            ensure_supported_loader(&instance.loader)?;
+        }
         instances[idx] = instance;
         LauncherManager::save_instances(&instances)?;
     }
@@ -227,6 +245,7 @@ pub async fn launch_instance(app: AppHandle, instance_id: String) -> Result<Stri
         .find(|i| i.id == instance_id)
         .ok_or("La instancia seleccionada no existe")?;
 
+    ensure_supported_loader(&target.loader)?;
     GameEngine::launch_game_real(app, target).await
 }
 

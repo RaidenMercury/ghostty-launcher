@@ -39,7 +39,7 @@ export interface Instance {
   server_auto_connect?: InstanceServerConnect | string | null;
   pre_launch_command?: string | null;
   post_exit_command?: string | null;
-  total_playtime_secs: number;
+  play_time_minutes: number;
   last_played: string | null;
 }
 

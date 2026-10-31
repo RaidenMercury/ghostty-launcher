@@ -100,6 +100,12 @@ impl AccountManager {
             vec![Self::create_offline_account_obj("GhostPlayer", true)]
         });
 
+        // Solo si el JSON de cuentas traía tokens dentro hay algo que migrar; tras
+        // hidratar desde tokens.json todas las cuentas tienen token y el flag mentiría.
+        let had_inline_tokens = accounts
+            .iter()
+            .any(|acc| acc.access_token.as_deref().is_some_and(|t| !t.is_empty()));
+
         // Las cuentas viejas traían el token dentro de accounts.json; se migra al leer.
         if let Ok(tokens_raw) = fs::read_to_string(Self::get_tokens_file_path()?) {
             if let Ok(tokens) = serde_json::from_str::<HashMap<String, String>>(&tokens_raw) {
@@ -110,12 +116,8 @@ impl AccountManager {
                 }
             }
         }
-        // Migración inmediata: si quedaban tokens dentro de accounts.json, se mueven
-        // a tokens.json en la primera lectura en vez de esperar al siguiente guardado.
-        if accounts
-            .iter()
-            .any(|acc| acc.access_token.as_deref().is_some_and(|t| !t.is_empty()))
-        {
+
+        if had_inline_tokens {
             let _ = Self::save_accounts(&accounts);
         }
 
@@ -124,8 +126,10 @@ impl AccountManager {
 
     pub fn save_accounts(accounts: &[Account]) -> Result<(), String> {
         let (public, tokens) = split_tokens(accounts);
-        write_private_json(&Self::get_accounts_file_path()?, &public)?;
+        // Tokens primero: si el proceso muere entre las dos escrituras, accounts.json
+        // todavía conserva el token y la carga siguiente reintenta la migración.
         write_private_json(&Self::get_tokens_file_path()?, &tokens)?;
+        write_private_json(&Self::get_accounts_file_path()?, &public)?;
         Ok(())
     }
 
