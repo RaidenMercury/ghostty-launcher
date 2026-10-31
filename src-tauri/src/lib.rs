@@ -75,6 +75,7 @@ pub fn run() {
             update_discord_rpc,
             get_mojang_versions,
             detect_java,
+            download_java_runtime,
             get_accounts,
             add_offline_account,
             iniciar_oauth_dispositivo,

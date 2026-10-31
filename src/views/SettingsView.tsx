@@ -44,6 +44,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const [detectedRuntimes, setDetectedRuntimes] = useState<SystemJavaInfo[]>([]);
   const [isScanningJava, setIsScanningJava] = useState(false);
+  const [installingJava, setInstallingJava] = useState<number | null>(null);
   const [selectedJavaPath, setSelectedJavaPath] = useState(activeInstance?.java_path || '');
 
   const [minRamMb, setMinRamMb] = useState(activeInstance?.memory_min_mb || 2048);
@@ -114,6 +115,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       console.warn('Java scan warning:', e);
     } finally {
       setIsScanningJava(false);
+    }
+  };
+
+  const handleInstallJava = async (major: number) => {
+    setInstallingJava(major);
+    onShowToast('info', 'Descargando Java', `Eclipse Temurin ${major} (puede tardar unos minutos)...`);
+    try {
+      const info = await api.downloadJavaRuntime('temurin', major);
+      setDetectedRuntimes((prev) => [info, ...prev.filter((r) => r.path !== info.path)]);
+      setSelectedJavaPath(info.path);
+      onShowToast('success', 'Java instalado', `${info.version} — ${info.path}`);
+    } catch (e: any) {
+      onShowToast('error', 'Error instalando Java', String(e));
+    } finally {
+      setInstallingJava(null);
     }
   };
 
@@ -414,6 +430,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       className="w-full px-3 py-2 glass-control text-xs font-mono"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-5 space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    DESCARGAR RUNTIME (ADOPTIUM)
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    Temurin JRE verificado por SHA-256, instalado en <code>runtimes/</code> del launcher.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[21, 17, 8].map((major) => (
+                    <button
+                      key={major}
+                      type="button"
+                      onClick={() => handleInstallJava(major)}
+                      disabled={installingJava !== null}
+                      className="btn-tactile px-4 py-2 rounded-control glass-control text-xs font-medium disabled:opacity-50"
+                    >
+                      {installingJava === major ? `Instalando Java ${major}...` : `Instalar Java ${major}`}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

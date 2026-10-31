@@ -477,6 +477,10 @@ export const api = {
     return invokeTauri<SystemJavaInfo[]>('detect_java');
   },
 
+  async downloadJavaRuntime(vendor: string, majorVersion: number): Promise<SystemJavaInfo> {
+    return invokeTauri<SystemJavaInfo>('download_java_runtime', { vendor, majorVersion });
+  },
+
   async deleteInstanceMod(instanceId: string, filename: string): Promise<void> {
     if (isTauri) {
       await invokeTauri<void>('delete_instance_mod', { instanceId, filename });

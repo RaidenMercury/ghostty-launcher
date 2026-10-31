@@ -104,6 +104,19 @@ pub fn update_discord_rpc(enabled: bool, details: String, state: String) -> Resu
 }
 
 #[tauri::command]
+pub async fn download_java_runtime(
+    vendor: String,
+    major_version: u32,
+) -> Result<SystemJavaInfo, String> {
+    match vendor.to_ascii_lowercase().as_str() {
+        "temurin" | "adoptium" | "eclipse" => crate::java::adoptium::install(major_version).await,
+        other => Err(format!(
+            "Proveedor '{other}' no soportado todavía; usa temurin (Adoptium)."
+        )),
+    }
+}
+
+#[tauri::command]
 pub async fn detect_java() -> Result<Vec<SystemJavaInfo>, String> {
     // Escanear y sondear JVMs lanza procesos: fuera del hilo de la UI.
     tokio::task::spawn_blocking(JavaDetector::detect)

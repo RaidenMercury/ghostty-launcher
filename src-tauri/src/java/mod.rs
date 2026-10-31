@@ -10,6 +10,8 @@ use std::process::Command;
 use crate::launcher::LauncherManager;
 use crate::models::SystemJavaInfo;
 
+pub mod adoptium;
+
 pub struct JavaDetector;
 
 impl JavaDetector {
@@ -48,7 +50,12 @@ impl JavaDetector {
         if let Ok(root) = LauncherManager::get_root_dir() {
             if let Ok(entries) = std::fs::read_dir(root.join("runtimes")) {
                 for entry in entries.flatten() {
-                    list.push(bin(&entry.path()));
+                    let base = entry.path();
+                    list.push(bin(&base));
+                    // Los paquetes extraídos traen una carpeta interna (jdk-21…-jre/bin/java).
+                    if let Some(found) = find_java_binary(&base, 4) {
+                        list.push(found);
+                    }
                 }
             }
         }
@@ -97,7 +104,7 @@ impl JavaDetector {
         list
     }
 
-    fn probe(path: &Path) -> Option<SystemJavaInfo> {
+    pub fn probe(path: &Path) -> Option<SystemJavaInfo> {
         let output = Command::new(path)
             .args(["-XshowSettings:properties", "-version"])
             .output()
@@ -122,6 +129,21 @@ impl JavaDetector {
             is_valid: true,
         })
     }
+}
+
+/// Busca `bin/java` dentro de un runtime extraído (el tar trae una carpeta interna).
+pub(crate) fn find_java_binary(root: &Path, max_depth: usize) -> Option<PathBuf> {
+    let exe = if cfg!(windows) { "java.exe" } else { "java" };
+    walkdir::WalkDir::new(root)
+        .max_depth(max_depth)
+        .into_iter()
+        .filter_map(Result::ok)
+        .find(|entry| {
+            entry.file_type().is_file()
+                && entry.file_name() == exe
+                && entry.path().parent().is_some_and(|p| p.ends_with("bin"))
+        })
+        .map(|entry| entry.into_path())
 }
 
 fn property(block: &str, key: &str) -> Option<String> {

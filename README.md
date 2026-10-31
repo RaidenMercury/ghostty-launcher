@@ -48,8 +48,8 @@ Cualquier `WEBKIT_*` exportado por el usuario tiene prioridad sobre el launcher.
 
 - **Forge/NeoForge no soportados.** La UI ya no los ofrece; los packs que los requieren
   fallan con un mensaje explícito en lugar de crear una instancia rota.
-- **Java:** solo detección de runtimes instalados. La descarga automática (Adoptium)
-  está pendiente.
+- **Java:** detección de runtimes instalados y descarga de Eclipse Temurin (Adoptium)
+  verificada por SHA-256.
 - **Catálogo:** solo Modrinth. CurseForge y FTB no tienen backend todavía.
 - **Sin** gestión de mundos, servidores, backups ni crash reports.
 - Probado en Linux (Wayland/Hyprland). Windows y macOS sin verificar.
