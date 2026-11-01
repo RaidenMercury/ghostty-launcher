@@ -898,7 +898,7 @@ export function App() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-auto relative w-full max-w-[940px] h-full max-h-[82vh] glass-panel-strong overflow-hidden flex flex-col z-10"
+                  className="pointer-events-auto relative w-full max-w-[940px] h-full max-h-[82vh] glass-panel-strong island-panel overflow-hidden flex flex-col z-10"
                 >
                   <div className="w-full h-full flex flex-col overflow-hidden relative">
                     {currentTab === 'discover' && (

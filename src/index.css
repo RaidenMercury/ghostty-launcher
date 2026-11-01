@@ -110,8 +110,6 @@
 
   .glass-panel {
     background-color: var(--glass-surface);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    backdrop-filter: blur(24px) saturate(1.3);
     background-image: linear-gradient(
       155deg,
       rgba(255, 255, 255, 0.048) 0%,
@@ -127,8 +125,6 @@
 
   .glass-panel-strong {
     background-color: var(--glass-surface-strong);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    backdrop-filter: blur(24px) saturate(1.3);
     background-image:
       radial-gradient(ellipse 90% 50% at 50% 0%, rgba(var(--accent-rgb), 0.09), transparent 70%),
       linear-gradient(
@@ -146,8 +142,6 @@
 
   .dynamic-island-capsule {
     background-color: var(--glass-surface-strong);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    backdrop-filter: blur(24px) saturate(1.3);
     background-image: linear-gradient(
       180deg,
       rgba(255, 255, 255, 0.055) 0%,
@@ -161,8 +155,6 @@
 
   .sequoia-context-menu {
     background-color: var(--glass-surface-strong);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    backdrop-filter: blur(24px) saturate(1.3);
     background-image: linear-gradient(
       165deg,
       rgba(255, 255, 255, 0.065) 0%,
@@ -312,4 +304,15 @@ html[data-theme='light'] .border-white\/20 {
 .row-deferred {
   content-visibility: auto;
   contain-intrinsic-size: auto 58px;
+}
+
+
+/* Panel expandido de la isla: alfa bajo para que el blur se aprecie de verdad. */
+.island-panel {
+  background-color: rgba(9, 7, 18, 0.55) !important;
+  background-image:
+    radial-gradient(ellipse 90% 50% at 50% 0%, rgba(var(--accent-rgb), 0.10), transparent 70%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.15)) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.4);
+  backdrop-filter: blur(30px) saturate(1.4);
 }
