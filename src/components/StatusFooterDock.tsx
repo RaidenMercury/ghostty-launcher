@@ -11,6 +11,7 @@ interface StatusFooterDockProps {
   onOpenInstanceFolder: (id: string) => void;
   onOpenAccounts: () => void;
   onOpenLogs?: () => void;
+  discordEnabled?: boolean;
 }
 
 export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
@@ -21,13 +22,20 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
   onOpenInstanceFolder,
   onOpenAccounts,
   onOpenLogs,
+  discordEnabled = true,
 }) => {
   return (
     <footer className="relative z-30 w-full px-6 py-2 bg-[var(--glass-surface-strong)] border-t glass-divider flex items-center justify-between text-xs font-mono text-ghost-400 select-none">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-spectral-mint animate-pulse" />
-          <span className="text-ghost-200 font-medium text-[11px]">DISCORD RPC ACTIVO</span>
+          <span
+            className={`w-2 h-2 rounded-full ${
+              discordEnabled ? 'bg-spectral-mint animate-pulse' : 'bg-ghost-500'
+            }`}
+          />
+          <span className="text-ghost-200 font-medium text-[11px]">
+            {discordEnabled ? 'DISCORD RPC ACTIVO' : 'DISCORD RPC DESACTIVADO'}
+          </span>
         </div>
 
         <span className="opacity-30">•</span>

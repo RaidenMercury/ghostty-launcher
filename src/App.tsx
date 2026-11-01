@@ -57,6 +57,7 @@ export function App() {
 
   const [menuContext, setMenuContext] = useState<'instance' | 'group' | 'empty'>('instance');
   const [menuGroup, setMenuGroup] = useState<string | null>(null);
+  const [discordEnabled, setDiscordEnabled] = useState(true);
   const [settingsTab, setSettingsTab] = useState<'general' | 'iconos' | 'java' | 'display'>('general');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     isOpen: false,
@@ -734,6 +735,19 @@ export function App() {
 
   // El velo solo aplica a modales: la isla expandida es contenido legible.
   useEffect(() => {
+    api
+      .getConfig()
+      .then((cfg) => setDiscordEnabled(Boolean(cfg.enable_discord_rpc)))
+      .catch(() => {});
+
+    const onDiscord = (event: Event) => {
+      setDiscordEnabled(Boolean((event as CustomEvent<boolean>).detail));
+    };
+    window.addEventListener('ghostty:discord-changed', onDiscord);
+    return () => window.removeEventListener('ghostty:discord-changed', onDiscord);
+  }, []);
+
+  useEffect(() => {
     if (!activeInstance) return;
     api
       .setDiscordSelection(activeInstance.name, activeInstance.mc_version, activeInstance.loader)
@@ -1014,6 +1028,7 @@ export function App() {
         onOpenInstanceFolder={handleOpenInstanceFolder}
         onOpenAccounts={() => setIsAccountOpen(true)}
         onOpenLogs={() => setIsLogsOpen(true)}
+        discordEnabled={discordEnabled}
       />
 
       <CreateInstanceModal

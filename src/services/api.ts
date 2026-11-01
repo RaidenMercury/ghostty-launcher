@@ -209,6 +209,10 @@ export const api = {
     });
   },
 
+  async getConfig(): Promise<{ enable_discord_rpc: boolean }> {
+    return invokeTauri<{ enable_discord_rpc: boolean }>('get_config');
+  },
+
   async updateDiscordRpc(enabled: boolean, details: string, state: string): Promise<void> {
     await invokeTauri<void>('update_discord_rpc', { enabled, details, state });
   },

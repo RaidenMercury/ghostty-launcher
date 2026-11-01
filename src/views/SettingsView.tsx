@@ -67,6 +67,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [launcherBehavior, setLauncherBehavior] = useState<'keep' | 'minimize' | 'close'>('keep');
 
   const [discordEnabled, setDiscordEnabled] = useState(true);
+
+  React.useEffect(() => {
+    api
+      .getConfig()
+      .then((cfg) => setDiscordEnabled(Boolean(cfg.enable_discord_rpc)))
+      .catch(() => {});
+  }, []);
   const [discordDetails, setDiscordDetails] = useState('Jugando en GhosttyLauncher');
   const [discordState, setDiscordState] = useState(
     activeInstance ? `${activeInstance.name} (${activeInstance.loader})` : 'En el menú principal'
@@ -642,6 +649,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="button"
                   onClick={() => {
                     const nextVal = !discordEnabled;
+                    window.dispatchEvent(new CustomEvent('ghostty:discord-changed', { detail: nextVal }));
                     setDiscordEnabled(nextVal);
                     api.updateDiscordRpc(nextVal, discordDetails, discordState).catch(() => {});
                   }}
