@@ -92,8 +92,8 @@ impl InstanceManager {
         Ok(new_instance)
     }
 
-    pub fn mod_icons(instance_id: &str, filenames: &[String]) -> Vec<(String, Option<String>)> {
-        let Ok(mods_dir) = Self::get_mods_dir(instance_id) else {
+    pub fn mod_icons(instance_id: &str, filenames: &[String], kind: &str) -> Vec<(String, Option<String>)> {
+        let Ok(mods_dir) = Self::content_dir(instance_id, kind) else {
             return Vec::new();
         };
         filenames
@@ -173,8 +173,19 @@ impl InstanceManager {
         Ok(instances)
     }
 
-    pub fn list_mods(instance_id: &str) -> Result<Vec<ModFileInfo>, String> {
-        let mods_dir = Self::get_mods_dir(instance_id)?;
+    fn content_dir(instance_id: &str, kind: &str) -> Result<std::path::PathBuf, String> {
+        let inst = Self::get_instance_dir(instance_id)?;
+        let dir = inst.join(match kind {
+            "resourcepacks" => "resourcepacks",
+            "shaderpacks" => "shaderpacks",
+            _ => "mods",
+        });
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        Ok(dir)
+    }
+
+    pub fn list_content(instance_id: &str, kind: &str) -> Result<Vec<ModFileInfo>, String> {
+        let mods_dir = Self::content_dir(instance_id, kind)?;
         let mut mods = Vec::new();
 
         if let Ok(entries) = fs::read_dir(mods_dir) {
@@ -182,7 +193,9 @@ impl InstanceManager {
                 if let Ok(meta) = entry.metadata() {
                     if meta.is_file() {
                         let fname = entry.file_name().to_string_lossy().to_string();
-                        if fname.ends_with(".jar") || fname.ends_with(".jar.disabled") {
+                        let is_jar = fname.ends_with(".jar") || fname.ends_with(".jar.disabled");
+                        let is_pack = fname.ends_with(".zip") || fname.ends_with(".zip.disabled");
+                        if is_jar || is_pack {
                             let enabled = fname.ends_with(".jar");
                             mods.push(ModFileInfo {
                                 icon: None,
@@ -200,8 +213,8 @@ impl InstanceManager {
         Ok(mods)
     }
 
-    pub fn toggle_mod(instance_id: &str, filename: &str) -> Result<ModFileInfo, String> {
-        let mods_dir = Self::get_mods_dir(instance_id)?;
+    pub fn toggle_content(instance_id: &str, filename: &str, kind: &str) -> Result<ModFileInfo, String> {
+        let mods_dir = Self::content_dir(instance_id, kind)?;
         let old_path = mods_dir.join(filename);
         if !old_path.exists() {
             return Err("El archivo del mod no existe".to_string());
@@ -225,8 +238,8 @@ impl InstanceManager {
         })
     }
 
-    pub fn delete_mod(instance_id: &str, filename: &str) -> Result<(), String> {
-        let mods_dir = Self::get_mods_dir(instance_id)?;
+    pub fn delete_content(instance_id: &str, filename: &str, kind: &str) -> Result<(), String> {
+        let mods_dir = Self::content_dir(instance_id, kind)?;
         let path = mods_dir.join(filename);
         if path.exists() {
             fs::remove_file(path).map_err(|e| e.to_string())?;

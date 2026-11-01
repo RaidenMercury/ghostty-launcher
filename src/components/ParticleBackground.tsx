@@ -149,11 +149,21 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
 
     window.addEventListener('ghostty-starlight-surge', handleStarlightSurge);
 
+    let lastFrameTime = 0;
+
     const render = () => {
       if (document.hidden) {
         animationFrameId = requestAnimationFrame(render);
         return;
       }
+
+      // ~30 fps: el efecto se mantiene y se reduce a la mitad el trabajo
+      const nowMs = performance.now();
+      if (nowMs - lastFrameTime < 32) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+      lastFrameTime = nowMs;
 
       if (!ambientEnabledRef.current && surgeStars.length === 0) {
         ctx.clearRect(0, 0, width, height);

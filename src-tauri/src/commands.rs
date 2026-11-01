@@ -81,18 +81,29 @@ pub fn update_instance(instance: Instance) -> Result<Vec<Instance>, String> {
 }
 
 #[tauri::command]
-pub fn get_instance_mods(instance_id: String) -> Result<Vec<ModFileInfo>, String> {
-    InstanceManager::list_mods(&instance_id)
+pub fn get_instance_mods(
+    instance_id: String,
+    kind: Option<String>,
+) -> Result<Vec<ModFileInfo>, String> {
+    InstanceManager::list_content(&instance_id, kind.as_deref().unwrap_or("mods"))
 }
 
 #[tauri::command]
-pub fn toggle_instance_mod(instance_id: String, filename: String) -> Result<ModFileInfo, String> {
-    InstanceManager::toggle_mod(&instance_id, &filename)
+pub fn toggle_instance_mod(
+    instance_id: String,
+    filename: String,
+    kind: Option<String>,
+) -> Result<ModFileInfo, String> {
+    InstanceManager::toggle_content(&instance_id, &filename, kind.as_deref().unwrap_or("mods"))
 }
 
 #[tauri::command]
-pub fn delete_instance_mod(instance_id: String, filename: String) -> Result<(), String> {
-    InstanceManager::delete_mod(&instance_id, &filename)
+pub fn delete_instance_mod(
+    instance_id: String,
+    filename: String,
+    kind: Option<String>,
+) -> Result<(), String> {
+    InstanceManager::delete_content(&instance_id, &filename, kind.as_deref().unwrap_or("mods"))
 }
 
 #[tauri::command]
@@ -428,8 +439,13 @@ pub async fn export_instance(instance_id: String, format: String) -> Result<Stri
 pub fn get_mod_icons(
     instance_id: String,
     filenames: Vec<String>,
+    kind: Option<String>,
 ) -> Result<Vec<(String, Option<String>)>, String> {
-    Ok(InstanceManager::mod_icons(&instance_id, &filenames))
+    Ok(InstanceManager::mod_icons(
+        &instance_id,
+        &filenames,
+        kind.as_deref().unwrap_or("mods"),
+    ))
 }
 
 #[tauri::command]

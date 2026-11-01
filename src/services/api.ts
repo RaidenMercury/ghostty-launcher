@@ -480,11 +480,13 @@ export const api = {
 
   async getModIcons(
     instanceId: string,
-    filenames: string[]
+    filenames: string[],
+    kind: string = 'mods'
   ): Promise<Array<[string, string | null]>> {
     return invokeTauri<Array<[string, string | null]>>('get_mod_icons', {
       instanceId,
       filenames,
+      kind,
     });
   },
 
@@ -516,9 +518,13 @@ export const api = {
     return invokeTauri<SystemJavaInfo>('download_java_runtime', { vendor, majorVersion });
   },
 
-  async deleteInstanceMod(instanceId: string, filename: string): Promise<void> {
+  async deleteInstanceMod(
+    instanceId: string,
+    filename: string,
+    kind: string = 'mods'
+  ): Promise<void> {
     if (isTauri) {
-      await invokeTauri<void>('delete_instance_mod', { instanceId, filename });
+      await invokeTauri<void>('delete_instance_mod', { instanceId, filename, kind });
       return;
     }
     const list = mockMods[instanceId] || [];
@@ -530,13 +536,21 @@ export const api = {
   },
 
 
-  async getInstanceMods(instanceId: string): Promise<ModFileInfo[]> {
-    return invokeTauri<ModFileInfo[]>('get_instance_mods', { instanceId });
+  async getInstanceMods(instanceId: string, kind: string = 'mods'): Promise<ModFileInfo[]> {
+    return invokeTauri<ModFileInfo[]>('get_instance_mods', { instanceId, kind });
   },
 
-  async toggleInstanceMod(instanceId: string, filename: string): Promise<ModFileInfo> {
+  async toggleInstanceMod(
+    instanceId: string,
+    filename: string,
+    kind: string = 'mods'
+  ): Promise<ModFileInfo> {
     if (isTauri) {
-      const updated = await invokeTauri<ModFileInfo>('toggle_instance_mod', { instanceId, filename });
+      const updated = await invokeTauri<ModFileInfo>('toggle_instance_mod', {
+        instanceId,
+        filename,
+        kind,
+      });
       if (updated && updated.filename) return updated;
       const mods = await this.getInstanceMods(instanceId);
       const cleanTarget = filename.replace(/(\.disabled)+$/, '');

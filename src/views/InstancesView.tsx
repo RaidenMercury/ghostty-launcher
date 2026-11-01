@@ -23,6 +23,7 @@ import {
 import { Instance } from '../types';
 import { triggerLaunchConfetti } from '../utils/confetti';
 import { InstanceIcon } from '../components/InstanceIcon';
+import { PreblurImage } from '../components/PreblurImage';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { AccordionSection } from '../components/AccordionSection';
 import { GhosttyMascot } from '../components/GhosttyMascot';
@@ -597,15 +598,11 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   currentHero.icon.startsWith('data:image') ||
                   currentHero.icon.startsWith('/')) ? (
                   <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div
-                      className="hero-ambient absolute bg-cover bg-center opacity-35 pointer-events-none"
-                      style={{
-                        backgroundImage: `url(${currentHero.icon})`,
-                        filter: 'blur(54px) saturate(160%)',
-                        inset: '-20%',
-                        transform: 'translateZ(0)',
-                        backfaceVisibility: 'hidden',
-                      }}
+                    <PreblurImage
+                      src={currentHero.icon}
+                      blur={12}
+                      className="hero-ambient absolute opacity-40 pointer-events-none"
+                      style={{ inset: '-20%' }}
                     />
                     <div
                       className="absolute inset-0 pointer-events-none"

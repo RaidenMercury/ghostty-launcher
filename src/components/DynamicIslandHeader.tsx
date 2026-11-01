@@ -78,7 +78,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
   const tabs = [
     { id: 'instances', label: 'Estancias', icon: Gamepad2, shortcut: '1' },
     { id: 'discover', label: 'Descubrir', icon: Compass, shortcut: '2' },
-    { id: 'mods', label: 'Mods', icon: Package, shortcut: '3' },
+    { id: 'mods', label: 'Contenido', icon: Package, shortcut: '3' },
     { id: 'settings', label: 'Ajustes', icon: Settings, shortcut: '4' },
   ] as const;
 

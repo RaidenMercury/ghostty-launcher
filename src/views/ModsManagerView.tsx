@@ -29,22 +29,29 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [kind, setKind] = useState<'mods' | 'resourcepacks' | 'shaderpacks'>('mods');
+
+  const kindMeta = {
+    mods: { label: 'Mods', plural: 'mods', hint: 'Gestor de mods .jar' },
+    resourcepacks: { label: 'Texturas', plural: 'resource packs', hint: 'Paquetes de texturas .zip' },
+    shaderpacks: { label: 'Shaders', plural: 'shaders', hint: 'Paquetes de shaders .zip' },
+  } as const;
 
   useEffect(() => {
     if (activeInstance) {
       loadMods();
     }
-  }, [activeInstance]);
+  }, [activeInstance, kind]);
 
   const loadMods = async () => {
     if (!activeInstance) return;
     try {
       setLoading(true);
-      const list = await api.getInstanceMods(activeInstance.id);
+      const list = await api.getInstanceMods(activeInstance.id, kind);
       setMods(list);
       void loadIcons(list.map((m) => m.filename));
     } catch (e: any) {
-      onShowToast('error', 'Error al cargar mods', e.toString());
+      onShowToast('error', 'Error al cargar contenido', e.toString());
     } finally {
       setLoading(false);
     }
@@ -58,7 +65,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
       if (token !== iconRequest.current) return;
       const chunk = filenames.slice(i, i + 8);
       try {
-        const pairs = await api.getModIcons(activeInstance.id, chunk);
+        const pairs = await api.getModIcons(activeInstance.id, chunk, kind);
         if (token !== iconRequest.current) return;
         setMods((prev) =>
           prev.map((mod) => {
@@ -76,7 +83,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   const handleToggle = async (mod: ModFileInfo) => {
     if (!activeInstance) return;
     try {
-      const updated = await api.toggleInstanceMod(activeInstance.id, mod.filename);
+      const updated = await api.toggleInstanceMod(activeInstance.id, mod.filename, kind);
       setMods((prev) =>
         prev.map((m) =>
           m.filename.replace(/(\.disabled)+$/, '') === mod.filename.replace(/(\.disabled)+$/, '')
@@ -93,7 +100,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   const handleDelete = async (filename: string) => {
     if (!activeInstance) return;
     try {
-      await api.deleteInstanceMod(activeInstance.id, filename);
+      await api.deleteInstanceMod(activeInstance.id, filename, kind);
       const cleanTarget = filename.replace(/(\.disabled)+$/, '');
       setMods((prev) =>
         prev.filter((m) => m.filename.replace(/(\.disabled)+$/, '') !== cleanTarget)
@@ -159,7 +166,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-ghost-400 font-mono">
-                Gestor de paquetes .jar en aislamiento
+                {kindMeta[kind].hint}
               </p>
             </div>
           </div>
@@ -182,13 +189,31 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
           </div>
         </div>
 
+        <div className="flex items-center gap-1 p-0.5 rounded-full glass-control text-[11px] font-mono w-fit">
+          {(['mods', 'resourcepacks', 'shaderpacks'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                setKind(k);
+                setSearch('');
+              }}
+              className={`px-3 py-1 rounded-full transition-colors ${
+                kind === k ? 'accent-bg text-white font-semibold' : 'text-ghost-300 hover:text-ghost-50'
+              }`}
+            >
+              {kindMeta[k].label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
             <div className="relative w-full sm:w-64">
               <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-ghost-400" />
               <input
                 type="text"
-                placeholder="Filtrar archivos .jar..."
+                placeholder={`Filtrar ${kindMeta[kind].plural}...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 glass-control text-xs placeholder:text-ghost-400"
