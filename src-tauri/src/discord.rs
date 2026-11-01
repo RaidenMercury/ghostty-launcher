@@ -278,11 +278,7 @@ impl DiscordRpcManager {
                 "activity": {
                     "details": details,
                     "state": state,
-                    "timestamps": { "start": *START_TIMESTAMP },
-                    "assets": {
-                        "large_image": "minecraft_logo",
-                        "large_text": "GhosttyLauncher"
-                    }
+                    "timestamps": { "start": *START_TIMESTAMP }
                 }
             },
             "nonce": nonce

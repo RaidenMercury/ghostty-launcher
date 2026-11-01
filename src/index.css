@@ -288,3 +288,22 @@ html[data-theme='light'] .border-white\/20 {
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Overlays WebKitGTK-safe ---------------------------------------------
+   Regla del bug 327524: nada que aparezca/desaparezca debe animar opacity ni
+   filter sobre una capa compuesta. Reutilizar estas clases en cada overlay
+   evita repetir el fix ventana por ventana. */
+.glass-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(6, 7, 14, 0.62);
+  isolation: isolate;
+}
+
+.glass-modal {
+  isolation: isolate;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  border-radius: 20px;
+}

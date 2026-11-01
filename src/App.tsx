@@ -361,6 +361,15 @@ export function App() {
     }
   };
 
+  const assignGroupFor = async (target: Instance, group: string | null) => {
+    try {
+      await persistInstance({ ...target, group });
+      addToast('success', 'Grupo actualizado', group || 'Sin grupo');
+    } catch (e: any) {
+      addToast('error', 'No se pudo actualizar', String(e));
+    }
+  };
+
   const handleDeleteActive = () => {
     if (!activeInstance) return;
     if (!window.confirm(`¿Eliminar la instancia "${activeInstance.name}"?`)) return;
@@ -449,11 +458,14 @@ export function App() {
     id: string,
     format: 'mrpack' | 'prism' | 'curseforge'
   ) => {
+    startDownloadActivity('Exportando pack...');
     try {
       const path = await api.exportInstance(id, format);
       addToast('success', 'Instancia exportada', path);
     } catch (e: any) {
       addToast('error', 'Error al exportar', String(e));
+    } finally {
+      endDownloadActivity();
     }
   };
 
@@ -748,7 +760,6 @@ export function App() {
         className="flex-1 flex overflow-hidden relative z-10"
         style={{
           filter: isDraggingPack || isGroupPickerOpen ? 'blur(10px)' : undefined,
-          transition: 'filter 160ms ease',
         }}
       >
         <div
@@ -773,6 +784,7 @@ export function App() {
             onDeleteInstance={handleDeleteInstance}
             onExportInstance={handleExportInstance}
             onToggleFavorite={toggleFavoriteFor}
+            onAssignGroup={assignGroupFor}
             isLaunching={isLaunching}
             launchBurstEnabled={themeSettings.launchBurstEnabled}
             ambientArtworkEnabled={themeSettings.ambientArtworkEnabled}
@@ -840,8 +852,8 @@ export function App() {
       </main>
 
       {isDraggingPack && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70">
-          <div className="glass-panel-strong rounded-card px-10 py-8 text-center max-w-sm mx-6">
+        <div className="glass-overlay flex items-center justify-center">
+          <div className="glass-modal glass-panel-strong px-10 py-8 text-center max-w-sm mx-6">
             <div className="w-14 h-14 mx-auto rounded-full accent-pill-tint flex items-center justify-center mb-3">
               <PackageOpen className="w-7 h-7 accent-text" />
             </div>
@@ -858,11 +870,11 @@ export function App() {
 
       {isGroupPickerOpen && (
         <div
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60"
+          className="glass-overlay flex items-center justify-center"
           onClick={() => setIsGroupPickerOpen(false)}
         >
           <div
-            className="glass-panel-strong rounded-card w-[380px] max-w-[92vw] p-5"
+            className="glass-modal glass-panel-strong w-[380px] max-w-[92vw] p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="heading-display text-lg font-bold text-ghost-50">Mover a grupo</h3>

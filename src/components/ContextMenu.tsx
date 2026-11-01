@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
   Square,
@@ -103,7 +102,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   };
 
   return (
-    <AnimatePresence>
+    <>
       {menu.isOpen && (
         <div
           className="fixed inset-0 z-[100]"
@@ -113,11 +112,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             onClose();
           }}
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.93, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -2 }}
-            transition={{ duration: 0.13, ease: [0.23, 1, 0.32, 1] }}
+          <div
             style={{
               left: safeX,
               top: safeY,
@@ -125,7 +120,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               transformOrigin: 'top left',
             }}
             onClick={(e) => e.stopPropagation()}
-            className="fixed sequoia-context-menu p-1.5 select-none text-xs"
+            className="fixed sequoia-context-menu p-1.5 select-none text-xs glass-modal"
           >
             
             <div className="px-2.5 py-1 text-[10px] font-mono text-ghost-400 flex items-center justify-between truncate">
@@ -331,9 +326,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               </span>
               <span className="text-[10px] font-mono opacity-60">⌥4</span>
             </button>
-          </motion.div>
+          </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };

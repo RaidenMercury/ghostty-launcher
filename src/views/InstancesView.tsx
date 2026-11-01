@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
@@ -36,6 +36,7 @@ interface InstancesViewProps {
   onOpenSettings: (instance: Instance) => void;
   onOpenFolder?: (id: string) => void;
   onExportInstance?: (id: string, format: 'mrpack' | 'prism' | 'curseforge') => void;
+  onAssignGroup?: (instance: Instance, group: string | null) => void;
   onToggleFavorite?: (instance: Instance) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
@@ -61,6 +62,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onOpenFolder,
   onExportInstance,
   onToggleFavorite,
+  onAssignGroup,
   onLaunch,
   onDeleteInstance,
   isLaunching,
@@ -86,7 +88,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
 
-  const [instanceGroups, setInstanceGroups] = useState<Record<string, string>>(() => {
+  const [instanceGroups] = useState<Record<string, string>>(() => {
     try {
       const saved = localStorage.getItem('ghostty_instance_groups');
       return saved ? JSON.parse(saved) : {};
@@ -104,8 +106,13 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     }
   });
 
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [dragDy, setDragDy] = useState(0);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
+  const dragStartY = useRef(0);
+  const suppressClick = useRef(false);
 
   const sortedInstances = useMemo(() => {
     const list = [...instances];
@@ -157,50 +164,59 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
+  const moveInstance = (fromId: string, toId: string) => {
+    const order = sortedInstances.map((i) => i.id);
+    const from = order.indexOf(fromId);
+    const to = order.indexOf(toId);
+    if (from === -1 || to === -1) return;
+    order.splice(from, 1);
+    order.splice(to, 0, fromId);
+    setOrderedIds(order);
+    localStorage.setItem('ghostty_instances_order', JSON.stringify(order));
   };
 
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverId !== id) {
-      setDragOverId(id);
-    }
+  const handlePointerDown = (e: React.PointerEvent, id: string) => {
+    if (e.button !== 0) return;
+    dragStartY.current = e.clientY;
+    setDragId(id);
+    setDragActive(false);
+    setDragDy(0);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragId) return;
+    const dy = e.clientY - dragStartY.current;
+    if (!dragActive && Math.abs(dy) < 8) return;
+
+    setDragActive(true);
+    setDragDy(dy);
+    suppressClick.current = true;
+
+    const under = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const card = under?.closest('[data-instance-id]');
+    const group = under?.closest('[data-group-tab]');
+    setDragOverId(card?.getAttribute('data-instance-id') || null);
+    setDragOverGroup(group?.getAttribute('data-group-tab') || null);
+  };
+
+  const handlePointerUp = () => {
+    if (dragActive && dragId) {
+      const inst = instances.find((i) => i.id === dragId);
+      if (dragOverGroup && inst) {
+        onAssignGroup?.(inst, dragOverGroup);
+      } else if (dragOverId && dragOverId !== dragId) {
+        moveInstance(dragId, dragOverId);
+      }
     }
-    const currentOrder = sortedInstances.map((i) => i.id);
-    const fromIdx = currentOrder.indexOf(draggedId);
-    const toIdx = currentOrder.indexOf(targetId);
-    if (fromIdx !== -1 && toIdx !== -1) {
-      currentOrder.splice(fromIdx, 1);
-      currentOrder.splice(toIdx, 0, draggedId);
-      setOrderedIds(currentOrder);
-      localStorage.setItem('ghostty_instances_order', JSON.stringify(currentOrder));
-    }
-    setDraggedId(null);
+    setDragId(null);
+    setDragActive(false);
+    setDragDy(0);
     setDragOverId(null);
-  };
-
-  const handleDropOnGroup = (e: React.DragEvent, targetGroup: string) => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData('text/plain') || draggedId;
-    if (id && targetGroup !== 'Todos') {
-      const nextGroups = { ...instanceGroups, [id]: targetGroup };
-      setInstanceGroups(nextGroups);
-      localStorage.setItem('ghostty_instance_groups', JSON.stringify(nextGroups));
-    }
-    setDraggedId(null);
-    setDragOverId(null);
+    setDragOverGroup(null);
+    window.setTimeout(() => {
+      suppressClick.current = false;
+    }, 0);
   };
 
   const handleLaunchClick = (e: React.MouseEvent, inst: Instance) => {
@@ -332,20 +348,21 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             const active = activeGroup === g;
             const count = sortedInstances.filter((inst) => {
               if (g === 'Todos') return true;
+              if (g === 'Favoritos') return Boolean(inst.favorite);
               const assigned =
-                instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+                inst.group ||
+                instanceGroups[inst.id] ||
+                (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
               return assigned.toLowerCase() === g.toLowerCase();
             }).length;
 
             return (
               <div
                 key={g}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'copy';
-                }}
-                onDrop={(e) => handleDropOnGroup(e, g)}
-                className="relative group/tab shrink-0"
+                data-group-tab={g}
+                className={`relative group/tab shrink-0 rounded-full ${
+                  dragOverGroup === g ? 'ring-2 ring-[var(--accent)]' : ''
+                }`}
               >
                 <button
                   type="button"
@@ -439,26 +456,37 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           ) : (
             filteredInstances.map((inst) => {
               const isSelected = currentHero?.id === inst.id;
-              const isDragOver = dragOverId === inst.id && draggedId !== inst.id;
+              const isDragOver = dragOverId === inst.id && dragId !== inst.id;
+              const isDragged = dragId === inst.id && dragActive;
               const isFavorite = Boolean(inst.favorite);
 
               return (
                 <div
                   key={inst.id}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, inst.id)}
-                  onDragOver={(e) => handleDragOver(e, inst.id)}
-                  onDrop={(e) => handleDrop(e, inst.id)}
-                  onDragEnd={() => {
-                    setDraggedId(null);
-                    setDragOverId(null);
-                  }}
-                  className={`transition-all ${
+                  data-instance-id={inst.id}
+                  onPointerDown={(e) => handlePointerDown(e, inst.id)}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerUp}
+                  style={
+                    isDragged
+                      ? {
+                          transform: `translateY(${dragDy}px)`,
+                          zIndex: 40,
+                          position: 'relative',
+                          pointerEvents: 'none',
+                        }
+                      : undefined
+                  }
+                  className={`transition-shadow ${
                     isDragOver ? 'border-t-2 border-[var(--accent)] pt-1' : ''
-                  }`}
+                  } ${isDragged ? 'shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]' : ''}`}
                 >
                   <SpotlightCard
-                    onClick={() => onSelectInstance(inst)}
+                    onClick={() => {
+                      if (suppressClick.current) return;
+                      onSelectInstance(inst);
+                    }}
                     isSelected={isSelected}
                     className="glass-card p-3.5 cursor-pointer group relative"
                   >

@@ -161,7 +161,6 @@ export function AccountModal({
   const [skinModel, setSkinModel] = useState<'classic' | 'slim'>(
     activeAccount?.skin_model || 'classic'
   );
-  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
   const [capes, setCapes] = useState<Cape[]>([]);
   const [loadingCapes, setLoadingCapes] = useState(false);
   const [savingCape, setSavingCape] = useState(false);
@@ -693,26 +692,6 @@ export function AccountModal({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10px] font-mono">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('3d')}
-                      className={`px-2 py-0.5 rounded-full transition-colors ${
-                        viewMode === '3d' ? 'accent-bg text-white' : 'glass-control text-ghost-400'
-                      }`}
-                    >
-                      Cuerpo 3D
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('2d')}
-                      className={`px-2 py-0.5 rounded-full transition-colors ${
-                        viewMode === '2d' ? 'accent-bg text-white' : 'glass-control text-ghost-400'
-                      }`}
-                    >
-                      Textura
-                    </button>
-                  </div>
                 </div>
 
                 {activeAccount && (
@@ -726,18 +705,7 @@ export function AccountModal({
                         }}
                       />
 
-                      {viewMode === '2d' ? (
-                        <img
-                          src={
-                            isCustomDataSkin && activeAccount.skin_url
-                              ? activeAccount.skin_url
-                              : `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`
-                          }
-                          alt="Textura Skin 64x64"
-                          className="w-28 h-28 object-contain border border-[var(--glass-border)] rounded-lg p-1"
-                          style={{ imageRendering: 'pixelated' }}
-                        />
-                      ) : isCustomDataSkin && activeAccount.skin_url ? (
+                      {isCustomDataSkin && activeAccount.skin_url ? (
                         <CustomSkinCanvasPreview
                           skinDataUri={activeAccount.skin_url}
                           slim={skinModel === 'slim'}
@@ -785,7 +753,7 @@ export function AccountModal({
                                 : 'glass-control text-ghost-300'
                             }`}
                           >
-                            Slim / Alex (3px)
+                            Slim (3px)
                           </button>
                         </div>
                       </div>
@@ -876,15 +844,19 @@ export function AccountModal({
                     ) : capes.length === 0 ? (
                       <p className="text-[11px] text-ghost-400">Esta cuenta no tiene capas.</p>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {capes.map((cape) => (
+                      <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                        {capes
+                          .filter(
+                            (cape) => !(cape.alias || '').toLowerCase().includes('elytra')
+                          )
+                          .map((cape) => (
                           <button
                             key={cape.id}
                             type="button"
                             disabled={savingCape}
                             onClick={() => handleSetCape(cape.id)}
                             title={cape.alias || 'Capa'}
-                            className={`btn-tactile relative rounded-control border px-2 py-1.5 flex flex-col items-center gap-1 disabled:opacity-50 ${
+                            className={`btn-tactile relative rounded-control border px-2 py-2 flex flex-col items-center gap-1.5 disabled:opacity-50 ${
                               cape.active
                                 ? 'accent-pill-tint border-[var(--accent)]'
                                 : 'glass-control border-white/10 text-ghost-300'
@@ -893,7 +865,7 @@ export function AccountModal({
                             <img
                               src={cape.url.replace(/^http:/, 'https:')}
                               alt={cape.alias || 'Capa'}
-                              className="h-12 w-auto object-contain"
+                              className="h-20 w-full object-contain"
                             />
                             <span className="text-[9px] font-mono">
                               {cape.active ? 'Activa' : cape.alias || 'Capa'}
