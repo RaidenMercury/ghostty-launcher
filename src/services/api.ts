@@ -478,6 +478,10 @@ export const api = {
     return invokeTauri<string>('export_instance', { instanceId, format });
   },
 
+  async getAccountSkin(accountId: string): Promise<string | null> {
+    return invokeTauri<string | null>('get_account_skin', { accountId });
+  },
+
   async getAccountCapes(accountId: string): Promise<Cape[]> {
     return invokeTauri<Cape[]>('get_account_capes', { accountId });
   },

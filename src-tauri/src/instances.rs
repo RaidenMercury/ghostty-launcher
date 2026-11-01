@@ -196,7 +196,7 @@ fn mod_icon(path: &Path) -> Option<String> {
 
     let (_, name) = best?;
     let mut entry = archive.by_name(&name).ok()?;
-    if entry.size() > 256 * 1024 {
+    if entry.size() > 48 * 1024 {
         return None;
     }
     let mut bytes = Vec::with_capacity(entry.size() as usize);

@@ -200,6 +200,11 @@ pub async fn login_microsoft_account(identifier: String) -> Result<Vec<Account>,
 }
 
 #[tauri::command]
+pub async fn get_account_skin(account_id: String) -> Result<Option<String>, String> {
+    crate::capes::skin_url(&account_id).await
+}
+
+#[tauri::command]
 pub async fn get_account_capes(account_id: String) -> Result<Vec<Cape>, String> {
     crate::capes::list(&account_id).await
 }

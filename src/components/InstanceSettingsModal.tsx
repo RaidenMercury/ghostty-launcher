@@ -173,10 +173,13 @@ export function InstanceSettingsModal({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="heading-display text-2xl font-extrabold text-ghost-50 truncate">
+                      <h2
+                        className="heading-display text-2xl font-extrabold text-ghost-50 truncate"
+                        title={instance.name}
+                      >
                         {instance.name}
                       </h2>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full accent-pill-tint border uppercase tabular-nums">
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full accent-pill-tint border uppercase tabular-nums whitespace-nowrap shrink-0">
                         {instance.loader} {instance.mc_version}
                       </span>
                     </div>

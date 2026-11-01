@@ -24,6 +24,19 @@ pub async fn list(account_id: &str) -> Result<Vec<Cape>, String> {
     Ok(parse_capes(&profile))
 }
 
+/// URL de la skin activa del perfil (Microsoft). Permite al visor 3D mostrar la
+/// skin real de la cuenta en vez de un render por nick.
+pub async fn skin_url(account_id: &str) -> Result<Option<String>, String> {
+    let profile = fetch_profile(account_id).await?;
+    Ok(profile
+        .get("skins")
+        .and_then(|v| v.as_array())
+        .and_then(|skins| skins.first())
+        .and_then(|skin| skin.get("url"))
+        .and_then(|url| url.as_str())
+        .map(str::to_string))
+}
+
 pub async fn set(account_id: &str, cape_id: Option<String>) -> Result<Vec<Cape>, String> {
     let client = http_client()?;
     let mut token = crate::accounts::AccountManager::ensure_access_token(account_id).await?;

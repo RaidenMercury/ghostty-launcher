@@ -112,6 +112,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
   const dragStartY = useRef(0);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
   const suppressClick = useRef(false);
 
   const sortedInstances = useMemo(() => {
@@ -181,7 +182,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     setDragId(id);
     setDragActive(false);
     setDragDy(0);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -192,6 +192,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     setDragActive(true);
     setDragDy(dy);
     suppressClick.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 
     const under = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const card = under?.closest('[data-instance-id]');
@@ -266,24 +267,14 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
           <button
             onClick={() => setShowImportBar((v) => !v)}
-            className={`btn-tactile p-2 glass-control text-xs font-medium flex items-center gap-1.5 ${
-              showImportBar ? 'accent-border accent-text' : 'text-ghost-200'
+            className={`btn-tactile p-2 rounded-control accent-bg text-white text-xs font-medium flex items-center gap-1.5 ${
+              showImportBar ? 'ring-2 ring-white/40' : ''
             }`}
             title="Importar archivo Modpack (.mrpack o .zip)"
           >
             <Upload className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() =>
-              activeInstance && onExportInstance?.(activeInstance.id, 'mrpack')
-            }
-            disabled={!activeInstance || !onExportInstance}
-            className="btn-tactile p-2 rounded-control accent-bg text-white font-bold shadow-md disabled:opacity-40"
-            title="Exportar instancia activa (.mrpack)"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
         </div>
 
         {showImportBar && (
@@ -334,7 +325,14 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             </form>
         )}
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono">
+        <div
+          ref={tabsRef}
+          onWheel={(e) => {
+            if (tabsRef.current) tabsRef.current.scrollLeft += e.deltaY;
+          }}
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono overscroll-x-contain"
+          style={{ scrollbarWidth: 'thin' }}
+        >
           {customGroups.map((g) => {
             const active = activeGroup === g;
             const count = sortedInstances.filter((inst) => {

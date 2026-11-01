@@ -166,6 +166,7 @@ export function AccountModal({
   const [loadingCapes, setLoadingCapes] = useState(false);
   const [savingCape, setSavingCape] = useState(false);
   const [capeError, setCapeError] = useState<string | null>(null);
+  const [accountSkinUrl, setAccountSkinUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeAccount) {
@@ -200,6 +201,25 @@ export function AccountModal({
       })
       .finally(() => {
         if (!cancelled) setLoadingCapes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAccount?.id, activeAccount?.account_type]);
+
+  useEffect(() => {
+    if (!activeAccount || activeAccount.account_type !== 'Microsoft') {
+      setAccountSkinUrl(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getAccountSkin(activeAccount.id)
+      .then((url) => {
+        if (!cancelled) setAccountSkinUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setAccountSkinUrl(null);
       });
     return () => {
       cancelled = true;
@@ -347,7 +367,7 @@ export function AccountModal({
   const viewerSkinUrl =
     isCustomDataSkin && activeAccount?.skin_url
       ? activeAccount.skin_url
-      : `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`;
+      : accountSkinUrl ?? `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`;
   const activeCapeUrl = capes.find((c) => c.active)?.url.replace(/^http:/, 'https:') ?? null;
 
   return (
@@ -720,9 +740,6 @@ export function AccountModal({
                         height={210}
                       />
 
-                      <span className="text-[10px] font-mono text-ghost-400 mt-1.5 relative z-10">
-                        {skinModel === 'slim' ? 'Modelo Alex (Slim 3px)' : 'Modelo Steve (Clásico 4px)'}
-                      </span>
                     </div>
 
                     <div className="sm:col-span-7 space-y-3">
@@ -860,10 +877,16 @@ export function AccountModal({
                                 : 'glass-control border-white/10 text-ghost-300'
                             }`}
                           >
-                            <img
-                              src={cape.url.replace(/^http:/, 'https:')}
-                              alt={cape.alias || 'Capa'}
-                              className="h-20 w-full object-contain"
+                            <div
+                              role="img"
+                              aria-label={cape.alias || 'Capa'}
+                              className="h-20 w-full rounded-[6px]"
+                              style={{
+                                backgroundImage: `url(${cape.url.replace(/^http:/, 'https:')})`,
+                                backgroundSize: '290% 190%',
+                                backgroundPosition: '0 0',
+                                imageRendering: 'pixelated',
+                              }}
                             />
                             <span className="text-[9px] font-mono">
                               {cape.active ? 'Activa' : cape.alias || 'Capa'}

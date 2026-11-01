@@ -89,6 +89,7 @@ pub fn run() {
             login_elyby_account,
             login_microsoft_account,
             set_active_account,
+            get_account_skin,
             get_account_capes,
             set_account_cape,
             update_account_skin,
