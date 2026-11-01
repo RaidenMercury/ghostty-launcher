@@ -469,7 +469,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(index * 0.01, 0.4), duration: 0.16 }}
-                    className="py-2.5 px-3.5 flex items-center justify-between gap-4 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control"
+                    className="row-deferred py-2.5 px-3.5 flex items-center justify-between gap-4 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control"
                   >
                     <div
                       onClick={() => openHitModal(hit, 'details')}

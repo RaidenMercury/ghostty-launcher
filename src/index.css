@@ -307,3 +307,10 @@ html[data-theme='light'] .border-white\/20 {
   transform: translateZ(0);
   border-radius: 20px;
 }
+
+/* Filas largas: WebKit deja de pintar y de asignar backing store a lo que no
+   se ve. Mantiene el scroll y baja VRAM/lag en listas de 50-300 elementos. */
+.row-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 58px;
+}

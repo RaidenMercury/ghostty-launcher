@@ -266,7 +266,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.008, 0.45), duration: 0.16 }}
-                  className="flex items-center justify-between py-2.5 px-3 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control group"
+                  className="row-deferred flex items-center justify-between py-2.5 px-3 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control group"
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-4">
                     <button
