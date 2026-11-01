@@ -18,7 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Account, Cape } from '../types';
-import { getAccountAvatarUrl } from './DynamicIslandHeader';
+import { PlayerHead } from './PlayerHead';
 import { api } from '../services/api';
 import { SkinViewer3D } from './SkinViewer3D';
 
@@ -433,19 +433,8 @@ export function AccountModal({
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-control overflow-hidden glass-control p-0.5 shrink-0">
-                              <img
-                                src={getAccountAvatarUrl(acc, 36)}
-                                alt={acc.username}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full object-cover rounded-[7px]"
-                                style={{ imageRendering: 'pixelated' }}
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    'https://mc-heads.net/avatar/MHF_Steve/36';
-                                }}
-                              />
+                            <div className="w-8 h-8 rounded-control overflow-hidden glass-control p-0.5 shrink-0 flex items-center justify-center">
+                              <PlayerHead account={acc} size={36} className="rounded-[7px]" />
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">

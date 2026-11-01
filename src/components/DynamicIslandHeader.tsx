@@ -46,24 +46,8 @@ function formatElapsed(secs: number = 0): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function getAccountAvatarUrl(account: Account | null, size = 28): string {
-  if (!account) return '';
-  if (account.skin_url) {
-    if (account.skin_url.startsWith('mc-user:')) {
-      const nick = account.skin_url.replace('mc-user:', '').trim();
-      return `https://mc-heads.net/avatar/${encodeURIComponent(nick)}/${size}`;
-    }
-    if (account.skin_url.startsWith('http') || account.skin_url.startsWith('data:')) {
-      return account.skin_url;
-    }
-  }
-  // La skin completa no sirve como avatar (y a veces llega por http): se usa
-  // la cabeza renderizada por nick, que siempre responde si la cuenta existe.
-  if (account.account_type === 'Microsoft' || account.skin_url) {
-    return `https://mc-heads.net/avatar/${encodeURIComponent(account.username)}/${size}`;
-  }
-  return `https://mc-heads.net/avatar/${encodeURIComponent(account.username)}/${size}`;
-}
+import { PlayerHead, getAccountAvatarUrl } from './PlayerHead';
+export { getAccountAvatarUrl };
 
 export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
   currentTab,
@@ -273,19 +257,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
             {activeAccount ? activeAccount.username : 'Sin Cuenta'}
           </span>
           <div className="absolute right-0 top-0 h-full w-10 overflow-hidden bg-black/25 flex items-center justify-center shrink-0">
-            {activeAccount ? (
-              <img
-                src={getAccountAvatarUrl(activeAccount, 40)}
-                alt={activeAccount.username}
-                className="w-full h-full object-cover"
-                style={{ imageRendering: 'pixelated' }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://mc-heads.net/avatar/MHF_Steve/40`;
-                }}
-              />
-            ) : (
-              <span className="text-[10px] font-bold font-mono">?</span>
-            )}
+            <PlayerHead account={activeAccount} size={40} />
           </div>
         </button>
       </div>
