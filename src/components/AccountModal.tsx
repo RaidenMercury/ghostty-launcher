@@ -181,6 +181,7 @@ export function AccountModal({
   }, [activeAccount]);
 
   useEffect(() => {
+    if (!isOpen) return;
     if (!activeAccount || activeAccount.account_type !== 'Microsoft') {
       setCapes([]);
       setCapeError(null);
@@ -206,9 +207,10 @@ export function AccountModal({
     return () => {
       cancelled = true;
     };
-  }, [activeAccount?.id, activeAccount?.account_type]);
+  }, [isOpen, activeAccount?.id, activeAccount?.account_type]);
 
   useEffect(() => {
+    if (!isOpen) return;
     setAccountSkinUrl(null);
     if (!activeAccount || activeAccount.account_type !== 'Microsoft') {
       return;
@@ -225,7 +227,7 @@ export function AccountModal({
     return () => {
       cancelled = true;
     };
-  }, [activeAccount?.id, activeAccount?.account_type]);
+  }, [isOpen, activeAccount?.id, activeAccount?.account_type]);
 
   const handleSetCape = async (capeId: string | null) => {
     if (!activeAccount || savingCape) return;
@@ -478,12 +480,12 @@ export function AccountModal({
                   </div>
                 </div>
 
-                <div className="mt-3.5 pt-3 border-t glass-divider space-y-2.5">
+                <div className="mt-3.5 pt-3 border-t glass-divider space-y-2.5 shrink-0">
                   <div className="grid grid-cols-3 gap-1 p-1 rounded-control glass-control text-[10px] font-mono">
                     <button
                       type="button"
                       onClick={() => setAuthTab('microsoft')}
-                      className={`py-1 rounded-[8px] font-semibold ${
+                      className={`py-1 rounded-[8px] font-semibold transition-all ${
                         authTab === 'microsoft'
                           ? 'accent-bg text-white'
                           : 'text-ghost-300 hover:text-ghost-50'
@@ -494,7 +496,7 @@ export function AccountModal({
                     <button
                       type="button"
                       onClick={() => setAuthTab('elyby')}
-                      className={`py-1 rounded-[8px] font-semibold ${
+                      className={`py-1 rounded-[8px] font-semibold transition-all ${
                         authTab === 'elyby'
                           ? 'accent-bg text-white'
                           : 'text-ghost-300 hover:text-ghost-50'
@@ -505,7 +507,7 @@ export function AccountModal({
                     <button
                       type="button"
                       onClick={() => setAuthTab('offline')}
-                      className={`py-1 rounded-[8px] font-semibold ${
+                      className={`py-1 rounded-[8px] font-semibold transition-all ${
                         authTab === 'offline'
                           ? 'accent-bg text-white'
                           : 'text-ghost-300 hover:text-ghost-50'
@@ -515,188 +517,197 @@ export function AccountModal({
                     </button>
                   </div>
 
-                  {authTab === 'microsoft' && (
-                    <div className="space-y-2">
-                      {deviceCodeData ? (
-                        <div className="p-2.5 rounded-control glass-card space-y-2 border border-[var(--accent)]/40">
-                          <div className="flex items-center justify-between text-[10px] font-mono text-ghost-300">
-                            <span>Ingresa este código en Microsoft:</span>
-                            <button
-                              type="button"
-                              onClick={() => api.openExternalUrl(deviceCodeData.verification_uri)}
-                              className="accent-text hover:underline flex items-center gap-1"
-                            >
-                              <span>Abrir enlace</span>
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
+                  <div className="h-[142px] flex flex-col justify-between">
+                    {authTab === 'microsoft' && (
+                      <div className="h-full flex flex-col justify-between">
+                        {deviceCodeData ? (
+                          <div className="h-full flex flex-col justify-between space-y-1.5 p-2 rounded-control bg-black/35 border border-[var(--glass-border)]">
+                            <div className="flex items-center justify-between text-[10px] font-mono text-ghost-300 shrink-0">
+                              <span>Código en Microsoft:</span>
+                              <button
+                                type="button"
+                                onClick={() => api.openExternalUrl(deviceCodeData.verification_uri)}
+                                className="accent-text hover:underline flex items-center gap-1"
+                              >
+                                <span>Abrir enlace</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
 
-                          <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-control bg-black/35 border border-[var(--glass-border)]">
-                            <span className="font-mono text-base font-extrabold tracking-widest accent-text select-all">
-                              {deviceCodeData.user_code}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleCopyDeviceCode}
-                              className="btn-tactile px-2 py-1 rounded glass-control text-[10px] font-mono flex items-center gap-1"
-                            >
-                              <Copy className="w-3 h-3" />
-                              <span>{copiedCode ? 'Copiado' : 'Copiar'}</span>
-                            </button>
-                          </div>
+                            <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-control bg-black/40 border border-white/10">
+                              <span className="font-mono text-sm font-extrabold tracking-widest accent-text select-all">
+                                {deviceCodeData.user_code}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleCopyDeviceCode}
+                                className="btn-tactile px-2 py-0.5 rounded glass-control text-[10px] font-mono flex items-center gap-1"
+                              >
+                                <Copy className="w-3 h-3" />
+                                <span>{copiedCode ? 'Copiado' : 'Copiar'}</span>
+                              </button>
+                            </div>
 
-                          <div className="flex items-center justify-between text-[10px] font-mono text-ghost-400">
-                            <span className="flex items-center gap-1.5 text-spectral-mint">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Esperando autorización en el navegador...
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDeviceCodeData(null);
-                                setIsWaitingDeviceAuth(false);
-                              }}
-                              className="text-ghost-400 hover:text-spectral-rose"
-                            >
-                              Cancelar
-                            </button>
+                            <div className="flex items-center justify-between text-[10px] font-mono text-ghost-400 shrink-0">
+                              <span className="flex items-center gap-1.5 text-spectral-mint truncate">
+                                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                <span className="truncate">Esperando autorización...</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeviceCodeData(null);
+                                  setIsWaitingDeviceAuth(false);
+                                }}
+                                className="text-ghost-400 hover:text-spectral-rose shrink-0 ml-2"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <>
+                        ) : (
+                          <div className="h-full flex flex-col justify-between">
+                            <div className="space-y-1.5">
+                              <button
+                                type="button"
+                                disabled={isAdding || isWaitingDeviceAuth}
+                                onClick={handleStartDeviceOAuth}
+                                className="btn-tactile w-full py-2.5 rounded-control accent-bg text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                              >
+                                <Globe className="w-3.5 h-3.5" />
+                                <span>
+                                  {isAdding
+                                    ? 'Solicitando código OAuth...'
+                                    : 'Iniciar Sesión Microsoft (Device Code)'}
+                                </span>
+                              </button>
+                              {oauthError && (
+                                <p className="text-[10px] font-mono text-spectral-rose leading-tight">
+                                  {oauthError}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => setShowManualMsa((v) => !v)}
+                                className="text-[10px] font-mono text-ghost-400 hover:text-ghost-200 underline block"
+                              >
+                                {showManualMsa
+                                  ? 'Ocultar vinculación manual'
+                                  : '¿Vincular por Gamertag o Token directo?'}
+                              </button>
+
+                              {showManualMsa && (
+                                <form onSubmit={handleMicrosoftSubmit} className="flex gap-1.5 pt-1.5">
+                                  <input
+                                    type="text"
+                                    placeholder="Gamertag o Token MSA..."
+                                    value={msaIdentifier}
+                                    onChange={(e) => setMsaIdentifier(e.target.value)}
+                                    className="flex-1 px-2.5 py-1 glass-control text-xs font-mono"
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={isAdding || !msaIdentifier.trim()}
+                                    className="btn-tactile px-3 py-1 rounded-control glass-control text-xs font-semibold"
+                                  >
+                                    Vincular
+                                  </button>
+                                </form>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {authTab === 'elyby' && (
+                      <form onSubmit={handleElyBySubmit} className="h-full flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-ghost-300">
+                            Autenticación Yggdrasil Ely.by
+                          </span>
                           <button
                             type="button"
-                            disabled={isAdding || isWaitingDeviceAuth}
-                            onClick={handleStartDeviceOAuth}
-                            className="btn-tactile w-full py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            onClick={() => api.openExternalUrl('https://account.ely.by/login')}
+                            className="text-[10px] font-mono accent-text hover:underline flex items-center gap-1"
                           >
-                            <Globe className="w-3.5 h-3.5" />
-                            <span>
-                              {isAdding
-                                ? 'Solicitando código OAuth...'
-                                : 'Iniciar Sesión Microsoft (Device Code)'}
-                            </span>
+                            <span>ely.by</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
                           </button>
-
-                          {oauthError && (
-                            <p className="text-[10px] font-mono text-spectral-rose leading-tight">
-                              {oauthError}
-                            </p>
-                          )}
-
-                          <div className="flex items-center justify-between pt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => setShowManualMsa((v) => !v)}
-                              className="text-[10px] font-mono text-ghost-400 hover:text-ghost-200 underline"
-                            >
-                              {showManualMsa
-                                ? 'Ocultar vinculación manual'
-                                : '¿Vincular por Gamertag o Token directo?'}
-                            </button>
-                          </div>
-
-                          {showManualMsa && (
-                            <form onSubmit={handleMicrosoftSubmit} className="flex gap-1.5 pt-1">
-                              <input
-                                type="text"
-                                placeholder="Gamertag o Token MSA..."
-                                value={msaIdentifier}
-                                onChange={(e) => setMsaIdentifier(e.target.value)}
-                                className="flex-1 px-2.5 py-1.5 glass-control text-xs font-mono"
-                              />
-                              <button
-                                type="submit"
-                                disabled={isAdding || !msaIdentifier.trim()}
-                                className="btn-tactile px-3 py-1.5 rounded-control glass-control text-xs font-semibold"
-                              >
-                                Vincular
-                              </button>
-                            </form>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {authTab === 'elyby' && (
-                    <form onSubmit={handleElyBySubmit} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-ghost-300">
-                          Autenticación Yggdrasil Ely.by
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => api.openExternalUrl('https://account.ely.by/login')}
-                          className="text-[10px] font-mono accent-text hover:underline flex items-center gap-1"
-                        >
-                          <span>ely.by</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Usuario o Correo de Ely.by..."
-                        value={elyUser}
-                        onChange={(e) => setElyUser(e.target.value)}
-                        className="w-full px-2.5 py-1.5 glass-control text-xs font-mono"
-                      />
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <input
-                          type="password"
-                          placeholder="Contraseña..."
-                          value={elyPass}
-                          onChange={(e) => setElyPass(e.target.value)}
-                          className="col-span-2 px-2.5 py-1.5 glass-control text-xs font-mono"
-                        />
+                        </div>
                         <input
                           type="text"
-                          placeholder="2FA (opc)"
-                          value={elyTotp}
-                          onChange={(e) => setElyTotp(e.target.value)}
-                          className="px-2 py-1.5 glass-control text-xs font-mono text-center"
+                          placeholder="Usuario o Correo de Ely.by..."
+                          value={elyUser}
+                          onChange={(e) => setElyUser(e.target.value)}
+                          className="w-full px-2.5 py-1.5 glass-control text-xs font-mono"
                         />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={isAdding || !elyUser.trim() || !elyPass}
-                        className="btn-tactile w-full py-1.5 rounded-control accent-bg text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        <KeyRound className="w-3.5 h-3.5" />
-                        <span>{isAdding ? 'Conectando a Ely.by...' : 'Iniciar Sesión Ely.by'}</span>
-                      </button>
-                    </form>
-                  )}
-
-                  {authTab === 'offline' && (
-                    <form onSubmit={handleAddOffline} className="space-y-2">
-                      <label className="block text-[10px] font-mono text-ghost-300">
-                        Añadir Perfil Offline (UUID v3)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nombre de jugador..."
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 glass-control text-xs font-mono"
-                        />
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <input
+                            type="password"
+                            placeholder="Contraseña..."
+                            value={elyPass}
+                            onChange={(e) => setElyPass(e.target.value)}
+                            className="col-span-2 px-2.5 py-1.5 glass-control text-xs font-mono"
+                          />
+                          <input
+                            type="text"
+                            placeholder="2FA (opc)"
+                            value={elyTotp}
+                            onChange={(e) => setElyTotp(e.target.value)}
+                            className="px-2 py-1.5 glass-control text-xs font-mono text-center"
+                          />
+                        </div>
                         <button
                           type="submit"
-                          disabled={isAdding || !username.trim()}
-                          className="btn-tactile px-3 py-1.5 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                          disabled={isAdding || !elyUser.trim() || !elyPass}
+                          className="btn-tactile w-full py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>Crear</span>
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>{isAdding ? 'Conectando a Ely.by...' : 'Iniciar Sesión Ely.by'}</span>
                         </button>
-                      </div>
-                    </form>
-                  )}
+                      </form>
+                    )}
+
+                    {authTab === 'offline' && (
+                      <form onSubmit={handleAddOffline} className="h-full flex flex-col justify-between">
+                        <div>
+                          <label className="block text-[10px] font-mono text-ghost-300 mb-1">
+                            Añadir Perfil Offline (UUID v3)
+                          </label>
+                          <p className="text-[10px] font-mono text-ghost-400">
+                            Crea un perfil local sin DRM para jugar offline.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Nombre de jugador..."
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="flex-1 px-2.5 py-2 glass-control text-xs font-mono"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isAdding || !username.trim()}
+                            className="btn-tactile px-4 py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Crear</span>
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="md:col-span-7 flex flex-col min-h-0 overflow-y-auto pr-1">
-                <div className="flex items-center justify-between mb-2.5">
+              <div className="md:col-span-7 flex flex-col min-h-0 overflow-hidden pr-1">
+                <div className="flex items-center justify-between mb-2 shrink-0">
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase text-ghost-300">
                     <Shirt className="w-3.5 h-3.5 accent-text" />
                     <span>
@@ -708,7 +719,7 @@ export function AccountModal({
                 </div>
 
                 {activeAccount && (
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center shrink-0">
                     <div className="sm:col-span-5 h-52 rounded-card glass-card flex flex-col items-center justify-center p-3 relative overflow-hidden">
                       <div
                         className="absolute inset-0 opacity-25 pointer-events-none"
@@ -719,7 +730,7 @@ export function AccountModal({
                       />
 
                       <SkinViewer3D
-                        key={`${activeAccount?.id}-${viewerSkinUrl}-${activeCapeUrl ?? ''}`}
+                        key={activeAccount?.id}
                         skinUrl={viewerSkinUrl}
                         slim={skinModel === 'slim'}
                         capeUrl={activeCapeUrl}
@@ -816,8 +827,8 @@ export function AccountModal({
                 )}
 
                 {activeAccount && (
-                  <div className="mt-4 pt-4 border-t glass-divider space-y-2.5">
-                    <div className="flex items-center justify-between">
+                  <div className="mt-3 pt-3 border-t glass-divider space-y-2 flex-1 min-h-0 flex flex-col">
+                    <div className="flex items-center justify-between shrink-0">
                       <label className="block text-[10px] font-mono uppercase text-ghost-400">
                         Capas de la cuenta
                       </label>
@@ -846,7 +857,7 @@ export function AccountModal({
                     ) : capes.length === 0 ? (
                       <p className="text-[11px] text-ghost-400">Esta cuenta no tiene capas.</p>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                      <div className="grid grid-cols-3 gap-2.5 flex-1 min-h-0 overflow-y-auto pr-1">
                         {capes
                           .filter(
                             (cape) => !(cape.alias || '').toLowerCase().includes('elytra')
@@ -885,7 +896,7 @@ export function AccountModal({
                   </div>
                 )}
 
-                <div className="mt-4 pt-3 border-t glass-divider text-[11px] text-ghost-400 flex items-center gap-2">
+                <div className="mt-3 pt-2.5 border-t glass-divider text-[11px] text-ghost-400 flex items-center gap-2 shrink-0">
                   <Shield className="w-4 h-4 accent-text shrink-0" />
                   <span>
                     Inyección automática de tokens MSA (`--accessToken`) y propiedades JVM de Ely.by (`-Dminecraft.api.*`).

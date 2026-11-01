@@ -42,6 +42,14 @@ export const SkinViewer3D: React.FC<SkinViewer3DProps> = ({
     viewerRef.current = viewer;
 
     return () => {
+      try {
+        const gl =
+          canvasRef.current?.getContext('webgl2') ||
+          canvasRef.current?.getContext('webgl');
+        gl?.getExtension('WEBGL_lose_context')?.loseContext();
+      } catch {
+        /* noop */
+      }
       viewer.dispose();
       viewerRef.current = null;
     };

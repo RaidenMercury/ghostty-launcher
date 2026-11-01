@@ -4,7 +4,7 @@ use crate::models::Instance;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};
-use sha2::Sha512;
+use sha2::{Sha256, Sha512};
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
@@ -147,6 +147,31 @@ pub fn compute_file_sha512(path: &Path) -> Option<String> {
         hasher.update(&buf[..n]);
     }
     Some(format!("{:x}", hasher.finalize()))
+}
+
+pub fn compute_file_sha256(path: &Path) -> Option<String> {
+    let mut file = File::open(path).ok()?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 32768];
+    loop {
+        let n = file.read(&mut buf).ok()?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Some(format!("{:x}", hasher.finalize()))
+}
+
+pub fn find_expected_hash<'a>(hashes: &'a HashMap<String, String>, algo: &str) -> Option<&'a String> {
+    hashes.iter().find_map(|(k, v)| {
+        let norm = k.to_lowercase().replace(['-', '_'], "");
+        if norm == algo {
+            Some(v)
+        } else {
+            None
+        }
+    })
 }
 
 #[derive(Debug)]
@@ -729,13 +754,19 @@ impl ModpackEngine {
                         tasks.push(tokio::spawn(async move {
                             if target_path_clone.exists() {
                                 let mut valid = false;
-                                if let Some(sha512) = expected_hashes.get("sha512") {
+                                if let Some(sha512) = find_expected_hash(&expected_hashes, "sha512") {
                                     if let Some(actual) = compute_file_sha512(&target_path_clone) {
                                         if actual.eq_ignore_ascii_case(sha512) {
                                             valid = true;
                                         }
                                     }
-                                } else if let Some(sha1) = expected_hashes.get("sha1") {
+                                } else if let Some(sha256) = find_expected_hash(&expected_hashes, "sha256") {
+                                    if let Some(actual) = compute_file_sha256(&target_path_clone) {
+                                        if actual.eq_ignore_ascii_case(sha256) {
+                                            valid = true;
+                                        }
+                                    }
+                                } else if let Some(sha1) = find_expected_hash(&expected_hashes, "sha1") {
                                     if let Some(actual) = compute_file_sha1(&target_path_clone) {
                                         if actual.eq_ignore_ascii_case(sha1) {
                                             valid = true;
@@ -743,7 +774,8 @@ impl ModpackEngine {
                                     }
                                 } else if expected_size > 0 {
                                     if let Ok(meta) = fs::metadata(&target_path_clone) {
-                                        if meta.len() == expected_size {
+                                        let diff = (meta.len() as i64 - expected_size as i64).abs() as u64;
+                                        if meta.len() > 0 && (diff <= 8192 || (diff as f64 / expected_size as f64) <= 0.05) {
                                             valid = true;
                                         }
                                     }
@@ -774,10 +806,10 @@ impl ModpackEngine {
                                 return Err(e);
                             }
 
-                            // Si se especifican hashes criptográficos (SHA-512 o SHA-1), verificamos la integridad con ellos.
+                            // Si se especifican hashes criptográficos (SHA-512, SHA-256 o SHA-1), verificamos la integridad con ellos.
                             // Si el hash coincide, aceptamos el archivo aunque haya una leve discrepancia de tamaño en metadatos del CDN.
-                            // Solo si NO se proporcionan hashes recurrimos a la comprobación de tamaño exacto.
-                            if let Some(sha512) = expected_hashes.get("sha512") {
+                            // Solo si NO se proporcionan hashes recurrimos a la comprobación de tamaño con tolerancia razonable.
+                            if let Some(sha512) = find_expected_hash(&expected_hashes, "sha512") {
                                 let actual = compute_file_sha512(&part_path)
                                     .ok_or_else(|| {
                                         let _ = fs::remove_file(&part_path);
@@ -787,7 +819,17 @@ impl ModpackEngine {
                                     let _ = fs::remove_file(&part_path);
                                     return Err(format!("Integridad fallida (SHA-512 erróneo) para {}", url));
                                 }
-                            } else if let Some(sha1) = expected_hashes.get("sha1") {
+                            } else if let Some(sha256) = find_expected_hash(&expected_hashes, "sha256") {
+                                let actual = compute_file_sha256(&part_path)
+                                    .ok_or_else(|| {
+                                        let _ = fs::remove_file(&part_path);
+                                        format!("No se pudo calcular hash SHA-256 para {}", url)
+                                    })?;
+                                if !actual.eq_ignore_ascii_case(sha256) {
+                                    let _ = fs::remove_file(&part_path);
+                                    return Err(format!("Integridad fallida (SHA-256 erróneo) para {}", url));
+                                }
+                            } else if let Some(sha1) = find_expected_hash(&expected_hashes, "sha1") {
                                 let actual = compute_file_sha1(&part_path)
                                     .ok_or_else(|| {
                                         let _ = fs::remove_file(&part_path);
@@ -802,7 +844,9 @@ impl ModpackEngine {
                                     let _ = fs::remove_file(&part_path);
                                     format!("No se pudo verificar tamaño de {}: {}", url, e)
                                 })?;
-                                if meta.len() != expected_size {
+                                let diff = (meta.len() as i64 - expected_size as i64).abs() as u64;
+                                // Solo fallar si está vacío o si la discrepancia supera tanto 8KB como el 5% del archivo esperado
+                                if meta.len() == 0 || (diff > 8192 && (diff as f64 / expected_size as f64) > 0.05) {
                                     let _ = fs::remove_file(&part_path);
                                     return Err(format!(
                                         "Tamaño de descarga inconsistente para {}: esperado {}, recibido {}",

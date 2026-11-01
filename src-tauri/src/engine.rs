@@ -491,9 +491,8 @@ impl GameEngine {
                     if dest.exists() {
                         if lib_name.contains(":natives-") {
                             Self::extract_native_jar(&dest, &natives_dir);
-                        } else {
-                            classpath_entries.push(dest);
                         }
+                        classpath_entries.push(dest);
                     }
                 }
             } else if let Some((rel_path, _)) = Self::maven_to_path(lib_name) {
@@ -526,6 +525,7 @@ impl GameEngine {
                     let dest = libraries_dir.join(path_str);
                     Self::download_if_needed(&client, url, &dest, sha1).await?;
                     Self::extract_native_jar(&dest, &natives_dir);
+                    classpath_entries.push(dest);
                 }
             }
         }
@@ -742,12 +742,20 @@ impl GameEngine {
         if uses_json_jvm {
             jvm_args.extend(json_jvm);
         } else {
-            jvm_args.push(format!(
-                "-Djava.library.path={}",
-                natives_dir.to_string_lossy()
-            ));
             jvm_args.push("-Dminecraft.launcher.brand=GhosttyLauncher".to_string());
             jvm_args.push("-Dminecraft.launcher.version=0.1.0".to_string());
+        }
+
+        // Garantizar que la ruta a los nativos de LWJGL y Java esté siempre presente
+        let natives_str = natives_dir.to_string_lossy().to_string();
+        if !jvm_args.iter().any(|a| a.starts_with("-Djava.library.path=")) {
+            jvm_args.push(format!("-Djava.library.path={natives_str}"));
+        }
+        if !jvm_args.iter().any(|a| a.starts_with("-Dorg.lwjgl.librarypath=")) {
+            jvm_args.push(format!("-Dorg.lwjgl.librarypath={natives_str}"));
+        }
+        if !jvm_args.iter().any(|a| a.starts_with("-Dorg.lwjgl.system.SharedLibraryExtractPath=")) {
+            jvm_args.push(format!("-Dorg.lwjgl.system.SharedLibraryExtractPath={natives_str}"));
         }
 
         if active_account.account_type == "ElyBy" {

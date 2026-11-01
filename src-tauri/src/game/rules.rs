@@ -41,7 +41,13 @@ fn rule_matches(rule: &Value, features: &Features) -> bool {
             }
         }
         if let Some(arch) = os.get("arch").and_then(Value::as_str) {
-            if Some(arch) != current_arch() {
+            let is_match = match arch {
+                "arm64" | "aarch64" => cfg!(target_arch = "aarch64"),
+                "x86_64" | "x64" | "amd64" => cfg!(target_arch = "x86_64"),
+                "x86" | "i386" => cfg!(target_arch = "x86"),
+                _ => false,
+            };
+            if !is_match {
                 return false;
             }
         }
@@ -66,16 +72,6 @@ pub fn current_os() -> &'static str {
         "osx"
     } else {
         "linux"
-    }
-}
-
-fn current_arch() -> Option<&'static str> {
-    if cfg!(target_arch = "aarch64") {
-        Some("arm64")
-    } else if cfg!(target_arch = "x86") {
-        Some("x86")
-    } else {
-        None
     }
 }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 export interface ConfirmModalProps {
@@ -72,21 +72,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+          <div
             onClick={onClose}
             className="fixed inset-0 modal-scrim"
           />
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 6 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative w-full max-w-md glass-panel-strong p-6 z-10 overflow-hidden shadow-2xl ${
+          <div
+            className={`relative w-full max-w-md glass-panel-strong p-6 text-ghost-100 z-10 overflow-hidden shadow-2xl ${
               isDanger ? 'border-spectral-rose/30' : ''
             }`}
           >
@@ -163,7 +155,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 {confirmLabel}
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>
