@@ -478,6 +478,20 @@ export const api = {
     return invokeTauri<string>('export_instance', { instanceId, format });
   },
 
+  async getModIcons(
+    instanceId: string,
+    filenames: string[]
+  ): Promise<Array<[string, string | null]>> {
+    return invokeTauri<Array<[string, string | null]>>('get_mod_icons', {
+      instanceId,
+      filenames,
+    });
+  },
+
+  async duplicateInstance(id: string): Promise<Instance> {
+    return invokeTauri<Instance>('duplicate_instance', { id });
+  },
+
   async getAccountSkin(accountId: string): Promise<string | null> {
     return invokeTauri<string | null>('get_account_skin', { accountId });
   },

@@ -70,6 +70,8 @@ pub fn run() {
             get_instances,
             create_instance,
             delete_instance,
+            duplicate_instance,
+            get_mod_icons,
             update_instance,
             get_instance_mods,
             toggle_instance_mod,

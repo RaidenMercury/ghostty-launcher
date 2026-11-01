@@ -423,3 +423,16 @@ pub async fn install_online_modpack(
 pub async fn export_instance(instance_id: String, format: String) -> Result<String, String> {
     crate::export::export(&instance_id, &format).await
 }
+
+#[tauri::command]
+pub fn get_mod_icons(
+    instance_id: String,
+    filenames: Vec<String>,
+) -> Result<Vec<(String, Option<String>)>, String> {
+    Ok(InstanceManager::mod_icons(&instance_id, &filenames))
+}
+
+#[tauri::command]
+pub fn duplicate_instance(id: String) -> Result<Instance, String> {
+    InstanceManager::duplicate_instance(&id)
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Cpu, Plus } from 'lucide-react';
+import { X, Cpu, Plus, ImagePlus } from 'lucide-react';
 import { CreateInstancePayload, MojangManifest } from '../types';
 import { AccordionSection } from './AccordionSection';
 import { InstanceIcon } from './InstanceIcon';
@@ -23,6 +23,7 @@ export function CreateInstanceModal({
   const [versionTypeFilter, setVersionTypeFilter] = useState<'all' | 'release' | 'snapshot'>('release');
   const [loader, setLoader] = useState<'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'>('fabric');
   const [ramGb, setRamGb] = useState(4);
+  const [icon, setIcon] = useState('minecraft');
   const [jvmArgs, setJvmArgs] = useState('-XX:+UseG1GC -XX:+ParallelRefProcEnabled');
   const [preLaunchCmd, setPreLaunchCmd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +71,7 @@ export function CreateInstanceModal({
         memory_max_mb: ramGb * 1024,
         jvm_args: jvmArgs.trim() || undefined,
         pre_launch_command: preLaunchCmd.trim() || undefined,
+        icon,
       });
       setName('');
       onClose();
@@ -205,6 +207,58 @@ export function CreateInstanceModal({
               </div>
 
               
+              <div className="pt-2 border-t glass-divider space-y-2">
+                <span className="text-xs text-ghost-200 font-medium">Icono de la estancia</span>
+                <div className="flex items-center gap-2">
+                  {[
+                    { id: 'minecraft', label: 'Minecraft' },
+                    { id: 'ghostty', label: 'Ghostty' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setIcon(opt.id)}
+                      className={`btn-tactile w-12 h-12 rounded-control flex items-center justify-center p-1.5 border ${
+                        icon === opt.id
+                          ? 'accent-pill-tint border-[var(--accent)]'
+                          : 'glass-control border-white/10'
+                      }`}
+                      title={opt.label}
+                    >
+                      <InstanceIcon icon={opt.id} alt={opt.label} />
+                    </button>
+                  ))}
+
+                  <label
+                    className={`btn-tactile w-12 h-12 rounded-control flex items-center justify-center cursor-pointer border ${
+                      icon.startsWith('data:image/')
+                        ? 'accent-pill-tint border-[var(--accent)]'
+                        : 'glass-control border-white/10'
+                    }`}
+                    title="Subir PNG"
+                  >
+                    {icon.startsWith('data:image/') ? (
+                      <InstanceIcon icon={icon} alt="Icono" />
+                    ) : (
+                      <ImagePlus className="w-4 h-4 text-ghost-300" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setIcon(String(reader.result));
+                        reader.readAsDataURL(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="pt-2 border-t glass-divider space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-ghost-200 font-medium">

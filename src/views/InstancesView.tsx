@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Cpu,
   GripVertical,
+  Loader2,
   FolderPlus,
   Folder,
   Star,
@@ -41,6 +42,7 @@ interface InstancesViewProps {
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
   isLaunching: boolean;
+  playingInstanceId?: string | null;
   launchBurstEnabled?: boolean;
   ambientArtworkEnabled?: boolean;
 }
@@ -66,6 +68,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onLaunch,
   onDeleteInstance,
   isLaunching,
+  playingInstanceId,
   launchBurstEnabled = true,
   ambientArtworkEnabled = true,
 }) => {
@@ -646,12 +649,23 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   whileTap={{ scale: 0.97 }}
                   transition={{ type: 'spring', stiffness: 450, damping: 28 }}
                   onClick={(e) => handleLaunchClick(e, currentHero)}
-                  disabled={isLaunching}
-                  className="group relative px-9 py-4 rounded-card accent-bg text-white heading-display font-extrabold text-xl tracking-wider shadow-[0_12px_32px_-6px_rgba(var(--accent-rgb),0.55)] flex items-center gap-3 border border-white/25 disabled:opacity-50 overflow-hidden shrink-0 cursor-pointer"
+                  disabled={isLaunching || playingInstanceId === currentHero.id}
+                  className="group relative px-9 py-4 rounded-card accent-bg text-white heading-display font-extrabold text-xl tracking-wider shadow-[0_12px_32px_-6px_rgba(var(--accent-rgb),0.55)] flex items-center gap-3 border border-white/25 disabled:opacity-70 overflow-hidden shrink-0 cursor-pointer"
                 >
                   <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12" />
-                  <Play className="w-5 h-5 fill-current relative z-10" />
-                  <span className="relative z-10">{isLaunching ? 'INICIANDO...' : 'JUGAR AHORA'}</span>
+                  {playingInstanceId === currentHero.id ? (
+                    <>
+                      <Loader2 className="w-5 h-5 relative z-10 animate-spin" />
+                      <span className="relative z-10">EN PARTIDA</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 fill-current relative z-10" />
+                      <span className="relative z-10">
+                        {isLaunching ? 'INICIANDO...' : 'JUGAR AHORA'}
+                      </span>
+                    </>
+                  )}
                 </motion.button>
               </div>
             </div>

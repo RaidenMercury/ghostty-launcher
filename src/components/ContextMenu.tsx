@@ -16,6 +16,7 @@ import {
   StarOff,
   FolderPlus,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { Instance } from '../types';
 import { THEME_PRESETS, ThemePresetId } from '../utils/theme';
@@ -47,6 +48,7 @@ interface ContextMenuProps {
   onToggleFavorite?: () => void;
   onAddToGroup?: () => void;
   onDeleteInstance?: () => void;
+  onDuplicateInstance?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -70,6 +72,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onToggleFavorite,
   onAddToGroup,
   onDeleteInstance,
+  onDuplicateInstance,
 }) => {
   useEffect(() => {
     if (!menu.isOpen) return;
@@ -213,6 +216,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             >
               <FolderPlus className="w-3.5 h-3.5 opacity-80" />
               <span>Añadir a grupo...</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(() => onDuplicateInstance?.())}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              <Copy className="w-3.5 h-3.5 opacity-80" />
+              <span>Duplicar Instancia</span>
             </button>
 
             <button

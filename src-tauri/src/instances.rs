@@ -92,6 +92,73 @@ impl InstanceManager {
         Ok(new_instance)
     }
 
+    pub fn mod_icons(instance_id: &str, filenames: &[String]) -> Vec<(String, Option<String>)> {
+        let Ok(mods_dir) = Self::get_mods_dir(instance_id) else {
+            return Vec::new();
+        };
+        filenames
+            .iter()
+            .map(|name| (name.clone(), mod_icon(&mods_dir.join(name))))
+            .collect()
+    }
+
+    pub fn duplicate_instance(id: &str) -> Result<Instance, String> {
+        let mut instances = LauncherManager::load_instances()?;
+        let source = instances
+            .iter()
+            .find(|i| i.id == id)
+            .cloned()
+            .ok_or("La instancia no existe")?;
+
+        let copies = instances
+            .iter()
+            .filter(|i| i.name.starts_with(&format!("{} (copia", source.name)))
+            .count();
+        let new_id = Uuid::new_v4().to_string();
+        let new_name = format!("{} (copia {})", source.name, copies + 2);
+
+        let new_instance = Instance {
+            id: new_id.clone(),
+            name: new_name,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            last_played: None,
+            play_time_minutes: 0,
+            favorite: false,
+            ..source
+        };
+
+        let src_dir = Self::get_instance_dir(id)?;
+        let dst_dir = Self::get_instance_dir(&new_id)?;
+        fs::create_dir_all(&dst_dir).map_err(|e| e.to_string())?;
+
+        for entry in walkdir::WalkDir::new(&src_dir).into_iter().filter_map(Result::ok) {
+            let rel = match entry.path().strip_prefix(&src_dir) {
+                Ok(rel) => rel,
+                Err(_) => continue,
+            };
+            let first = rel.components().next().and_then(|c| c.as_os_str().to_str());
+            if matches!(first, Some("logs") | Some("crash-reports")) {
+                continue;
+            }
+            if rel.file_name().and_then(|n| n.to_str()) == Some("session.lock") {
+                continue;
+            }
+            let target = dst_dir.join(rel);
+            if entry.file_type().is_dir() {
+                fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+            } else {
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                fs::copy(entry.path(), &target).map_err(|e| e.to_string())?;
+            }
+        }
+
+        instances.push(new_instance.clone());
+        LauncherManager::save_instances(&instances)?;
+        Ok(new_instance)
+    }
+
     pub fn delete_instance(id: &str) -> Result<Vec<Instance>, String> {
         let mut instances = LauncherManager::load_instances()?;
         instances.retain(|i| i.id != id);
@@ -118,7 +185,7 @@ impl InstanceManager {
                         if fname.ends_with(".jar") || fname.ends_with(".jar.disabled") {
                             let enabled = fname.ends_with(".jar");
                             mods.push(ModFileInfo {
-                                icon: mod_icon(&entry.path()),
+                                icon: None,
                                 filename: fname,
                                 enabled,
                                 size: meta.len(),

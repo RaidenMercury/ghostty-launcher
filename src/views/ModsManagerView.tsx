@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -25,6 +25,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   onGoDiscover,
 }) => {
   const [mods, setMods] = useState<ModFileInfo[]>([]);
+  const iconRequest = useRef(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<'all' | 'enabled' | 'disabled'>('all');
@@ -41,10 +42,34 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
       setLoading(true);
       const list = await api.getInstanceMods(activeInstance.id);
       setMods(list);
+      void loadIcons(list.map((m) => m.filename));
     } catch (e: any) {
       onShowToast('error', 'Error al cargar mods', e.toString());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadIcons = async (filenames: string[]) => {
+    if (!activeInstance) return;
+    const token = ++iconRequest.current;
+
+    for (let i = 0; i < filenames.length; i += 8) {
+      if (token !== iconRequest.current) return;
+      const chunk = filenames.slice(i, i + 8);
+      try {
+        const pairs = await api.getModIcons(activeInstance.id, chunk);
+        if (token !== iconRequest.current) return;
+        setMods((prev) =>
+          prev.map((mod) => {
+            const hit = pairs.find(([name]) => name === mod.filename);
+            return hit && hit[1] ? { ...mod, icon: hit[1] } : mod;
+          })
+        );
+      } catch {
+        /* sin icono: se queda el placeholder */
+      }
+      await new Promise((resolve) => setTimeout(resolve, 16));
     }
   };
 

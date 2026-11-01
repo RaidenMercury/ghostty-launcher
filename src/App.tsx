@@ -381,6 +381,18 @@ export function App() {
     }
   };
 
+  const handleDuplicateInstance = async () => {
+    if (!activeInstance) return;
+    try {
+      const copy = await api.duplicateInstance(activeInstance.id);
+      setInstances((prev) => [copy, ...prev]);
+      setActiveInstance(copy);
+      addToast('success', 'Instancia duplicada', copy.name);
+    } catch (e: any) {
+      addToast('error', 'No se pudo duplicar', String(e));
+    }
+  };
+
   const handleDeleteActive = () => {
     if (!activeInstance) return;
     if (!window.confirm(`¿Eliminar la instancia "${activeInstance.name}"?`)) return;
@@ -744,6 +756,7 @@ export function App() {
         onToggleFavorite={handleToggleFavorite}
         onAddToGroup={openGroupPicker}
         onDeleteInstance={handleDeleteActive}
+        onDuplicateInstance={handleDuplicateInstance}
       />
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
@@ -797,6 +810,7 @@ export function App() {
             onExportInstance={handleExportInstance}
             onToggleFavorite={toggleFavoriteFor}
             onAssignGroup={assignGroupFor}
+            playingInstanceId={liveActivity.mode === 'playing' ? activeInstance?.id ?? null : null}
             isLaunching={isLaunching}
             launchBurstEnabled={themeSettings.launchBurstEnabled}
             ambientArtworkEnabled={themeSettings.ambientArtworkEnabled}
