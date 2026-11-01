@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useWindowedList } from '../hooks/useWindowedList';
 import {
   Search,
   Download,
@@ -199,6 +200,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   const featuredHits = !query.trim() ? hits.slice(0, 3) : [];
   const catalogHits = !query.trim() ? hits.slice(3) : hits;
 
+  const windowedCatalog = useWindowedList(catalogHits.length, 66);
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden select-none">
       <div className="px-6 pt-4 pb-3.5 border-b glass-divider space-y-3 shrink-0">
@@ -343,7 +345,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+      <div ref={windowedCatalog.ref} onScroll={windowedCatalog.onScroll} className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center">
             <GhosttyMascot
@@ -463,7 +465,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                {catalogHits.map((hit, index) => (
+                {windowedCatalog.padTop > 0 && <div style={{ height: windowedCatalog.padTop }} />}
+                {catalogHits.slice(windowedCatalog.start, windowedCatalog.end).map((hit, index) => (
                   <motion.div
                     key={hit.project_id}
                     initial={{ opacity: 0, y: 4 }}
@@ -537,6 +540,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     </div>
                   </motion.div>
                 ))}
+                {windowedCatalog.padBottom > 0 && (
+                  <div style={{ height: windowedCatalog.padBottom }} />
+                )}
               </div>
 
               {hits.length < totalHits && (

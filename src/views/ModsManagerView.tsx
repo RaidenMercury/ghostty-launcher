@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useWindowedList } from '../hooks/useWindowedList';
 import {
   Search,
   RefreshCw,
@@ -131,6 +132,8 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
         : !mod.enabled;
     return matchesSearch && matchesStatus;
   });
+
+  const windowed = useWindowedList(filteredMods.length, 58);
 
   const enabledCount = mods.filter((m) => m.enabled).length;
   const disabledCount = mods.length - enabledCount;
@@ -279,7 +282,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-3">
+      <div ref={windowed.ref} onScroll={windowed.onScroll} className="flex-1 overflow-y-auto px-6 py-3">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center">
             <GhosttyMascot mood="loading" size="md" caption={`Escaneando ${kindMeta[kind].plural}...`} />
@@ -294,7 +297,8 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
           </div>
         ) : (
           <div className="space-y-1.5">
-            {filteredMods.map((mod, index) => {
+            {windowed.padTop > 0 && <div style={{ height: windowed.padTop }} />}
+            {filteredMods.slice(windowed.start, windowed.end).map((mod, index) => {
               const cleanName = mod.filename.replace(/(\.disabled)+$/, '');
               return (
                 <motion.div
@@ -367,6 +371,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 </motion.div>
               );
             })}
+            {windowed.padBottom > 0 && <div style={{ height: windowed.padBottom }} />}
           </div>
         )}
       </div>
