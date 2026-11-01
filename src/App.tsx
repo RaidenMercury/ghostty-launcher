@@ -74,6 +74,7 @@ export function App() {
   const [mascotMood, setMascotMood] = useState<MascotMood>('idle');
   const [isDraggingPack, setIsDraggingPack] = useState(false);
   const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
+  const [overlayBlur, setOverlayBlur] = useState(false);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const dragImportRef = useRef<((fileOrPath: File | string) => void) | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -347,12 +348,22 @@ export function App() {
     } catch {
       setGroupOptions([]);
     }
-    setIsGroupPickerOpen(true);
+    // El blur se compone un frame antes de pintar el modal: si ambos cambian en
+    // el mismo frame, WebKitGTK muestra un frame viejo (el "fantasma").
+    setOverlayBlur(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setIsGroupPickerOpen(true));
+    });
+  };
+
+  const closeGroupPicker = () => {
+    setIsGroupPickerOpen(false);
+    requestAnimationFrame(() => setOverlayBlur(false));
   };
 
   const applyGroup = async (group: string | null) => {
     if (!activeInstance) return;
-    setIsGroupPickerOpen(false);
+    closeGroupPicker();
     try {
       await persistInstance({ ...activeInstance, group });
       addToast('success', 'Grupo actualizado', group || 'Sin grupo');
@@ -759,7 +770,8 @@ export function App() {
       <main
         className="flex-1 flex overflow-hidden relative z-10"
         style={{
-          filter: isDraggingPack || isGroupPickerOpen ? 'blur(10px)' : undefined,
+          filter: isDraggingPack || overlayBlur ? 'blur(10px)' : undefined,
+          contain: isDraggingPack || overlayBlur ? 'paint' : undefined,
         }}
       >
         <div
@@ -871,7 +883,7 @@ export function App() {
       {isGroupPickerOpen && (
         <div
           className="glass-overlay flex items-center justify-center"
-          onClick={() => setIsGroupPickerOpen(false)}
+          onClick={closeGroupPicker}
         >
           <div
             className="glass-modal glass-panel-strong w-[380px] max-w-[92vw] p-5"
@@ -918,7 +930,7 @@ export function App() {
             <div className="flex justify-end pt-4">
               <button
                 type="button"
-                onClick={() => setIsGroupPickerOpen(false)}
+                onClick={closeGroupPicker}
                 className="btn-tactile px-4 py-2 rounded-control glass-control text-xs"
               >
                 Cancelar

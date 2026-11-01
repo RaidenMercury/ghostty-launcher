@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Play,
   Sliders,
@@ -286,16 +286,8 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           </button>
         </div>
 
-        <AnimatePresence>
-          {showImportBar && (
-            <motion.form
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-              onSubmit={handleImportSubmit}
-              className="overflow-hidden"
-            >
+        {showImportBar && (
+            <form onSubmit={handleImportSubmit} className="glass-modal">
               <div className="p-3 glass-card space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-mono text-ghost-300">
                   <span>Importar Modpack (.mrpack / .zip)</span>
@@ -339,9 +331,8 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   </button>
                 </div>
               </div>
-            </motion.form>
-          )}
-        </AnimatePresence>
+            </form>
+        )}
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono">
           {customGroups.map((g) => {
