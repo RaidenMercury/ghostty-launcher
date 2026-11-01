@@ -284,6 +284,53 @@ pub fn open_instance_folder(instance_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn get_instance_logs(instance_id: String) -> Result<Vec<String>, String> {
+    tokio::task::spawn_blocking(move || {
+        let dir = InstanceManager::get_instance_dir(&instance_id)?;
+        let log_path = dir.join("logs").join("latest.log");
+        if !log_path.exists() {
+            return Ok(vec![
+                "[INFO] No se ha generado 'logs/latest.log' para esta estancia todavía.".to_string(),
+            ]);
+        }
+
+        let file = std::fs::File::open(&log_path)
+            .map_err(|e| format!("No se pudo abrir el archivo de logs: {}", e))?;
+        let meta = file.metadata().map_err(|e| e.to_string())?;
+        let file_len = meta.len();
+
+        use std::io::{BufRead, BufReader, Seek, SeekFrom};
+        let mut reader = BufReader::new(file);
+
+        const MAX_TAIL_BYTES: u64 = 2 * 1024 * 1024;
+        if file_len > MAX_TAIL_BYTES {
+            let _ = reader.seek(SeekFrom::Start(file_len - MAX_TAIL_BYTES));
+            let mut dummy = String::new();
+            let _ = reader.read_line(&mut dummy);
+        }
+
+        let mut lines = Vec::new();
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                lines.push(l);
+            }
+        }
+
+        if lines.len() > 5000 {
+            lines = lines.split_off(lines.len() - 5000);
+        }
+
+        if lines.is_empty() {
+            lines.push("[INFO] El archivo 'latest.log' está vacío.".to_string());
+        }
+
+        Ok(lines)
+    })
+    .await
+    .map_err(|e| format!("Error en tarea de lectura de logs: {}", e))?
+}
+
+#[tauri::command]
 pub fn open_external_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err("URL no permitida".to_string());
@@ -378,8 +425,15 @@ pub async fn install_modrinth_mod(
     instance_id: String,
     download_url: String,
     filename: String,
+    version_id: Option<String>,
 ) -> Result<ModFileInfo, String> {
-    ModrinthClient::install_mod_file(&instance_id, &download_url, &filename).await
+    ModrinthClient::install_mod_file(
+        &instance_id,
+        &download_url,
+        &filename,
+        version_id.as_deref(),
+    )
+    .await
 }
 
 #[tauri::command]

@@ -640,19 +640,60 @@ impl GameEngine {
         } else {
             config.java_path.clone()
         };
+
+        let needed_java = vanilla_json
+            .get("javaVersion")
+            .and_then(|j| j.get("majorVersion"))
+            .and_then(Value::as_u64)
+            .map(|v| v as u32)
+            .unwrap_or_else(|| crate::java::required_major(&instance.mc_version));
+
         // "java" del PATH no sirve: el sistema puede tener 25 y Forge 1.21 necesita 21.
         let java_bin = if configured_java.trim().is_empty() || configured_java == "java" {
-            crate::java::pick_for(&instance.mc_version).unwrap_or(configured_java)
+            match crate::java::pick_for_major(needed_java) {
+                Some(bin) => bin,
+                None => {
+                    Self::emit_log(
+                        &app,
+                        &format!(
+                            "[GhosttyEngine] Java {}+ no encontrado en el sistema. Descargando automáticamente OpenJDK {} de Adoptium...",
+                            needed_java, needed_java
+                        ),
+                        "INFO",
+                    );
+                    match crate::java::adoptium::install(needed_java).await {
+                        Ok(installed) => {
+                            Self::emit_log(
+                                &app,
+                                &format!("[GhosttyEngine] OpenJDK {} instalado exitosamente en {}.", needed_java, installed.path),
+                                "INFO",
+                            );
+                            installed.path
+                        }
+                        Err(e) => {
+                            Self::emit_log(
+                                &app,
+                                &format!("[GhosttyEngine] Error descargando Java {}: {}", needed_java, e),
+                                "WARN",
+                            );
+                            crate::java::pick_for(&instance.mc_version).unwrap_or(configured_java)
+                        }
+                    }
+                }
+            }
         } else {
             configured_java
         };
+
+        let actual_major = crate::java::JavaDetector::probe(Path::new(&java_bin))
+            .map(|i| i.major_version)
+            .unwrap_or(needed_java);
+
         Self::emit_log(
             &app,
             &format!(
-                "[GhosttyEngine] Java: {} (MC {} requiere {}+)",
-                java_bin,
-                instance.mc_version,
-                crate::java::required_major(&instance.mc_version)
+                "[GhosttyEngine] Java: {} (Mayor: {}, MC {} requiere {}+)",
+                java_bin, actual_major, instance.mc_version, needed_java
             ),
             "INFO",
         );
@@ -728,6 +769,15 @@ impl GameEngine {
         for arg in extra_jvm_args {
             jvm_args.push(arg);
         }
+
+        // Si el runtime seleccionado es anterior a Java 24, descartar opciones no reconocidas
+        if actual_major < 24 {
+            jvm_args.retain(|arg| !arg.contains("--sun-misc-unsafe-memory-access"));
+        }
+
+        // Parchear -DignoreList para ModLauncher en Forge/NeoForge
+        // Evita que 1.20.1.jar se cargue como módulo duplicado (_1._20._1) causando ResolutionException
+        patch_forge_ignore_list(&mut jvm_args, &client_jar_path, &instance.mc_version);
 
         if !uses_json_jvm {
             jvm_args.push("-cp".to_string());
@@ -961,5 +1011,81 @@ impl GameEngine {
             return Ok("Proceso de Minecraft detenido.".to_string());
         }
         Err("No hay ningún juego en ejecución.".to_string())
+    }
+}
+
+/// Parchea `-DignoreList` en los argumentos JVM cuando ModLauncher/Forge está en uso.
+/// ModLauncher excluye del layer de módulos bootstrap todo archivo cuyo nombre comience
+/// con alguna entrada de ignoreList. Al incluir el nombre real del client jar (p. ej. `1.20.1.jar`)
+/// y `${mc_version}.jar`, evitamos que JPMS cree un módulo automático duplicado (`_1._20._1`)
+/// que colisione con el paquete `net.minecraft.data` del módulo `minecraft`.
+fn patch_forge_ignore_list(jvm_args: &mut Vec<String>, client_jar_path: &Path, mc_version: &str) {
+    let client_name = client_jar_path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let mc_name = format!("{}.jar", mc_version);
+
+    let mut ignore_entries: Vec<String> = Vec::new();
+    let mut has_ignore_arg = false;
+
+    for arg in jvm_args.iter() {
+        if let Some(rest) = arg.strip_prefix("-DignoreList=") {
+            has_ignore_arg = true;
+            for item in rest.split(',') {
+                let trimmed = item.trim();
+                if !trimmed.is_empty() && !ignore_entries.contains(&trimmed.to_string()) {
+                    ignore_entries.push(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    if !has_ignore_arg {
+        return;
+    }
+
+    if !client_name.is_empty() && !ignore_entries.contains(&client_name) {
+        ignore_entries.push(client_name);
+    }
+    if !mc_name.is_empty() && !ignore_entries.contains(&mc_name) {
+        ignore_entries.push(mc_name);
+    }
+    if !ignore_entries.contains(&"client.jar".to_string()) {
+        ignore_entries.push("client.jar".to_string());
+    }
+
+    let merged_value = format!("-DignoreList={}", ignore_entries.join(","));
+    jvm_args.retain(|arg| !arg.starts_with("-DignoreList="));
+    jvm_args.push(merged_value);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_patch_forge_ignore_list_appends_and_unifies() {
+        let mut args = vec![
+            "-Xmx4G".to_string(),
+            "-DignoreList=bootstraplauncher,fmlcore,forge-,${version_name}.jar".to_string(),
+        ];
+        let client_path = PathBuf::from("/home/user/.local/share/versions/1.20.1/1.20.1.jar");
+        patch_forge_ignore_list(&mut args, &client_path, "1.20.1");
+
+        let ignore_arg = args.iter().find(|a| a.starts_with("-DignoreList=")).unwrap();
+        assert!(ignore_arg.contains("1.20.1.jar"));
+        assert!(ignore_arg.contains("client.jar"));
+        assert!(ignore_arg.contains("fmlcore"));
+        assert_eq!(args.iter().filter(|a| a.starts_with("-DignoreList=")).count(), 1);
+    }
+
+    #[test]
+    fn test_patch_forge_ignore_list_noop_when_not_forge() {
+        let mut args = vec!["-Xmx4G".to_string(), "-cp".to_string(), "libs.jar".to_string()];
+        let client_path = PathBuf::from("/path/to/1.20.1.jar");
+        patch_forge_ignore_list(&mut args, &client_path, "1.20.1");
+        assert_eq!(args.len(), 3);
+        assert!(!args.iter().any(|a| a.starts_with("-DignoreList=")));
     }
 }

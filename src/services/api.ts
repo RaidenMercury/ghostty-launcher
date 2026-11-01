@@ -236,6 +236,13 @@ export const api = {
     return invokeTauri<void>('open_instance_folder', { instanceId });
   },
 
+  async getInstanceLogs(instanceId: string): Promise<string[]> {
+    if (isTauri) {
+      return invokeTauri<string[]>('get_instance_logs', { instanceId });
+    }
+    return ['[INFO] Entorno Web: no hay logs JVM directos.'];
+  },
+
   async openLauncherFolder(): Promise<void> {
     return invokeTauri<void>('open_launcher_folder');
   },
@@ -465,13 +472,15 @@ export const api = {
   async installModrinthMod(
     instanceId: string,
     downloadUrl: string,
-    filename: string
+    filename: string,
+    versionId?: string
   ): Promise<string> {
     if (isTauri) {
       await invokeTauri<ModFileInfo>('install_modrinth_mod', {
         instanceId,
         downloadUrl,
         filename,
+        versionId,
       });
       return `Downloaded ${filename} to ${instanceId}`;
     }

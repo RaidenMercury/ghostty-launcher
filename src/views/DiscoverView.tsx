@@ -173,7 +173,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         }
 
         const primaryFile = match.files.find((f) => f.primary) || match.files[0];
-        await api.installModrinthMod(activeInstance.id, primaryFile.url, primaryFile.filename);
+        await api.installModrinthMod(activeInstance.id, primaryFile.url, primaryFile.filename, match.id);
         triggerInstallSuccessConfetti();
         onShowToast('success', 'Recurso Instalado', `${hit.title} añadido con éxito.`);
       }
@@ -595,7 +595,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 onShowToast('warning', 'Selecciona una estancia', 'Elige una estancia activa.');
                 return;
               }
-              await api.installModrinthMod(activeInstance.id, file.url, file.filename);
+              await api.installModrinthMod(activeInstance.id, file.url, file.filename, version.id);
               triggerInstallSuccessConfetti();
               onShowToast(
                 'success',

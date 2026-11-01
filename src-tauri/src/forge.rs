@@ -250,19 +250,33 @@ fn required_java_major(mc_version: &str) -> u32 {
         .filter_map(|p| p.parse().ok())
         .collect();
     match parts.as_slice() {
+        [major, ..] if *major >= 24 => 25,
         [1, minor, ..] if *minor >= 21 => 21,
         [1, minor, ..] if *minor >= 17 => 17,
-        _ => 8,
+        [1, 16, ..] => 16,
+        _ => {
+            let lower = mc_version.to_ascii_lowercase();
+            if lower.starts_with("26") || lower.starts_with("25") {
+                25
+            } else if lower.starts_with("24") {
+                21
+            } else {
+                8
+            }
+        }
     }
 }
 
 fn find_java(min_major: u32) -> Result<std::path::PathBuf, String> {
     let mut runtimes = JavaDetector::detect();
+    if let Some(exact) = runtimes.iter().find(|r| r.major_version == min_major) {
+        return Ok(std::path::PathBuf::from(&exact.path));
+    }
     runtimes.sort_by_key(|r| r.major_version);
     runtimes
         .iter()
         .find(|r| r.major_version >= min_major)
-        .or_else(|| runtimes.first())
+        .or_else(|| runtimes.last())
         .map(|r| std::path::PathBuf::from(&r.path))
         .ok_or_else(|| {
             format!(
@@ -311,6 +325,11 @@ mod tests {
         assert_eq!(required_java_major("1.20.1"), 17);
         assert_eq!(required_java_major("1.21.4"), 21);
         assert_eq!(required_java_major("1.12.2"), 8);
+        assert_eq!(required_java_major("26.3"), 25);
+        assert_eq!(required_java_major("26.1.2"), 25);
+        assert_eq!(required_java_major("24w14a"), 21);
+        assert_eq!(required_java_major("25w02a"), 25);
+        assert_eq!(required_java_major("26w04a"), 25);
     }
 
     #[test]

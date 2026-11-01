@@ -40,6 +40,7 @@ interface InstancesViewProps {
   onExportInstance?: (id: string, format: 'mrpack' | 'prism' | 'curseforge') => void;
   onAssignGroup?: (instance: Instance, group: string | null) => void;
   onToggleFavorite?: (instance: Instance) => void;
+  onOpenLogs?: (instance: Instance) => void;
   onLaunch: (instance: Instance) => void;
   onDeleteInstance: (id: string) => void;
   isLaunching: boolean;
@@ -66,6 +67,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onExportInstance,
   onToggleFavorite,
   onAssignGroup,
+  onOpenLogs,
   onLaunch,
   onDeleteInstance,
   isLaunching,
@@ -722,6 +724,17 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     >
                       <FolderOpen className="w-4 h-4 text-ghost-300" />
                       <span>Abrir Carpeta</span>
+                    </button>
+                  )}
+
+                  {onOpenLogs && (
+                    <button
+                      onClick={() => onOpenLogs(currentHero)}
+                      className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
+                      title="Ver consola y registros JVM de la estancia"
+                    >
+                      <Terminal className="w-4 h-4 text-ghost-300" />
+                      <span>Consola / Logs</span>
                     </button>
                   )}
 

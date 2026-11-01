@@ -115,6 +115,7 @@ pub fn run() {
             remove_account,
             open_launcher_folder,
             open_instance_folder,
+            get_instance_logs,
             open_external_url,
             launch_instance,
             stop_instance,

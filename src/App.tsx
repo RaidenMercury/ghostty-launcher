@@ -870,6 +870,18 @@ export function App() {
             }}
             onOpenSettings={(inst) => setSelectedInstanceForSettings(inst)}
             onOpenFolder={handleOpenInstanceFolder}
+            onOpenLogs={async (inst) => {
+              setActiveInstance(inst);
+              try {
+                const logs = await api.getInstanceLogs(inst.id);
+                if (logs && logs.length > 0 && !(logs.length === 1 && logs[0].includes('no hay logs'))) {
+                  setGameLogs(logs);
+                }
+              } catch (e) {
+                console.error(e);
+              }
+              setIsLogsOpen(true);
+            }}
             onLaunch={handleLaunch}
             onDeleteInstance={handleDeleteInstance}
             onExportInstance={handleExportInstance}

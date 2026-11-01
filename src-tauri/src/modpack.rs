@@ -4,6 +4,7 @@ use crate::models::Instance;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};
+use sha2::Sha512;
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
@@ -120,7 +121,7 @@ fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
-fn compute_file_sha1(path: &Path) -> Option<String> {
+pub fn compute_file_sha1(path: &Path) -> Option<String> {
     let mut file = File::open(path).ok()?;
     let mut hasher = Sha1::new();
     let mut buf = [0u8; 32768];
@@ -132,6 +133,305 @@ fn compute_file_sha1(path: &Path) -> Option<String> {
         hasher.update(&buf[..n]);
     }
     Some(format!("{:x}", hasher.finalize()))
+}
+
+pub fn compute_file_sha512(path: &Path) -> Option<String> {
+    let mut file = File::open(path).ok()?;
+    let mut hasher = Sha512::new();
+    let mut buf = [0u8; 32768];
+    loop {
+        let n = file.read(&mut buf).ok()?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Some(format!("{:x}", hasher.finalize()))
+}
+
+#[derive(Debug)]
+struct ModpackScan {
+    pack_name: String,
+    mc_version: String,
+    loader: String,
+    loader_version: Option<String>,
+    embedded_icon: Option<String>,
+    files_to_download: Vec<ModpackFile>,
+    overrides_dir: String,
+}
+
+fn scan_archive(path: &Path, custom_name: Option<String>) -> Result<ModpackScan, String> {
+    let file = File::open(path).map_err(|e| format!("No se pudo abrir el paquete: {}", e))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| format!("Archivo comprimido inválido o corrupto: {}", e))?;
+
+    if archive.len() > 25000 {
+        return Err("El modpack contiene demasiadas entradas (máximo 25000)".to_string());
+    }
+
+    let mut modrinth_index: Option<ModrinthIndex> = None;
+    let mut curse_manifest: Option<Value> = None;
+    let mut embedded_icon: Option<String> = None;
+
+    for i in 0..archive.len() {
+        if let Ok(mut entry) = archive.by_index(i) {
+            let lower = entry.name().to_lowercase().replace('\\', "/");
+            let depth = lower.split('/').count();
+            if (lower == "modrinth.index.json" || (depth <= 2 && lower.ends_with("/modrinth.index.json")))
+                && entry.size() < 16 * 1024 * 1024
+            {
+                let mut s = String::new();
+                if entry.by_ref().take(16 * 1024 * 1024).read_to_string(&mut s).is_ok() {
+                    modrinth_index = serde_json::from_str::<ModrinthIndex>(&s).ok();
+                }
+            } else if (lower == "manifest.json" || (depth <= 2 && lower.ends_with("/manifest.json")))
+                && entry.size() < 8 * 1024 * 1024
+            {
+                let mut s = String::new();
+                if entry.by_ref().take(8 * 1024 * 1024).read_to_string(&mut s).is_ok() {
+                    curse_manifest = serde_json::from_str::<Value>(&s).ok();
+                }
+            } else if embedded_icon.is_none()
+                && (lower == "icon.png"
+                    || lower == "pack.png"
+                    || lower == "overrides/icon.png")
+                && entry.size() > 64
+                && entry.size() <= 98304
+            {
+                let mut buf = Vec::new();
+                if entry.by_ref().take(98304).read_to_end(&mut buf).is_ok() {
+                    embedded_icon = Some(format!(
+                        "data:image/png;base64,{}",
+                        encode_base64(&buf)
+                    ));
+                }
+            }
+        }
+        if (modrinth_index.is_some() || curse_manifest.is_some()) && embedded_icon.is_some() {
+            break;
+        }
+    }
+
+    if modrinth_index.is_none() && curse_manifest.is_none() {
+        return Err("No se encontró ningún manifiesto válido (modrinth.index.json o manifest.json) en el archivo.".to_string());
+    }
+
+    let fallback_title = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Modpack Importado")
+        .to_string();
+
+    let mut pack_name = custom_name.clone().unwrap_or(fallback_title);
+    let mut mc_version = "1.21.4".to_string();
+    let mut loader = "fabric".to_string();
+    let mut loader_version: Option<String> = None;
+    let mut files_to_download: Vec<ModpackFile> = Vec::new();
+    let mut overrides_dir = "overrides".to_string();
+
+    if let Some(ref idx) = modrinth_index {
+        if custom_name.is_none() && !idx.name.trim().is_empty() {
+            pack_name = if !idx.version_id.trim().is_empty()
+                && !idx
+                    .name
+                    .to_lowercase()
+                    .contains(&idx.version_id.to_lowercase())
+            {
+                format!("{} ({})", idx.name.trim(), idx.version_id.trim())
+            } else {
+                idx.name.trim().to_string()
+            };
+        }
+        if let Some(mc) = idx.dependencies.get("minecraft") {
+            mc_version = mc.clone();
+        }
+        if let Some(v) = idx.dependencies.get("fabric-loader") {
+            loader = "fabric".to_string();
+            loader_version = Some(v.clone());
+        } else if let Some(v) = idx.dependencies.get("quilt-loader") {
+            loader = "quilt".to_string();
+            loader_version = Some(v.clone());
+        } else if let Some(v) = idx.dependencies.get("neoforge") {
+            loader = "neoforge".to_string();
+            loader_version = Some(v.clone());
+        } else if let Some(v) = idx.dependencies.get("forge") {
+            loader = "forge".to_string();
+            loader_version = Some(v.clone());
+        } else {
+            loader = "vanilla".to_string();
+        }
+        files_to_download = idx.files.clone();
+    } else if let Some(ref cf) = curse_manifest {
+        if custom_name.is_none() {
+            if let Some(n) = cf.get("name").and_then(|v| v.as_str()) {
+                if !n.trim().is_empty() {
+                    pack_name = n.trim().to_string();
+                }
+            }
+        }
+        if let Some(mc) = cf
+            .get("minecraft")
+            .and_then(|m| m.get("version"))
+            .and_then(|v| v.as_str())
+        {
+            mc_version = mc.to_string();
+        }
+        if let Some(ovr) = cf.get("overrides").and_then(|v| v.as_str()) {
+            if !ovr.trim().is_empty() {
+                overrides_dir = ovr.trim().to_string();
+            }
+        }
+        if let Some(loaders) = cf
+            .get("minecraft")
+            .and_then(|m| m.get("modLoaders"))
+            .and_then(|l| l.as_array())
+        {
+            let primary_loader = loaders
+                .iter()
+                .find(|l| l.get("primary").and_then(|p| p.as_bool()).unwrap_or(false))
+                .or_else(|| loaders.first());
+
+            if let Some(first_id) = primary_loader
+                .and_then(|f| f.get("id"))
+                .and_then(|i| i.as_str())
+            {
+                let lower_id = first_id.to_lowercase();
+                if let Some(ver) = lower_id.strip_prefix("neoforge-") {
+                    loader = "neoforge".to_string();
+                    loader_version = Some(ver.to_string());
+                } else if let Some(ver) = lower_id.strip_prefix("forge-") {
+                    loader = "forge".to_string();
+                    loader_version = Some(ver.to_string());
+                } else if let Some(ver) = lower_id.strip_prefix("fabric-") {
+                    loader = "fabric".to_string();
+                    loader_version = Some(ver.to_string());
+                } else if let Some(ver) = lower_id.strip_prefix("quilt-") {
+                    loader = "quilt".to_string();
+                    loader_version = Some(ver.to_string());
+                }
+            }
+        }
+    }
+
+    Ok(ModpackScan {
+        pack_name,
+        mc_version,
+        loader,
+        loader_version,
+        embedded_icon,
+        files_to_download,
+        overrides_dir,
+    })
+}
+
+pub fn is_safe_rel_path(path: &Path) -> bool {
+    let mut depth: usize = 0;
+    for comp in path.components() {
+        match comp {
+            std::path::Component::Normal(os_str) => {
+                let s = os_str.to_string_lossy();
+                if s.is_empty() || s.contains(':') || s.ends_with('.') || s.ends_with(' ') {
+                    return false;
+                }
+                let upper = s.to_ascii_uppercase();
+                let stem = upper.split('.').next().unwrap_or(&upper);
+                if matches!(
+                    stem,
+                    "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+                        | "COM1" | "COM2" | "COM3" | "COM4" | "COM5" | "COM6" | "COM7" | "COM8" | "COM9"
+                        | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5" | "LPT6" | "LPT7" | "LPT8" | "LPT9"
+                ) {
+                    return false;
+                }
+                depth += 1;
+            }
+            _ => return false,
+        }
+    }
+    depth > 0
+}
+
+fn extract_overrides(path: &Path, inst_dir: &Path, overrides_dir: &str) -> Result<(), String> {
+    let file = File::open(path).map_err(|e| format!("No se pudo abrir el archivo para extracción: {}", e))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| format!("Archivo zip inválido: {}", e))?;
+
+    if archive.len() > 25000 {
+        return Err("El modpack contiene demasiadas entradas (máximo 25000)".to_string());
+    }
+
+    let overrides_prefix = format!("{}/", overrides_dir.trim_end_matches('/'));
+    const MAX_TOTAL_BYTES: u64 = 4 * 1024 * 1024 * 1024; // 4 GB
+    const MAX_FILE_BYTES: u64 = 1024 * 1024 * 1024; // 1 GB
+    let mut total_extracted: u64 = 0;
+
+    for i in 0..archive.len() {
+        let mut zip_entry = match archive.by_index(i) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        if zip_entry.is_dir() {
+            continue;
+        }
+
+        let entry_name = zip_entry.name().replace('\\', "/");
+
+        let relative = if let Some(r) = entry_name.strip_prefix(&overrides_prefix) {
+            Some(r.to_string())
+        } else if let Some(r) = entry_name.strip_prefix("client-overrides/") {
+            Some(r.to_string())
+        } else if let Some(idx) = entry_name.find(&format!("/{}", overrides_prefix)) {
+            Some(entry_name[idx + overrides_prefix.len() + 1..].to_string())
+        } else if entry_name.starts_with("mods/")
+            || entry_name.starts_with("config/")
+            || entry_name.starts_with("resourcepacks/")
+            || entry_name.starts_with("shaderpacks/")
+            || entry_name == "options.txt"
+            || entry_name == "servers.dat"
+        {
+            Some(entry_name)
+        } else {
+            None
+        };
+
+        if let Some(rel_path_str) = relative {
+            let clean_rel = rel_path_str.trim_start_matches('/');
+            let rel_path = Path::new(clean_rel);
+            if !is_safe_rel_path(rel_path) {
+                continue;
+            }
+
+            let out_path = inst_dir.join(rel_path);
+            if !out_path.starts_with(inst_dir) {
+                continue;
+            }
+
+            let remaining_budget = MAX_TOTAL_BYTES.saturating_sub(total_extracted);
+            if remaining_budget == 0 {
+                return Err("El contenido total descomprimido del modpack excede el límite de 4 GB".to_string());
+            }
+            let file_budget = MAX_FILE_BYTES.min(remaining_budget);
+
+            if let Some(parent) = out_path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("Error creando directorio {:?}: {}", parent, e))?;
+            }
+            let mut out_file = File::create(&out_path)
+                .map_err(|e| format!("Error creando archivo {:?}: {}", out_path, e))?;
+
+            let mut limited_reader = zip_entry.by_ref().take(file_budget + 1);
+            let bytes_copied = io::copy(&mut limited_reader, &mut out_file)
+                .map_err(|e| {
+                    let _ = fs::remove_file(&out_path);
+                    format!("Error extrayendo archivo {:?}: {}", out_path, e)
+                })?;
+
+            if bytes_copied > file_budget {
+                let _ = fs::remove_file(&out_path);
+                return Err(format!("Extracción de {:?} excedió el límite permitido", out_path));
+            }
+            total_extracted = total_extracted.saturating_add(bytes_copied);
+        }
+    }
+    Ok(())
 }
 
 pub struct ModpackEngine;
@@ -272,244 +572,129 @@ impl ModpackEngine {
     ) -> Result<Instance, String> {
         let path_owned = mrpack_path.to_path_buf();
         let custom_name_clone = custom_name.clone();
-        let custom_icon_clone = custom_icon.clone();
 
-        let (instance, inst_dir, files_to_download) =
-            tokio::task::spawn_blocking(move || -> Result<(Instance, PathBuf, Vec<ModpackFile>), String> {
-                let file = File::open(&path_owned)
-                    .map_err(|e| format!("No se pudo abrir el paquete: {}", e))?;
-                let mut archive = ZipArchive::new(file)
-                    .map_err(|e| format!("Archivo comprimido inválido o corrupto: {}", e))?;
+        let scan = tokio::task::spawn_blocking(move || {
+            scan_archive(&path_owned, custom_name_clone)
+        })
+        .await
+        .map_err(|e| e.to_string())??;
 
-                let mut modrinth_index: Option<ModrinthIndex> = None;
-                let mut curse_manifest: Option<Value> = None;
-                let mut embedded_icon: Option<String> = None;
+        let mut loader_version = scan.loader_version;
+        let loader_lower = scan.loader.to_ascii_lowercase();
 
-                for i in 0..archive.len() {
-                    if let Ok(mut entry) = archive.by_index(i) {
-                        let lower = entry.name().to_lowercase();
-                        if lower == "modrinth.index.json" || lower.ends_with("/modrinth.index.json") {
-                            if entry.size() < 16 * 1024 * 1024 {
-                                let mut s = String::new();
-                                if entry.read_to_string(&mut s).is_ok() {
-                                    modrinth_index = serde_json::from_str::<ModrinthIndex>(&s).ok();
-                                }
-                            }
-                        } else if lower == "manifest.json" || lower.ends_with("/manifest.json") {
-                            if entry.size() < 8 * 1024 * 1024 {
-                                let mut s = String::new();
-                                if entry.read_to_string(&mut s).is_ok() {
-                                    curse_manifest = serde_json::from_str::<Value>(&s).ok();
-                                }
-                            }
-                        } else if embedded_icon.is_none()
-                            && (lower == "icon.png"
-                                || lower == "pack.png"
-                                || lower == "overrides/icon.png")
-                            && entry.size() > 64
-                            && entry.size() <= 98304
-                        {
-                            let mut buf = Vec::with_capacity(entry.size() as usize);
-                            if entry.read_to_end(&mut buf).is_ok() {
-                                embedded_icon = Some(format!(
-                                    "data:image/png;base64,{}",
-                                    encode_base64(&buf)
-                                ));
-                            }
-                        }
-                    }
-                }
+        if loader_lower == "forge" || loader_lower == "neoforge" {
+            let _ = app.emit(
+                "modpack-progress",
+                ModpackProgress {
+                    current: 1,
+                    total: 100,
+                    filename: format!(
+                        "Instalando {} {}...",
+                        loader_lower.to_uppercase(),
+                        loader_version.as_deref().unwrap_or("latest")
+                    ),
+                },
+            );
 
-                let fallback_title = path_owned
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("Modpack Importado")
-                    .to_string();
-
-                let mut pack_name = custom_name_clone.clone().unwrap_or(fallback_title);
-                let mut mc_version = "1.21.4".to_string();
-                let mut loader = "fabric".to_string();
-                let mut loader_version: Option<String> = None;
-                let mut files_to_download: Vec<ModpackFile> = Vec::new();
-
-                if let Some(ref idx) = modrinth_index {
-                    if custom_name_clone.is_none() && !idx.name.trim().is_empty() {
-                        pack_name = if !idx.version_id.trim().is_empty()
-                            && !idx
-                                .name
-                                .to_lowercase()
-                                .contains(&idx.version_id.to_lowercase())
-                        {
-                            format!("{} ({})", idx.name.trim(), idx.version_id.trim())
-                        } else {
-                            idx.name.trim().to_string()
-                        };
-                    }
-                    if let Some(mc) = idx.dependencies.get("minecraft") {
-                        mc_version = mc.clone();
-                    }
-                    if let Some(v) = idx.dependencies.get("fabric-loader") {
-                        loader = "fabric".to_string();
-                        loader_version = Some(v.clone());
-                    } else if let Some(v) = idx.dependencies.get("quilt-loader") {
-                        loader = "quilt".to_string();
-                        loader_version = Some(v.clone());
-                    } else if let Some(v) = idx.dependencies.get("neoforge") {
-                        loader = "neoforge".to_string();
-                        loader_version = Some(v.clone());
-                    } else if let Some(v) = idx.dependencies.get("forge") {
-                        loader = "forge".to_string();
-                        loader_version = Some(v.clone());
-                    } else {
-                        loader = "vanilla".to_string();
-                    }
-                    files_to_download = idx.files.clone();
-                } else if let Some(ref cf) = curse_manifest {
-                    if custom_name_clone.is_none() {
-                        if let Some(n) = cf.get("name").and_then(|v| v.as_str()) {
-                            if !n.trim().is_empty() {
-                                pack_name = n.trim().to_string();
-                            }
-                        }
-                    }
-                    if let Some(mc) = cf
-                        .get("minecraft")
-                        .and_then(|m| m.get("version"))
-                        .and_then(|v| v.as_str())
-                    {
-                        mc_version = mc.to_string();
-                    }
-                    if let Some(loaders) = cf
-                        .get("minecraft")
-                        .and_then(|m| m.get("modLoaders"))
-                        .and_then(|l| l.as_array())
-                    {
-                        if let Some(first_id) = loaders
-                            .first()
-                            .and_then(|f| f.get("id"))
-                            .and_then(|i| i.as_str())
-                        {
-                            let lower_id = first_id.to_lowercase();
-                            if let Some(ver) = lower_id.strip_prefix("neoforge-") {
-                                loader = "neoforge".to_string();
-                                loader_version = Some(ver.to_string());
-                            } else if let Some(ver) = lower_id.strip_prefix("forge-") {
-                                loader = "forge".to_string();
-                                loader_version = Some(ver.to_string());
-                            } else if let Some(ver) = lower_id.strip_prefix("fabric-") {
-                                loader = "fabric".to_string();
-                                loader_version = Some(ver.to_string());
-                            } else if let Some(ver) = lower_id.strip_prefix("quilt-") {
-                                loader = "quilt".to_string();
-                                loader_version = Some(ver.to_string());
-                            }
-                        }
-                    }
-                }
-
-                if loader.eq_ignore_ascii_case("forge") || loader.eq_ignore_ascii_case("neoforge") {
-                    return Err(format!(
-                        "Este modpack requiere {} {} y ese loader todavía no está soportado.\
-                         Se puede importar cuando llegue el instalador (F2 del plan).",
-                        loader.to_uppercase(),
-                        loader_version.clone().unwrap_or_default()
-                    ));
-                }
-
-                let final_icon = custom_icon_clone
-                    .or(embedded_icon)
-                    .or_else(|| Some("minecraft".to_string()));
-
-                let instance = InstanceManager::create_instance(
-                    pack_name,
-                    mc_version,
-                    loader,
-                    loader_version,
-                    final_icon,
-                    None,
-                    None,
-                    None,
-                    None,
-                )?;
-
-                let inst_dir = InstanceManager::get_instance_dir(&instance.id)?;
-
-                for i in 0..archive.len() {
-                    let mut zip_entry = match archive.by_index(i) {
-                        Ok(e) => e,
-                        Err(_) => continue,
-                    };
-                    if zip_entry.is_dir() {
-                        continue;
-                    }
-                    let entry_name = zip_entry.name().replace('\\', "/");
-
-                    let relative = if let Some(r) = entry_name.strip_prefix("overrides/") {
-                        Some(r.to_string())
-                    } else if let Some(r) = entry_name.strip_prefix("client-overrides/") {
-                        Some(r.to_string())
-                    } else if let Some(idx) = entry_name.find("/overrides/") {
-                        Some(entry_name[idx + "/overrides/".len()..].to_string())
-                    } else if entry_name.starts_with("mods/")
-                        || entry_name.starts_with("config/")
-                        || entry_name.starts_with("resourcepacks/")
-                        || entry_name.starts_with("shaderpacks/")
-                        || entry_name == "options.txt"
-                        || entry_name == "servers.dat"
-                    {
-                        Some(entry_name)
-                    } else {
-                        None
-                    };
-
-                    if let Some(rel_path) = relative {
-                        let clean_rel = rel_path.trim_start_matches('/');
-                        if clean_rel.is_empty() || clean_rel.contains("..") {
-                            continue;
-                        }
-                        let out_path = inst_dir.join(clean_rel);
-                        if let Some(parent) = out_path.parent() {
-                            let _ = fs::create_dir_all(parent);
-                        }
-                        if let Ok(mut out_file) = File::create(&out_path) {
-                            let _ = io::copy(&mut zip_entry, &mut out_file);
-                        }
-                    }
-                }
-
-                Ok((instance, inst_dir, files_to_download))
-            })
+            let id = crate::forge::ForgeInstaller::install(
+                &scan.mc_version,
+                &loader_lower,
+                loader_version.as_deref(),
+            )
             .await
-            .map_err(|e| e.to_string())??;
+            .map_err(|e| format!("Error instalando {}: {}", loader_lower.to_uppercase(), e))?;
 
-        if !files_to_download.is_empty() {
+            loader_version = Some(if loader_lower == "forge" {
+                let prefix = format!("{}-forge-", scan.mc_version);
+                id.strip_prefix(&prefix).unwrap_or(&id).to_string()
+            } else {
+                id.strip_prefix("neoforge-").unwrap_or(&id).to_string()
+            });
+        }
+
+        let final_icon = custom_icon
+            .or(scan.embedded_icon)
+            .or_else(|| Some("minecraft".to_string()));
+
+        let pack_name = scan.pack_name.clone();
+        let mc_ver = scan.mc_version.clone();
+        let loader_clone = scan.loader.clone();
+        let l_ver = loader_version.clone();
+        let final_icon_clone = final_icon.clone();
+
+        let (instance, inst_dir) = tokio::task::spawn_blocking(move || -> Result<(Instance, PathBuf), String> {
+            let inst = InstanceManager::create_instance(
+                pack_name,
+                mc_ver,
+                loader_clone,
+                l_ver,
+                final_icon_clone,
+                None,
+                None,
+                None,
+                None,
+            )?;
+            let dir = match InstanceManager::get_instance_dir(&inst.id) {
+                Ok(d) => d,
+                Err(e) => {
+                    let _ = InstanceManager::delete_instance(&inst.id);
+                    return Err(e);
+                }
+            };
+            Ok((inst, dir))
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+
+        let path_for_extract = mrpack_path.to_path_buf();
+        let inst_dir_clone = inst_dir.clone();
+        let ovr_dir = scan.overrides_dir.clone();
+        let extract_res = tokio::task::spawn_blocking(move || {
+            extract_overrides(&path_for_extract, &inst_dir_clone, &ovr_dir)
+        })
+        .await
+        .map_err(|e| e.to_string());
+
+        if let Err(e) = extract_res.and_then(|r| r) {
+            let _ = InstanceManager::delete_instance(&instance.id);
+            return Err(format!("Fallo extrayendo archivos del modpack: {}", e));
+        }
+
+        if !scan.files_to_download.is_empty() {
             let client = reqwest::Client::builder()
                 .user_agent("GhosttyLauncher/0.1.0 (contact@ghostty.dev)")
                 .timeout(Duration::from_secs(45))
                 .build()
                 .map_err(|e| e.to_string())?;
 
-            let total = files_to_download.len();
+            let total = scan.files_to_download.len();
             let chunk_size = 6;
             let last_emit = Arc::new(Mutex::new(Instant::now() - Duration::from_secs(1)));
 
-            for (chunk_idx, chunk) in files_to_download.chunks(chunk_size).enumerate() {
+            for (chunk_idx, chunk) in scan.files_to_download.chunks(chunk_size).enumerate() {
                 let mut tasks = Vec::new();
                 for (offset_in_chunk, mod_file) in chunk.iter().enumerate() {
                     let current_num = chunk_idx * chunk_size + offset_in_chunk + 1;
                     let rel_clean = mod_file.path.replace('\\', "/");
-                    if rel_clean.contains("..") {
+                    let clean_rel = rel_clean.trim_start_matches('/');
+                    let rel_path = Path::new(clean_rel);
+                    if !is_safe_rel_path(rel_path) {
                         continue;
                     }
-                    let target_path = inst_dir.join(&rel_clean);
+
+                    let target_path = inst_dir.join(rel_path);
+                    if !target_path.starts_with(&inst_dir) {
+                        continue;
+                    }
+
                     if let Some(parent) = target_path.parent() {
                         let _ = fs::create_dir_all(parent);
                     }
 
-                    let short_name = Path::new(&rel_clean)
+                    let short_name = rel_path
                         .file_name()
                         .and_then(|s| s.to_str())
-                        .unwrap_or(&rel_clean)
+                        .unwrap_or(clean_rel)
                         .to_string();
 
                     let should_emit = if current_num == 1 || current_num == total {
@@ -539,34 +724,225 @@ impl ModpackEngine {
                     if let Some(url) = mod_file.downloads.first().cloned() {
                         let c = client.clone();
                         let expected_size = mod_file.file_size;
+                        let expected_hashes = mod_file.hashes.clone();
+                        let target_path_clone = target_path.clone();
                         tasks.push(tokio::spawn(async move {
-                            if expected_size > 0 {
-                                if let Ok(meta) = fs::metadata(&target_path) {
-                                    if meta.len() == expected_size {
-                                        return;
+                            if target_path_clone.exists() {
+                                let mut valid = false;
+                                if let Some(sha512) = expected_hashes.get("sha512") {
+                                    if let Some(actual) = compute_file_sha512(&target_path_clone) {
+                                        if actual.eq_ignore_ascii_case(sha512) {
+                                            valid = true;
+                                        }
                                     }
-                                }
-                            }
-                            if let Ok(mut res) = c.get(&url).send().await {
-                                if res.status().is_success() {
-                                    if let Ok(mut out_file) = File::create(&target_path) {
-                                        while let Ok(Some(chunk_bytes)) = res.chunk().await {
-                                            if out_file.write_all(&chunk_bytes).is_err() {
-                                                break;
-                                            }
+                                } else if let Some(sha1) = expected_hashes.get("sha1") {
+                                    if let Some(actual) = compute_file_sha1(&target_path_clone) {
+                                        if actual.eq_ignore_ascii_case(sha1) {
+                                            valid = true;
+                                        }
+                                    }
+                                } else if expected_size > 0 {
+                                    if let Ok(meta) = fs::metadata(&target_path_clone) {
+                                        if meta.len() == expected_size {
+                                            valid = true;
                                         }
                                     }
                                 }
+                                if valid {
+                                    return Ok(());
+                                }
                             }
+
+                            let mut res = c.get(&url).send().await.map_err(|e| e.to_string())?;
+                            if !res.status().is_success() {
+                                return Err(format!("HTTP {} al descargar {}", res.status(), url));
+                            }
+
+                            let part_path = target_path_clone.with_extension(format!("part.{}", Uuid::new_v4()));
+                            let write_res = async {
+                                let mut out_file = File::create(&part_path).map_err(|e| e.to_string())?;
+                                while let Some(chunk_bytes) = res.chunk().await.map_err(|e| e.to_string())? {
+                                    out_file.write_all(&chunk_bytes).map_err(|e| e.to_string())?;
+                                }
+                                out_file.flush().map_err(|e| e.to_string())?;
+                                Ok::<(), String>(())
+                            }
+                            .await;
+
+                            if let Err(e) = write_res {
+                                let _ = fs::remove_file(&part_path);
+                                return Err(e);
+                            }
+
+                            // Si se especifican hashes criptográficos (SHA-512 o SHA-1), verificamos la integridad con ellos.
+                            // Si el hash coincide, aceptamos el archivo aunque haya una leve discrepancia de tamaño en metadatos del CDN.
+                            // Solo si NO se proporcionan hashes recurrimos a la comprobación de tamaño exacto.
+                            if let Some(sha512) = expected_hashes.get("sha512") {
+                                let actual = compute_file_sha512(&part_path)
+                                    .ok_or_else(|| {
+                                        let _ = fs::remove_file(&part_path);
+                                        format!("No se pudo calcular hash SHA-512 para {}", url)
+                                    })?;
+                                if !actual.eq_ignore_ascii_case(sha512) {
+                                    let _ = fs::remove_file(&part_path);
+                                    return Err(format!("Integridad fallida (SHA-512 erróneo) para {}", url));
+                                }
+                            } else if let Some(sha1) = expected_hashes.get("sha1") {
+                                let actual = compute_file_sha1(&part_path)
+                                    .ok_or_else(|| {
+                                        let _ = fs::remove_file(&part_path);
+                                        format!("No se pudo calcular hash SHA-1 para {}", url)
+                                    })?;
+                                if !actual.eq_ignore_ascii_case(sha1) {
+                                    let _ = fs::remove_file(&part_path);
+                                    return Err(format!("Integridad fallida (SHA-1 erróneo) para {}", url));
+                                }
+                            } else if expected_size > 0 {
+                                let meta = fs::metadata(&part_path).map_err(|e| {
+                                    let _ = fs::remove_file(&part_path);
+                                    format!("No se pudo verificar tamaño de {}: {}", url, e)
+                                })?;
+                                if meta.len() != expected_size {
+                                    let _ = fs::remove_file(&part_path);
+                                    return Err(format!(
+                                        "Tamaño de descarga inconsistente para {}: esperado {}, recibido {}",
+                                        url, expected_size, meta.len()
+                                    ));
+                                }
+                            }
+
+                            fs::rename(&part_path, &target_path_clone).map_err(|e| {
+                                let _ = fs::remove_file(&part_path);
+                                format!("Error guardando archivo {}: {}", target_path_clone.display(), e)
+                            })?;
+
+                            Ok(())
                         }));
                     }
                 }
-                for t in tasks {
-                    let _ = t.await;
+
+                let mut first_error: Option<String> = None;
+                for t in &mut tasks {
+                    if first_error.is_some() {
+                        t.abort();
+                    }
+                    match t.await {
+                        Ok(Ok(())) => {}
+                        Ok(Err(e)) => {
+                            if first_error.is_none() {
+                                first_error = Some(e);
+                            }
+                        }
+                        Err(join_err) => {
+                            if first_error.is_none() && !join_err.is_cancelled() {
+                                first_error = Some(format!("Error en tarea de descarga: {}", join_err));
+                            }
+                        }
+                    }
+                }
+
+                if let Some(err) = first_error {
+                    let _ = InstanceManager::delete_instance(&instance.id);
+                    return Err(format!("Error descargando mods del modpack: {}", err));
                 }
             }
         }
 
         Ok(instance)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+
+    #[test]
+    fn scans_modrinth_forge_pack() {
+        let mut buf = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+            zip.start_file("modrinth.index.json", SimpleFileOptions::default()).unwrap();
+            zip.write_all(br#"{
+                "formatVersion": 1,
+                "game": "minecraft",
+                "versionId": "1.0.0",
+                "name": "Forge Test Pack",
+                "dependencies": {
+                    "minecraft": "1.20.1",
+                    "forge": "47.2.0"
+                },
+                "files": []
+            }"#).unwrap();
+            zip.finish().unwrap();
+        }
+
+        let temp_dir = std::env::temp_dir();
+        let test_zip_path = temp_dir.join(format!("test_modpack_{}.zip", uuid::Uuid::new_v4()));
+        std::fs::write(&test_zip_path, &buf).unwrap();
+
+        let scan = scan_archive(&test_zip_path, None).expect("debería escanear correctamente");
+        assert_eq!(scan.pack_name, "Forge Test Pack (1.0.0)");
+        assert_eq!(scan.mc_version, "1.20.1");
+        assert_eq!(scan.loader, "forge");
+        assert_eq!(scan.loader_version, Some("47.2.0".to_string()));
+
+        let _ = std::fs::remove_file(test_zip_path);
+    }
+
+    #[test]
+    fn scans_curseforge_neoforge_pack() {
+        let mut buf = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+            zip.start_file("manifest.json", SimpleFileOptions::default()).unwrap();
+            zip.write_all(br#"{
+                "name": "NeoForge Test Pack",
+                "version": "2.0.0",
+                "minecraft": {
+                    "version": "1.21.1",
+                    "modLoaders": [
+                        { "id": "neoforge-21.1.50", "primary": true }
+                    ]
+                },
+                "files": []
+            }"#).unwrap();
+            zip.finish().unwrap();
+        }
+
+        let temp_dir = std::env::temp_dir();
+        let test_zip_path = temp_dir.join(format!("test_curse_{}.zip", uuid::Uuid::new_v4()));
+        std::fs::write(&test_zip_path, &buf).unwrap();
+
+        let scan = scan_archive(&test_zip_path, None).expect("debería escanear correctamente");
+        assert_eq!(scan.pack_name, "NeoForge Test Pack");
+        assert_eq!(scan.mc_version, "1.21.1");
+        assert_eq!(scan.loader, "neoforge");
+        assert_eq!(scan.loader_version, Some("21.1.50".to_string()));
+
+        let _ = std::fs::remove_file(test_zip_path);
+    }
+
+    #[test]
+    fn validates_safe_rel_paths() {
+        assert!(is_safe_rel_path(Path::new("mods/jei-1.20.1.jar")));
+        assert!(is_safe_rel_path(Path::new("config/fancymenu/options.txt")));
+        assert!(is_safe_rel_path(Path::new("options.txt")));
+
+        // Rejections: Parent traversal, absolute root, prefixes
+        assert!(!is_safe_rel_path(Path::new("../secret.txt")));
+        assert!(!is_safe_rel_path(Path::new("mods/../../secret.txt")));
+        assert!(!is_safe_rel_path(Path::new("/etc/passwd")));
+
+        // Windows ADS and trailing space/dot
+        assert!(!is_safe_rel_path(Path::new("mods/file.txt:evil.exe")));
+        assert!(!is_safe_rel_path(Path::new("mods/evil. ")));
+        assert!(!is_safe_rel_path(Path::new("mods/evil..")));
+
+        // Reserved Windows names
+        assert!(!is_safe_rel_path(Path::new("nul")));
+        assert!(!is_safe_rel_path(Path::new("con.txt")));
+        assert!(!is_safe_rel_path(Path::new("mods/aux.jar")));
     }
 }

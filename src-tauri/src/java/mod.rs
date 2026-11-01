@@ -19,21 +19,49 @@ pub fn required_major(mc_version: &str) -> u32 {
         .filter_map(|p| p.parse().ok())
         .collect();
     match parts.as_slice() {
+        [major, ..] if *major >= 24 => 25,
         [1, minor, ..] if *minor >= 21 => 21,
         [1, minor, ..] if *minor >= 17 => 17,
-        _ => 8,
+        [1, 16, ..] => 16,
+        _ => {
+            let lower = mc_version.to_ascii_lowercase();
+            if lower.starts_with("26") || lower.starts_with("25") {
+                25
+            } else if lower.starts_with("24") {
+                21
+            } else {
+                8
+            }
+        }
     }
 }
 
-/// Runtime gestionado/detectado más pequeño que cumpla la versión, o el mayor.
+/// Runtime gestionado/detectado más adecuado para la versión de Minecraft.
 pub fn pick_for(mc_version: &str) -> Option<String> {
-    let needed = required_major(mc_version);
-    let mut runtimes = JavaDetector::detect();
-    runtimes.sort_by_key(|r| r.major_version);
-    runtimes
+    pick_for_major(required_major(mc_version))
+}
+
+/// Runtime gestionado/detectado según versión mayor de Java requerida.
+/// Prioriza la versión exacta (para máxima estabilidad con mods y JPMS),
+/// o en su defecto la menor disponible >= needed.
+pub fn pick_for_major(needed: u32) -> Option<String> {
+    let runtimes = JavaDetector::detect();
+    if runtimes.is_empty() {
+        return None;
+    }
+
+    // 1. Versión exacta recomendada
+    if let Some(exact) = runtimes.iter().find(|r| r.major_version == needed) {
+        return Some(exact.path.clone());
+    }
+
+    // 2. Menor runtime compatible >= needed
+    let mut sorted = runtimes.clone();
+    sorted.sort_by_key(|r| r.major_version);
+    sorted
         .iter()
         .find(|r| r.major_version >= needed)
-        .or_else(|| runtimes.last())
+        .or_else(|| sorted.last())
         .map(|r| r.path.clone())
 }
 
