@@ -57,6 +57,11 @@ export function getAccountAvatarUrl(account: Account | null, size = 28): string 
       return account.skin_url;
     }
   }
+  // La skin completa no sirve como avatar (y a veces llega por http): se usa
+  // la cabeza renderizada por nick, que siempre responde si la cuenta existe.
+  if (account.account_type === 'Microsoft' || account.skin_url) {
+    return `https://mc-heads.net/avatar/${encodeURIComponent(account.username)}/${size}`;
+  }
   return `https://mc-heads.net/avatar/${encodeURIComponent(account.username)}/${size}`;
 }
 
@@ -245,7 +250,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
         </div>
       </div>
 
-      <div className="dynamic-island-capsule rounded-full pl-1 flex items-center h-10 shrink-0 overflow-hidden">
+      <div className="dynamic-island-capsule rounded-l-full rounded-r-none pl-1 flex items-center h-10 shrink-0 overflow-hidden">
         <button
           type="button"
           onClick={onOpenCreateInstance}
@@ -267,7 +272,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
           <span className="max-w-[150px] truncate whitespace-nowrap">
             {activeAccount ? activeAccount.username : 'Sin Cuenta'}
           </span>
-          <div className="absolute right-0 top-0 h-full w-10 rounded-full overflow-hidden bg-black/25 flex items-center justify-center shrink-0">
+          <div className="absolute right-0 top-0 h-full w-10 overflow-hidden bg-black/25 flex items-center justify-center shrink-0">
             {activeAccount ? (
               <img
                 src={getAccountAvatarUrl(activeAccount, 40)}

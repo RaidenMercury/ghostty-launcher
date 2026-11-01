@@ -305,3 +305,21 @@ html[data-theme='light'] .border-white\/20 {
   content-visibility: auto;
   contain-intrinsic-size: auto 58px;
 }
+
+
+/* Hover de instancia: crece un poco y empuja a las vecinas (sin 3D ni filtros). */
+.instance-card {
+  transition:
+    padding 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    margin 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+.instance-card:hover {
+  padding-top: 1.05rem;
+  padding-bottom: 1.05rem;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.75);
+  border-color: rgba(var(--accent-rgb), 0.55);
+}

@@ -24,7 +24,6 @@ import { Instance } from '../types';
 import { triggerLaunchConfetti } from '../utils/confetti';
 import { InstanceIcon } from '../components/InstanceIcon';
 import { PreblurImage } from '../components/PreblurImage';
-import { TiltCard } from '../components/TiltCard';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { AccordionSection } from '../components/AccordionSection';
 import { GhosttyMascot } from '../components/GhosttyMascot';
@@ -505,17 +504,13 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     isDragOver ? 'border-t-2 border-[var(--accent)] pt-1' : ''
                   } ${isDragged ? 'shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]' : ''}`}
                 >
-                  <TiltCard
-                    disabled={dragActive || dragId !== null}
-                    className="relative z-10 hover:z-30"
-                  >
                   <SpotlightCard
                     onClick={() => {
                       if (suppressClick.current) return;
                       onSelectInstance(inst);
                     }}
                     isSelected={isSelected}
-                    className="glass-card p-3.5 cursor-pointer group relative"
+                    className="glass-card instance-card p-3.5 cursor-pointer group relative"
                   >
                     <div className="flex items-center gap-3 relative z-10">
                       <div
@@ -586,7 +581,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       </div>
                     </div>
                   </SpotlightCard>
-                  </TiltCard>
                 </div>
               );
             })
