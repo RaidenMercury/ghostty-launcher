@@ -890,7 +890,7 @@ export function App() {
                   setIsIslandExpanded(false);
                   setCurrentTab('instances');
                 }}
-                className="absolute inset-0 pointer-events-auto"
+                className="absolute inset-0 pointer-events-auto island-backdrop"
               />
 
               <div className="absolute inset-0 flex items-start justify-center pt-2 pb-4 px-4 pointer-events-none">

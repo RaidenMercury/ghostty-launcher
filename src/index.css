@@ -96,16 +96,18 @@
 
   .modal-scrim {
     background-color: rgba(3, 4, 9, 0.45);
+    -webkit-backdrop-filter: blur(14px) saturate(1.05);
+    backdrop-filter: blur(14px) saturate(1.05);
   }
 
   .scene-layer {
     position: relative;
   }
 
-  /* Con rasterizado en CPU la VRAM ya no es problema: se recupera el blur
-     real detrás de los modales. */
+  /* El filter sobre la escena dejaba huecos negros fuera del offscreen.
+     El desenfoque va en el scrim (cubre toda la ventana). */
   .scene-layer.is-blurred {
-    filter: blur(14px) saturate(1.05);
+    filter: none;
   }
 
   .glass-panel {
@@ -322,4 +324,11 @@ html[data-theme='light'] .border-white\/20 {
   margin-bottom: 3px;
   box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.75);
   border-color: rgba(var(--accent-rgb), 0.55);
+}
+
+
+/* Fondo de la isla: blur sin oscurecer (el scrim de modales ya lleva su velo). */
+.island-backdrop {
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  backdrop-filter: blur(14px) saturate(1.05);
 }
