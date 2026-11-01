@@ -95,6 +95,7 @@ pub fn run() {
             get_config,
             save_config,
             update_discord_rpc,
+            set_discord_selection,
             get_mojang_versions,
             detect_java,
             download_java_runtime,

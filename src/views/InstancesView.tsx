@@ -550,6 +550,15 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {inst.group && (
+                              <span
+                                className="p-0.5 text-ghost-400"
+                                title={`Grupo: ${inst.group}`}
+                              >
+                                <Folder className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+
                             <button
                               type="button"
                               onClick={(e) => {
@@ -567,15 +576,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                                 className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
                               />
                             </button>
-
-                            {inst.group && (
-                              <span
-                                className="p-0.5 text-ghost-400"
-                                title={`Grupo: ${inst.group}`}
-                              >
-                                <Folder className="w-3.5 h-3.5" />
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>

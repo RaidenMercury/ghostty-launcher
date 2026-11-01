@@ -102,15 +102,10 @@
     position: relative;
   }
 
-  /* Velo estático en vez de filter: blur(12px): misma legibilidad sin capa
-     compuesta ni re-rasterizado por frame. */
-  .scene-layer.is-blurred::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(3, 4, 9, 0.70);
-    pointer-events: none;
-    z-index: 40;
+  /* Con rasterizado en CPU la VRAM ya no es problema: se recupera el blur
+     real detrás de los modales. */
+  .scene-layer.is-blurred {
+    filter: blur(10px) saturate(1.05);
   }
 
   .glass-panel {

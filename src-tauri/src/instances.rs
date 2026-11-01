@@ -196,7 +196,7 @@ impl InstanceManager {
                         let is_jar = fname.ends_with(".jar") || fname.ends_with(".jar.disabled");
                         let is_pack = fname.ends_with(".zip") || fname.ends_with(".zip.disabled");
                         if is_jar || is_pack {
-                            let enabled = fname.ends_with(".jar");
+                            let enabled = !fname.ends_with(".disabled");
                             mods.push(ModFileInfo {
                                 icon: None,
                                 filename: fname,
@@ -233,7 +233,7 @@ impl InstanceManager {
         Ok(ModFileInfo {
             icon: None,
             filename: new_filename.clone(),
-            enabled: new_filename.ends_with(".jar"),
+            enabled: !new_filename.ends_with(".disabled"),
             size: meta.len(),
         })
     }

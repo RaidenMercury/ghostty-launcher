@@ -452,3 +452,17 @@ pub fn get_mod_icons(
 pub fn duplicate_instance(id: String) -> Result<Instance, String> {
     InstanceManager::duplicate_instance(&id)
 }
+
+#[tauri::command]
+pub fn set_discord_selection(
+    instance_name: String,
+    mc_version: String,
+    loader: String,
+) -> Result<(), String> {
+    crate::discord::DiscordRpcManager::set_selected_instance(
+        &instance_name,
+        &mc_version,
+        &loader,
+    );
+    Ok(())
+}

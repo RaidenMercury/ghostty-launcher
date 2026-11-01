@@ -733,6 +733,13 @@ export function App() {
   };
 
   // El velo solo aplica a modales: la isla expandida es contenido legible.
+  useEffect(() => {
+    if (!activeInstance) return;
+    api
+      .setDiscordSelection(activeInstance.name, activeInstance.mc_version, activeInstance.loader)
+      .catch(() => {});
+  }, [activeInstance?.id]);
+
   const modalOpen =
     isCreateOpen ||
     isAccountOpen ||

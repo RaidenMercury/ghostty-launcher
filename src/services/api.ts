@@ -197,6 +197,18 @@ export const api = {
     });
   },
 
+  async setDiscordSelection(
+    instanceName: string,
+    mcVersion: string,
+    loader: string
+  ): Promise<void> {
+    await invokeTauri<void>('set_discord_selection', {
+      instanceName,
+      mcVersion,
+      loader,
+    });
+  },
+
   async updateDiscordRpc(enabled: boolean, details: string, state: string): Promise<void> {
     await invokeTauri<void>('update_discord_rpc', { enabled, details, state });
   },

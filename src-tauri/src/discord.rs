@@ -8,6 +8,7 @@ use std::env;
 use std::io::{Read, Write};
 use std::process;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -29,6 +30,7 @@ static LAST_STATE: LazyLock<Mutex<(bool, String, String)>> = LazyLock::new(|| {
 });
 
 static ACTIVITY_TX: LazyLock<Mutex<Option<Sender<Presence>>>> = LazyLock::new(|| Mutex::new(None));
+static PLAYING: AtomicBool = AtomicBool::new(false);
 
 const DEFAULT_CLIENT_ID: &str = "1566205071929385052";
 
@@ -78,6 +80,7 @@ impl DiscordRpcManager {
     }
 
     pub fn set_playing_instance(instance_name: &str, mc_version: &str, loader: &str) {
+        PLAYING.store(true, Ordering::Relaxed);
         let enabled = LAST_STATE.lock().map(|g| g.0).unwrap_or(true);
         if !enabled {
             return;
@@ -89,7 +92,25 @@ impl DiscordRpcManager {
         );
     }
 
+    /// Actualiza la presencia con la instancia seleccionada en la UI, sin pisar
+    /// el estado de "jugando" mientras haya una partida activa.
+    pub fn set_selected_instance(instance_name: &str, mc_version: &str, loader: &str) {
+        if PLAYING.load(Ordering::Relaxed) {
+            return;
+        }
+        let enabled = LAST_STATE.lock().map(|g| g.0).unwrap_or(true);
+        if !enabled {
+            return;
+        }
+        Self::update_presence(
+            true,
+            &format!("{} ({})", instance_name, mc_version),
+            &format!("Explorando · {}", loader.to_uppercase()),
+        );
+    }
+
     pub fn restore_idle() {
+        PLAYING.store(false, Ordering::Relaxed);
         Self::init_from_config();
     }
 
@@ -115,7 +136,7 @@ impl DiscordRpcManager {
     }
 
     fn run_worker(rx: Receiver<Presence>) {
-        let mut connection: Option<Stream> = None;
+        let mut connection: Option<(Stream, bool)> = None;
 
         while let Ok(mut presence) = rx.recv() {
             // Coalesce: si llegaron varios cambios, solo importa el último.
@@ -126,9 +147,9 @@ impl DiscordRpcManager {
             let mut attempts = 0;
             loop {
                 if connection.is_none() {
-                    connection = Self::connect();
+                    connection = Self::connect().map(|stream| (stream, false));
                 }
-                let Some(stream) = connection.as_mut() else {
+                let Some((stream, handshaked)) = connection.as_mut() else {
                     attempts += 1;
                     if attempts >= 3 {
                         eprintln!("[discord] sin IPC disponible; se reintentará en el próximo cambio");
@@ -138,8 +159,11 @@ impl DiscordRpcManager {
                     continue;
                 };
 
-                match Self::send_activity(stream, &presence) {
-                    Ok(()) => break,
+                match Self::send_activity(stream, &presence, !*handshaked) {
+                    Ok(()) => {
+                        *handshaked = true;
+                        break;
+                    }
                     Err(err) => {
                         eprintln!("[discord] fallo al enviar actividad: {err}");
                         connection = None;
@@ -197,14 +221,19 @@ impl DiscordRpcManager {
         }
     }
 
-    fn send_activity(stream: &mut Stream, presence: &Presence) -> Result<(), String> {
-        let handshake = json!({ "v": 1, "client_id": Self::client_id() }).to_string();
-        Self::write_frame(stream, 0, &handshake)?;
-
-        // Discord responde al handshake; si trae error (client_id inválido), se ve.
-        if let Ok((_, body)) = Self::read_frame(stream) {
-            if body.contains("error") || body.contains("Invalid") {
-                eprintln!("[discord] handshake rechazado: {body}");
+    fn send_activity(
+        stream: &mut Stream,
+        presence: &Presence,
+        handshake: bool,
+    ) -> Result<(), String> {
+        if handshake {
+            let packet = json!({ "v": 1, "client_id": Self::client_id() }).to_string();
+            Self::write_frame(stream, 0, &packet)?;
+            // Discord responde al handshake; si trae error (client_id inválido), se ve.
+            if let Ok((_, body)) = Self::read_frame(stream) {
+                if body.contains("error") || body.contains("Invalid") {
+                    eprintln!("[discord] handshake rechazado: {body}");
+                }
             }
         }
 
