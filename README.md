@@ -61,3 +61,4 @@ GPL-3.0. Ver [LICENSE](LICENSE) y [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
 El backend incluye una traducción a Rust de
 [minecraft-launcher-core-node](https://github.com/Voxelum/minecraft-launcher-core-node)
 (MIT, © 2023 CI010); el aviso original se conserva en `THIRD_PARTY_NOTICES`.
+Los iconos SVG son de [game-icons.net](https://game-icons.net) (CC BY 3.0).

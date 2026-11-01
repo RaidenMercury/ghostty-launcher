@@ -47,3 +47,13 @@ atribución correspondiente.
 - Modrinth: búsqueda y descarga de mods según sus términos de API.
 - Eclipse Adoptium: descarga de JRE Temurin verificada por SHA-256.
 - Discord: Rich Presence por IPC local con un client_id propio.
+
+4) Iconos de game-icons.net
+----------------------------
+Los iconos SVG de public/icons/ provienen de https://game-icons.net y se
+distribuyen bajo Creative Commons Attribution 3.0 (CC BY 3.0):
+https://creativecommons.org/licenses/by/3.0/
+
+Autores: Lorc, Delapouite, Skoll, Carl Olsen, Faithtoken, Willdabeast y
+Darkzaitzev. Se han recoloreado (fill) para el tema oscuro; no se ha modificado
+su forma. Atribución requerida al redistribuir el launcher.
