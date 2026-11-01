@@ -19,6 +19,7 @@ import {
 import { Account, Cape } from '../types';
 import { getAccountAvatarUrl } from './DynamicIslandHeader';
 import { api } from '../services/api';
+import { SkinViewer3D } from './SkinViewer3D';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ interface AccountModalProps {
   ) => Promise<void>;
 }
 
-const CustomSkinCanvasPreview: React.FC<{
+export const CustomSkinCanvasPreview: React.FC<{
   skinDataUri: string;
   slim: boolean;
 }> = ({ skinDataUri, slim }) => {
@@ -342,6 +343,12 @@ export function AccountModal({
   const mcNickForRender = activeAccount?.skin_url?.startsWith('mc-user:')
     ? activeAccount.skin_url.replace('mc-user:', '').trim()
     : activeAccount?.username || 'MHF_Steve';
+
+  const viewerSkinUrl =
+    isCustomDataSkin && activeAccount?.skin_url
+      ? activeAccount.skin_url
+      : `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`;
+  const activeCapeUrl = capes.find((c) => c.active)?.url.replace(/^http:/, 'https:') ?? null;
 
   return (
     <AnimatePresence>
@@ -705,22 +712,13 @@ export function AccountModal({
                         }}
                       />
 
-                      {isCustomDataSkin && activeAccount.skin_url ? (
-                        <CustomSkinCanvasPreview
-                          skinDataUri={activeAccount.skin_url}
-                          slim={skinModel === 'slim'}
-                        />
-                      ) : (
-                        <img
-                          src={`https://mc-heads.net/body/${encodeURIComponent(mcNickForRender)}/160`}
-                          alt={activeAccount.username}
-                          className="h-40 w-auto object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'https://mc-heads.net/body/MHF_Steve/160';
-                          }}
-                        />
-                      )}
+                      <SkinViewer3D
+                        skinUrl={viewerSkinUrl}
+                        slim={skinModel === 'slim'}
+                        capeUrl={activeCapeUrl}
+                        width={190}
+                        height={210}
+                      />
 
                       <span className="text-[10px] font-mono text-ghost-400 mt-1.5 relative z-10">
                         {skinModel === 'slim' ? 'Modelo Alex (Slim 3px)' : 'Modelo Steve (Clásico 4px)'}
