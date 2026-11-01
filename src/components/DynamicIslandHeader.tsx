@@ -245,11 +245,11 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
         </div>
       </div>
 
-      <div className="dynamic-island-capsule rounded-full p-1 flex items-center h-10 shrink-0">
+      <div className="dynamic-island-capsule rounded-full pl-1 flex items-center h-10 shrink-0 overflow-hidden">
         <button
           type="button"
           onClick={onOpenCreateInstance}
-          className="btn-tactile h-full px-3.5 rounded-full flex items-center gap-1.5 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)]"
+          className="btn-tactile h-9 px-3.5 rounded-full flex items-center gap-1.5 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)] shrink-0"
           title="Crear una nueva instancia de Minecraft"
         >
           <Plus className="w-3.5 h-3.5 accent-text shrink-0" />
@@ -261,21 +261,21 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenAccounts}
-          className="btn-tactile h-full pl-3 pr-1.5 rounded-full flex items-center gap-2 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)]"
+          className="btn-tactile relative h-full pl-3 pr-11 rounded-full flex items-center gap-2 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)] min-w-0"
           title="Perfiles de jugador y administración de Skin"
         >
-          <span className="max-w-[96px] truncate whitespace-nowrap">
+          <span className="max-w-[150px] truncate whitespace-nowrap">
             {activeAccount ? activeAccount.username : 'Sin Cuenta'}
           </span>
-          <div className="w-6 h-6 rounded-full overflow-hidden bg-black/25 border border-[var(--glass-border)] flex items-center justify-center shrink-0">
+          <div className="absolute right-0 top-0 h-full w-10 rounded-full overflow-hidden bg-black/25 flex items-center justify-center shrink-0">
             {activeAccount ? (
               <img
-                src={getAccountAvatarUrl(activeAccount, 28)}
+                src={getAccountAvatarUrl(activeAccount, 40)}
                 alt={activeAccount.username}
                 className="w-full h-full object-cover"
                 style={{ imageRendering: 'pixelated' }}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://mc-heads.net/avatar/MHF_Steve/28`;
+                  (e.target as HTMLImageElement).src = `https://mc-heads.net/avatar/MHF_Steve/40`;
                 }}
               />
             ) : (
