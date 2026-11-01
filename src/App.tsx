@@ -16,6 +16,7 @@ import { CreateInstanceModal } from './components/CreateInstanceModal';
 import { AccountModal } from './components/AccountModal';
 import { InstanceSettingsModal } from './components/InstanceSettingsModal';
 import { GameLogsModal } from './components/GameLogsModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, ContextMenuState } from './components/ContextMenu';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { MascotMood } from './components/GhosttyMascot';
@@ -54,6 +55,20 @@ export function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: 'danger' | 'warning' | 'default';
+    inputConfig?: {
+      label?: string;
+      placeholder?: string;
+      defaultValue?: string;
+    };
+    onConfirm: (val?: string) => void;
+  } | null>(null);
 
   const [menuContext, setMenuContext] = useState<'instance' | 'group' | 'empty'>('instance');
   const [menuGroup, setMenuGroup] = useState<string | null>(null);
@@ -249,17 +264,44 @@ export function App() {
 
   const handleRenameGroup = () => {
     if (!menuGroup) return;
-    const next = window.prompt('Nuevo nombre del grupo:', menuGroup);
-    if (!next || !next.trim() || next.trim() === menuGroup) return;
-    window.dispatchEvent(
-      new CustomEvent('ghostty:rename-group', { detail: { from: menuGroup, to: next.trim() } })
-    );
+    const groupName = menuGroup;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Renombrar Grupo',
+      description: `Introduce el nuevo nombre para el grupo "${groupName}".`,
+      confirmLabel: 'Guardar',
+      cancelLabel: 'Cancelar',
+      variant: 'default',
+      inputConfig: {
+        label: 'Nombre del grupo',
+        placeholder: 'ej. Favoritos, Modpacks...',
+        defaultValue: groupName,
+      },
+      onConfirm: (next) => {
+        setConfirmModal(null);
+        if (!next || !next.trim() || next.trim() === groupName) return;
+        window.dispatchEvent(
+          new CustomEvent('ghostty:rename-group', { detail: { from: groupName, to: next.trim() } })
+        );
+      },
+    });
   };
 
   const handleDeleteGroup = () => {
     if (!menuGroup) return;
-    if (!window.confirm(`¿Eliminar el grupo "${menuGroup}"? Las instancias no se borran.`)) return;
-    window.dispatchEvent(new CustomEvent('ghostty:delete-group', { detail: menuGroup }));
+    const groupName = menuGroup;
+    setConfirmModal({
+      isOpen: true,
+      title: `¿Eliminar el grupo "${groupName}"?`,
+      description: 'Las estancias de este grupo no se borrarán; volverán al listado general.',
+      confirmLabel: 'Eliminar Grupo',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        window.dispatchEvent(new CustomEvent('ghostty:delete-group', { detail: groupName }));
+      },
+    });
   };
 
   const handleUpdateThemeSettings = (next: ThemeSettings) => {
@@ -432,10 +474,24 @@ export function App() {
     }
   };
 
+  const requestDeleteInstance = (instance: Instance) => {
+    setConfirmModal({
+      isOpen: true,
+      title: `¿Eliminar la estancia "${instance.name}"?`,
+      description: `Esta acción eliminará de forma permanente los mundos locales, mods, configuraciones y datos de "${instance.name}". Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar Estancia',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await handleDeleteInstance(instance.id);
+      },
+    });
+  };
+
   const handleDeleteActive = () => {
     if (!activeInstance) return;
-    if (!window.confirm(`¿Eliminar la instancia "${activeInstance.name}"?`)) return;
-    handleDeleteInstance(activeInstance.id);
+    requestDeleteInstance(activeInstance);
   };
 
   const handleDeleteInstance = async (id: string) => {
@@ -760,7 +816,8 @@ export function App() {
     isLogsOpen ||
     !!selectedInstanceForSettings ||
     isDraggingPack ||
-    overlayBlur;
+    overlayBlur ||
+    !!confirmModal?.isOpen;
 
   return (
     <div
@@ -883,7 +940,14 @@ export function App() {
               setIsLogsOpen(true);
             }}
             onLaunch={handleLaunch}
-            onDeleteInstance={handleDeleteInstance}
+            onDeleteInstance={(id) => {
+              const inst = instances.find((i) => i.id === id) || (activeInstance?.id === id ? activeInstance : null);
+              if (inst) {
+                requestDeleteInstance(inst);
+              } else {
+                handleDeleteInstance(id);
+              }
+            }}
             onExportInstance={handleExportInstance}
             onToggleFavorite={toggleFavoriteFor}
             onAssignGroup={assignGroupFor}
@@ -1082,6 +1146,18 @@ export function App() {
         onClose={() => setIsLogsOpen(false)}
         onClearLogs={() => setGameLogs([])}
         onStopGame={handleStopGame}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(confirmModal?.isOpen)}
+        title={confirmModal?.title || ''}
+        description={confirmModal?.description || ''}
+        confirmLabel={confirmModal?.confirmLabel}
+        cancelLabel={confirmModal?.cancelLabel}
+        variant={confirmModal?.variant}
+        inputConfig={confirmModal?.inputConfig}
+        onConfirm={(val) => confirmModal?.onConfirm(val)}
+        onClose={() => setConfirmModal(null)}
       />
     </div>
   );
