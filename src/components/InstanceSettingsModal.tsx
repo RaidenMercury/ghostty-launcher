@@ -179,12 +179,13 @@ export function InstanceSettingsModal({
                       >
                         {instance.name}
                       </h2>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full accent-pill-tint border uppercase tabular-nums whitespace-nowrap shrink-0">
-                        {instance.loader} {instance.mc_version}
-                      </span>
                     </div>
-                    <p className="text-[11px] text-ghost-400 font-mono truncate">
-                      ID: {instance.id}
+                    <p className="text-[11px] text-ghost-400 font-mono truncate flex items-center gap-2">
+                      <span className="uppercase">{instance.loader}</span>
+                      <span className="opacity-40">·</span>
+                      <span>{instance.mc_version}</span>
+                      <span className="opacity-40">·</span>
+                      <span className="truncate">ID: {instance.id}</span>
                     </p>
                   </div>
                 </div>

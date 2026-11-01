@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   Search,
   RefreshCw,
@@ -232,11 +233,14 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
           </div>
         ) : (
           <div className="space-y-1.5">
-            {filteredMods.map((mod) => {
+            {filteredMods.map((mod, index) => {
               const cleanName = mod.filename.replace(/(\.disabled)+$/, '');
               return (
-                <div
+                <motion.div
                   key={mod.filename}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.008, 0.45), duration: 0.16 }}
                   className="flex items-center justify-between py-2.5 px-3 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control group"
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-4">
@@ -266,6 +270,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                           alt=""
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <Package className="w-4 h-4 text-ghost-400" />
@@ -296,7 +301,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>

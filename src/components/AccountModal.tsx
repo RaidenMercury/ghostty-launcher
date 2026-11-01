@@ -367,7 +367,8 @@ export function AccountModal({
   const viewerSkinUrl =
     isCustomDataSkin && activeAccount?.skin_url
       ? activeAccount.skin_url
-      : accountSkinUrl ?? `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`;
+      : (accountSkinUrl?.replace(/^http:/, 'https:') ??
+        `https://mc-heads.net/skin/${encodeURIComponent(mcNickForRender)}`);
   const activeCapeUrl = capes.find((c) => c.active)?.url.replace(/^http:/, 'https:') ?? null;
 
   return (

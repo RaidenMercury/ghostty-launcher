@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   Search,
   Download,
@@ -462,9 +463,12 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                {catalogHits.map((hit) => (
-                  <div
+                {catalogHits.map((hit, index) => (
+                  <motion.div
                     key={hit.project_id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(index * 0.01, 0.4), duration: 0.16 }}
                     className="py-2.5 px-3.5 flex items-center justify-between gap-4 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control"
                   >
                     <div
@@ -531,7 +535,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                         <span>{hit.project_type === 'modpack' ? 'Crear' : 'Instalar'}</span>
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 

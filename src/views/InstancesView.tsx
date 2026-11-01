@@ -330,7 +330,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           onWheel={(e) => {
             if (tabsRef.current) tabsRef.current.scrollLeft += e.deltaY;
           }}
-          className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono overscroll-x-contain"
+          className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-1 text-[11px] font-mono overscroll-x-contain"
           style={{ scrollbarWidth: 'thin' }}
         >
           {customGroups.map((g) => {
