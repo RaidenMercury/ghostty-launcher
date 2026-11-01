@@ -32,6 +32,17 @@ pub fn run() {
         // TextureMapper se descartó porque no implementa filtros CSS (el blur no se pinta), así que
         // el default vuelve a Skia; `texturemapper` queda solo como diagnóstico.
 
+        // Los tiles de Skia (512x512 con textura propia) son el grueso de la VRAM:
+        // ~700 MiB al navegar. Pintarlos en CPU los mueve a RAM (~160-180 MiB) sin
+        // cambiar el aspecto; GHOSTTY_GPU_RENDERING=1 fuerza la ruta GPU.
+        let mut cpu_raster = false;
+        if std::env::var_os("WEBKIT_SKIA_ENABLE_CPU_RENDERING").is_none()
+            && std::env::var_os("GHOSTTY_GPU_RENDERING").map_or(true, |v| v != "1")
+        {
+            std::env::set_var("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");
+            cpu_raster = true;
+        }
+
         let mut ghostty = String::new();
         if let Some(raw) = std::env::var_os("GHOSTTY_COMPOSITOR") {
             ghostty = raw.to_string_lossy().trim().to_string().to_lowercase();
@@ -57,7 +68,12 @@ pub fn run() {
             mode = "skia (default)";
         }
 
-        eprintln!("[ghostty] build {} | webkit: {}", BUILD_TAG, mode);
+        eprintln!(
+            "[ghostty] build {} | webkit: {} | raster: {}",
+            BUILD_TAG,
+            mode,
+            if cpu_raster { "cpu (menos VRAM)" } else { "gpu" }
+        );
     }
 
     tauri::Builder::default()
