@@ -732,12 +732,14 @@ export function App() {
     addToast('info', 'Juego Detenido', 'Se cerró la sesión de Minecraft correctamente.');
   };
 
-  const overlayOpen =
-    (isIslandExpanded && currentTab !== 'instances') ||
+  // El velo solo aplica a modales: la isla expandida es contenido legible.
+  const modalOpen =
     isCreateOpen ||
     isAccountOpen ||
     isLogsOpen ||
-    !!selectedInstanceForSettings;
+    !!selectedInstanceForSettings ||
+    isDraggingPack ||
+    overlayBlur;
 
   return (
     <div
@@ -826,12 +828,11 @@ export function App() {
       <main
         className="flex-1 flex overflow-hidden relative z-10"
         style={{
-          filter: isDraggingPack || overlayBlur ? 'blur(10px)' : undefined,
           contain: isDraggingPack || overlayBlur ? 'paint' : undefined,
         }}
       >
         <div
-          className={`scene-layer flex-1 flex overflow-hidden ${overlayOpen ? 'is-blurred' : ''} ${
+          className={`scene-layer flex-1 flex overflow-hidden ${modalOpen ? 'is-blurred' : ''} ${
             isIslandExpanded && currentTab !== 'instances' ? 'pointer-events-none' : ''
           }`}
         >

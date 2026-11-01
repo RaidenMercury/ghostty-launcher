@@ -172,14 +172,23 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
           </div>
 
           <div className="flex items-center gap-5 text-xs font-mono tabular-nums">
-            <div>
-              <span className="text-ghost-400 block text-[10px]">ACTIVOS</span>
-              <span className="text-sm font-bold text-spectral-mint">{enabledCount}</span>
-            </div>
-            <div className="border-l glass-divider pl-4">
-              <span className="text-ghost-400 block text-[10px]">INACTIVOS</span>
-              <span className="text-sm font-bold text-ghost-200">{disabledCount}</span>
-            </div>
+            {kind === 'mods' ? (
+              <>
+                <div>
+                  <span className="text-ghost-400 block text-[10px]">ACTIVOS</span>
+                  <span className="text-sm font-bold text-spectral-mint">{enabledCount}</span>
+                </div>
+                <div className="border-l glass-divider pl-4">
+                  <span className="text-ghost-400 block text-[10px]">INACTIVOS</span>
+                  <span className="text-sm font-bold text-ghost-200">{disabledCount}</span>
+                </div>
+              </>
+            ) : (
+              <div>
+                <span className="text-ghost-400 block text-[10px]">ARCHIVOS</span>
+                <span className="text-sm font-bold text-ghost-200">{mods.length}</span>
+              </div>
+            )}
             <div className="border-l glass-divider pl-4">
               <span className="text-ghost-400 block text-[10px]">PESO TOTAL</span>
               <span className="text-sm font-bold text-ghost-100">
@@ -220,6 +229,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               />
             </div>
 
+            {kind === 'mods' && (
             <div className="flex items-center gap-1 p-0.5 rounded-full glass-control text-[11px] font-mono">
               {(['all', 'enabled', 'disabled'] as const).map((st) => (
                 <button
@@ -235,6 +245,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 </button>
               ))}
             </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -244,14 +255,14 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 className="btn-tactile flex items-center gap-1.5 px-3.5 py-1.5 rounded-control accent-bg text-white font-semibold text-xs"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Añadir Mods</span>
+                <span>Añadir recursos</span>
               </button>
             )}
 
             <button
               onClick={handleOpenFolder}
               className="btn-tactile flex items-center gap-1.5 px-3 py-1.5 glass-control text-xs text-ghost-200"
-              title="Abrir carpeta mods"
+              title="Abrir carpeta de contenido"
             >
               <FolderOpen className="w-3.5 h-3.5" />
               <span>Carpeta</span>
@@ -260,7 +271,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
             <button
               onClick={loadMods}
               className="btn-tactile p-1.5 glass-control text-ghost-300 hover:text-ghost-50"
-              title="Recargar mods"
+              title="Recargar contenido"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -271,14 +282,14 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
       <div className="flex-1 overflow-y-auto px-6 py-3">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center">
-            <GhosttyMascot mood="loading" size="md" caption="Escaneando carpeta mods/..." />
+            <GhosttyMascot mood="loading" size="md" caption={`Escaneando ${kindMeta[kind].plural}...`} />
           </div>
         ) : filteredMods.length === 0 ? (
           <div className="py-16 flex flex-col items-center justify-center">
             <GhosttyMascot
               mood="idle"
               size="md"
-              caption="No hay mods que coincidan. Añade nuevos desde la tienda Descubrir."
+              caption={`No hay ${kindMeta[kind].plural} todavía. Descárgalos desde Descubrir o añade el archivo a la carpeta.`}
             />
           </div>
         ) : (
@@ -294,6 +305,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                   className="row-deferred flex items-center justify-between py-2.5 px-3 bg-[var(--glass-subtle)] hover:bg-[var(--glass-hover)] transition-colors rounded-control group"
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-4">
+                    {kind === 'mods' && (
                     <button
                       type="button"
                       onClick={() => handleToggle(mod)}
@@ -312,6 +324,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                         }`}
                       />
                     </button>
+                    )}
 
                     <div className="w-8 h-8 rounded-[6px] bg-black/30 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
                       {mod.icon ? (
