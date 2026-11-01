@@ -266,7 +266,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenAccounts}
-          className="btn-tactile relative h-full pl-3 pr-11 rounded-full flex items-center gap-2 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)] min-w-0"
+          className="btn-tactile relative h-full pl-3 pr-14 rounded-full flex items-center gap-2 text-xs font-medium text-ghost-100 hover:bg-[var(--glass-hover)] min-w-0"
           title="Perfiles de jugador y administración de Skin"
         >
           <span className="max-w-[150px] truncate whitespace-nowrap">
