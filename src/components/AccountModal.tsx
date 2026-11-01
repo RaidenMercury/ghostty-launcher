@@ -389,10 +389,10 @@ export function AccountModal({
             <div className="flex items-center justify-between pb-3.5 border-b glass-divider">
               <div>
                 <h3 className="heading-display text-2xl font-extrabold text-ghost-50">
-                  PERFILES DE JUGADOR, AUTENTICACIÓN & ESTUDIO DE SKIN
+                  ADMINISTRACIÓN DE CUENTAS
                 </h3>
                 <p className="text-xs text-ghost-400">
-                  Inicia sesión con Microsoft OAuth (Device Code), Ely.by Yggdrasil o perfiles Offline UUID v3
+                  Gestiona tus cuentas, skins y capas desde un solo lugar
                 </p>
               </div>
               <button

@@ -6,6 +6,7 @@ import {
   Sliders,
   Cpu,
   Monitor,
+  Image,
   Save,
   Trash2,
   Plus,
@@ -19,10 +20,11 @@ interface InstanceSettingsModalProps {
   instance: Instance | null;
   onClose: () => void;
   onUpdate: (updated: Instance) => Promise<void>;
+  initialTab?: SettingsTab;
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
 }
 
-type SettingsTab = 'general' | 'java' | 'display';
+type SettingsTab = 'general' | 'iconos' | 'java' | 'display';
 
 export function InstanceSettingsModal({
   isOpen,
@@ -30,6 +32,7 @@ export function InstanceSettingsModal({
   onClose,
   onUpdate,
   onShowToast,
+  initialTab,
 }: InstanceSettingsModalProps) {
   if (!instance) return null;
 
@@ -57,6 +60,10 @@ export function InstanceSettingsModal({
   const [newEnvVal, setNewEnvVal] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && initialTab) setActiveTab(initialTab);
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     if (instance) {
@@ -214,6 +221,7 @@ export function InstanceSettingsModal({
               {(
                 [
                   { id: 'general', label: 'General & Hooks', icon: Sliders },
+                  { id: 'iconos', label: 'Icono', icon: Image },
                   { id: 'java', label: 'Java & Memoria', icon: Cpu },
                   { id: 'display', label: 'Pantalla & Red', icon: Monitor },
                 ] as const
@@ -279,6 +287,50 @@ export function InstanceSettingsModal({
                         className="w-full px-3 py-2 glass-control text-xs font-mono"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'iconos' && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="heading-display text-xl font-bold text-ghost-50">
+                      ICONO DE LA ESTANCIA
+                    </h3>
+                    <p className="text-xs text-ghost-400">
+                      Elige un icono. Los SVG se ven nítidos a cualquier tamaño.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+                    {[
+                      'minecraft',
+                      'ghostty',
+                      '/icons/grass.svg',
+                      '/icons/creeper.svg',
+                      '/icons/diamond.svg',
+                      '/icons/sword.svg',
+                      '/icons/pickaxe.svg',
+                      '/icons/star.svg',
+                      '/icons/heart.svg',
+                      '/icons/flame.svg',
+                      '/icons/leaf.svg',
+                      'grass',
+                    ].map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => onUpdate({ ...instance, icon: choice })}
+                        className={`btn-tactile aspect-square rounded-control p-2 border flex items-center justify-center ${
+                          instance.icon === choice
+                            ? 'accent-pill-tint border-[var(--accent)]'
+                            : 'glass-control border-white/10'
+                        }`}
+                        title={choice}
+                      >
+                        <InstanceIcon icon={choice} alt={choice} />
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

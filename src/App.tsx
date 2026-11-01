@@ -55,6 +55,9 @@ export function App() {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
 
+  const [menuContext, setMenuContext] = useState<'instance' | 'group' | 'empty'>('instance');
+  const [menuGroup, setMenuGroup] = useState<string | null>(null);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'iconos' | 'java' | 'display'>('general');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     isOpen: false,
     x: 0,
@@ -216,11 +219,46 @@ export function App() {
 
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setContextMenu({
-      isOpen: true,
-      x: e.clientX,
-      y: e.clientY,
-    });
+    const target = e.target as HTMLElement;
+    const instanceEl = target.closest('[data-instance-id]');
+    const groupEl = target.closest('[data-group-tab]');
+
+    if (instanceEl) {
+      const id = instanceEl.getAttribute('data-instance-id');
+      const inst = instances.find((i) => i.id === id);
+      if (inst) setActiveInstance(inst);
+      setMenuContext('instance');
+      setMenuGroup(null);
+    } else if (groupEl) {
+      setMenuContext('group');
+      setMenuGroup(groupEl.getAttribute('data-group-tab'));
+    } else {
+      setMenuContext('empty');
+      setMenuGroup(null);
+    }
+
+    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY });
+  };
+
+  const handleChangeIcon = () => {
+    if (!activeInstance) return;
+    setSettingsTab('iconos');
+    setSelectedInstanceForSettings(activeInstance);
+  };
+
+  const handleRenameGroup = () => {
+    if (!menuGroup) return;
+    const next = window.prompt('Nuevo nombre del grupo:', menuGroup);
+    if (!next || !next.trim() || next.trim() === menuGroup) return;
+    window.dispatchEvent(
+      new CustomEvent('ghostty:rename-group', { detail: { from: menuGroup, to: next.trim() } })
+    );
+  };
+
+  const handleDeleteGroup = () => {
+    if (!menuGroup) return;
+    if (!window.confirm(`¿Eliminar el grupo "${menuGroup}"? Las instancias no se borran.`)) return;
+    window.dispatchEvent(new CustomEvent('ghostty:delete-group', { detail: menuGroup }));
   };
 
   const handleUpdateThemeSettings = (next: ThemeSettings) => {
@@ -757,6 +795,11 @@ export function App() {
         onAddToGroup={openGroupPicker}
         onDeleteInstance={handleDeleteActive}
         onDuplicateInstance={handleDuplicateInstance}
+        context={menuContext}
+        contextGroup={menuGroup}
+        onChangeIcon={handleChangeIcon}
+        onRenameGroup={handleRenameGroup}
+        onDeleteGroup={handleDeleteGroup}
       />
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
@@ -978,6 +1021,7 @@ export function App() {
         onClose={() => setSelectedInstanceForSettings(null)}
         onUpdate={handleUpdateInstance}
         onShowToast={addToast}
+        initialTab={settingsTab}
       />
 
       <AccountModal

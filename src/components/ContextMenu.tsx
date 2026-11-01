@@ -17,6 +17,7 @@ import {
   FolderPlus,
   Trash2,
   Copy,
+  Image,
 } from 'lucide-react';
 import { Instance } from '../types';
 import { THEME_PRESETS, ThemePresetId } from '../utils/theme';
@@ -49,6 +50,11 @@ interface ContextMenuProps {
   onAddToGroup?: () => void;
   onDeleteInstance?: () => void;
   onDuplicateInstance?: () => void;
+  context?: 'instance' | 'group' | 'empty';
+  contextGroup?: string | null;
+  onChangeIcon?: () => void;
+  onRenameGroup?: () => void;
+  onDeleteGroup?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -73,6 +79,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onAddToGroup,
   onDeleteInstance,
   onDuplicateInstance,
+  context = 'instance',
+  contextGroup,
+  onChangeIcon,
+  onRenameGroup,
+  onDeleteGroup,
 }) => {
   useEffect(() => {
     if (!menu.isOpen) return;
@@ -103,6 +114,82 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     onClose();
     fn();
   };
+
+  if (context !== 'instance') {
+    return (
+      <>
+        {menu.isOpen && (
+          <div
+            className="fixed inset-0 z-[100]"
+            onClick={onClose}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onClose();
+            }}
+          >
+            <div
+              style={{ left: safeX, top: safeY, width: menuWidth }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed sequoia-context-menu p-1.5 select-none text-xs glass-modal"
+            >
+              <div className="px-2.5 py-1 text-[10px] font-mono text-ghost-400 truncate">
+                {context === 'group' ? `Grupo: ${contextGroup}` : 'GhosttyLauncher'}
+              </div>
+              <div className="my-1 border-t glass-divider" />
+
+              {context === 'group' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => runAction(onOpenCreate)}
+                    className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 opacity-80" />
+                    <span>Crear instancia</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runAction(() => onRenameGroup?.())}
+                    className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+                  >
+                    <Sliders className="w-3.5 h-3.5 opacity-80" />
+                    <span>Renombrar grupo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runAction(() => onDeleteGroup?.())}
+                    className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-spectral-rose hover:bg-spectral-rose hover:text-white transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 opacity-80" />
+                    <span>Eliminar grupo</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => runAction(onOpenCreate)}
+                    className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 opacity-80" />
+                    <span>Nueva Instancia...</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runAction(onTriggerImportFile)}
+                    className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5 opacity-80" />
+                    <span>Importar Modpack (.mrpack)...</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -216,6 +303,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             >
               <FolderPlus className="w-3.5 h-3.5 opacity-80" />
               <span>Añadir a grupo...</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!activeInstance}
+              onClick={() => runAction(() => onChangeIcon?.())}
+              className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
+            >
+              <Image className="w-3.5 h-3.5 opacity-80" />
+              <span>Cambiar icono...</span>
             </button>
 
             <button

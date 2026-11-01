@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Play,
@@ -86,6 +86,35 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
       return ['Todos', 'Favoritos', 'Vanilla', 'Modpacks'];
     }
   });
+
+  useEffect(() => {
+    const onDelete = (event: Event) => {
+      const name = (event as CustomEvent<string>).detail;
+      setCustomGroups((prev) => {
+        const next = prev.filter((g) => g !== name);
+        localStorage.setItem('ghostty_launcher_groups', JSON.stringify(next));
+        return next;
+      });
+      setActiveGroup((prev) => (prev === name ? 'Todos' : prev));
+    };
+
+    const onRename = (event: Event) => {
+      const { from, to } = (event as CustomEvent<{ from: string; to: string }>).detail;
+      setCustomGroups((prev) => {
+        const next = prev.map((g) => (g === from ? to : g));
+        localStorage.setItem('ghostty_launcher_groups', JSON.stringify(next));
+        return next;
+      });
+      setActiveGroup((prev) => (prev === from ? to : prev));
+    };
+
+    window.addEventListener('ghostty:delete-group', onDelete);
+    window.addEventListener('ghostty:rename-group', onRename);
+    return () => {
+      window.removeEventListener('ghostty:delete-group', onDelete);
+      window.removeEventListener('ghostty:rename-group', onRename);
+    };
+  }, []);
 
   const [activeGroup, setActiveGroup] = useState<string>('Todos');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
