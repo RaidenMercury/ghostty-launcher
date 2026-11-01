@@ -853,7 +853,7 @@ export function App() {
         }}
       >
         <div
-          className={`scene-layer flex-1 flex overflow-hidden ${modalOpen ? 'is-blurred' : ''} ${
+          className={`scene-layer flex-1 flex overflow-hidden ${modalOpen || (isIslandExpanded && currentTab !== 'instances') ? 'is-blurred' : ''} ${
             isIslandExpanded && currentTab !== 'instances' ? 'pointer-events-none' : ''
           }`}
         >
@@ -890,7 +890,7 @@ export function App() {
                   setIsIslandExpanded(false);
                   setCurrentTab('instances');
                 }}
-                className="absolute inset-0 modal-scrim pointer-events-auto"
+                className="absolute inset-0 pointer-events-auto"
               />
 
               <div className="absolute inset-0 flex items-start justify-center pt-2 pb-4 px-4 pointer-events-none">
