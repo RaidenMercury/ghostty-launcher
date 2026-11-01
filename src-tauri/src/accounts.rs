@@ -258,9 +258,17 @@ impl AccountManager {
             }
         }
 
-        let refresh = entry.refresh.clone().ok_or(
-            "La sesión de Microsoft expiró y no hay refresh token guardado; vuelve a iniciar sesión.",
-        )?;
+        // Cuentas vinculadas con un token pegado no tienen refresh: se usa el token
+        // tal cual y, si el servicio lo rechaza, el 401 pedirá volver a iniciar sesión.
+        let Some(refresh) = entry.refresh.clone() else {
+            if let Some(access) = entry.access.clone().filter(|a| !a.is_empty()) {
+                return Ok(access);
+            }
+            return Err(
+                "La sesión de Microsoft expiró; vuelve a iniciar sesión para gestionar capas."
+                    .to_string(),
+            );
+        };
 
         let (ms_access, new_refresh, expires_in) = Self::refresh_ms_token(&refresh).await?;
         let client = reqwest::Client::builder()

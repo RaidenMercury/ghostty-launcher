@@ -100,7 +100,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
 
   return (
     <header className="relative z-40 w-full h-[58px] pl-1.5 pr-6 flex items-center justify-between gap-4 shrink-0">
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0 mt-0.5">
         <GhosttyMascot
           mood={mascotMood}
           size="sm"

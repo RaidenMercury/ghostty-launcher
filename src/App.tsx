@@ -73,6 +73,8 @@ export function App() {
   ]);
   const [mascotMood, setMascotMood] = useState<MascotMood>('idle');
   const [isDraggingPack, setIsDraggingPack] = useState(false);
+  const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
+  const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const dragImportRef = useRef<((fileOrPath: File | string) => void) | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -336,15 +338,22 @@ export function App() {
     if (activeInstance) await toggleFavoriteFor(activeInstance);
   };
 
-  const handleAddToGroup = async () => {
+  const openGroupPicker = () => {
     if (!activeInstance) return;
-    const name = window.prompt(
-      'Grupo (vacío para quitarla del grupo):',
-      activeInstance.group || ''
-    );
-    if (name === null) return;
     try {
-      const group = name.trim() || null;
+      const raw = localStorage.getItem('ghostty_launcher_groups');
+      const groups: string[] = raw ? JSON.parse(raw) : [];
+      setGroupOptions(groups.filter((g) => g !== 'Todos' && g !== 'Favoritos'));
+    } catch {
+      setGroupOptions([]);
+    }
+    setIsGroupPickerOpen(true);
+  };
+
+  const applyGroup = async (group: string | null) => {
+    if (!activeInstance) return;
+    setIsGroupPickerOpen(false);
+    try {
       await persistInstance({ ...activeInstance, group });
       addToast('success', 'Grupo actualizado', group || 'Sin grupo');
     } catch (e: any) {
@@ -710,7 +719,7 @@ export function App() {
           setIsIslandExpanded(true);
         }}
         onToggleFavorite={handleToggleFavorite}
-        onAddToGroup={handleAddToGroup}
+        onAddToGroup={openGroupPicker}
         onDeleteInstance={handleDeleteActive}
       />
 
@@ -735,7 +744,13 @@ export function App() {
         }}
       />
 
-      <main className="flex-1 flex overflow-hidden relative z-10">
+      <main
+        className="flex-1 flex overflow-hidden relative z-10"
+        style={{
+          filter: isDraggingPack || isGroupPickerOpen ? 'blur(10px)' : undefined,
+          transition: 'filter 160ms ease',
+        }}
+      >
         <div
           className={`scene-layer flex-1 flex overflow-hidden ${overlayOpen ? 'is-blurred' : ''} ${
             isIslandExpanded && currentTab !== 'instances' ? 'pointer-events-none' : ''
@@ -822,6 +837,8 @@ export function App() {
             </div>
           )}
         </AnimatePresence>
+      </main>
+
       {isDraggingPack && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70">
           <div className="glass-panel-strong rounded-card px-10 py-8 text-center max-w-sm mx-6">
@@ -838,7 +855,67 @@ export function App() {
         </div>
       )}
 
-      </main>
+
+      {isGroupPickerOpen && (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60"
+          onClick={() => setIsGroupPickerOpen(false)}
+        >
+          <div
+            className="glass-panel-strong rounded-card w-[380px] max-w-[92vw] p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="heading-display text-lg font-bold text-ghost-50">Mover a grupo</h3>
+            <p className="text-[11px] text-ghost-400 mb-3 truncate">
+              {activeInstance?.name}
+            </p>
+
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              <button
+                type="button"
+                onClick={() => applyGroup(null)}
+                className={`w-full text-left px-3 py-2 rounded-control text-xs ${
+                  !activeInstance?.group ? 'accent-pill-tint font-semibold' : 'glass-control text-ghost-200'
+                }`}
+              >
+                Sin grupo
+              </button>
+
+              {groupOptions.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => applyGroup(g)}
+                  className={`w-full text-left px-3 py-2 rounded-control text-xs ${
+                    activeInstance?.group === g
+                      ? 'accent-pill-tint font-semibold'
+                      : 'glass-control text-ghost-200'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+
+              {groupOptions.length === 0 && (
+                <p className="text-[11px] text-ghost-400 pt-2">
+                  No hay grupos todavía. Crea uno con “+ Grupo” en la barra de arriba.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                type="button"
+                onClick={() => setIsGroupPickerOpen(false)}
+                className="btn-tactile px-4 py-2 rounded-control glass-control text-xs"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <StatusFooterDock
         activeInstance={activeInstance}
