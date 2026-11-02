@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { Zap, Sparkles, AlertCircle, Loader2, Skull, PartyPopper, TreePine, Egg } from 'lucide-react';
 
 export type MascotMood = 'idle' | 'launching' | 'celebrating' | 'sad' | 'loading';
 
@@ -11,15 +11,25 @@ interface GhosttyMascotProps {
   onClick?: () => void;
 }
 
-/** Emoji de temporada sobre la mascota (fechas locales). */
-function seasonalEmoji(date = new Date()): string | null {
+/**
+ * Distintivo de temporada sobre la mascota usando iconos vectoriales.
+ * Evita el renderizado de glifos emoji COLRv1 que provocan aserciones en WebKitGTK / Skia en Linux.
+ */
+function getSeasonalBadge(date = new Date()) {
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  if (month === 12 && day >= 15) return '🎄';
-  if (month === 1 && day <= 6) return '🎉';
-  if (month === 10 && day >= 25) return '🎃';
-  if (month === 11 && day <= 2) return '💀';
-  if (month === 4 && day <= 20) return '🐣';
+  if (month === 12 && day >= 15) {
+    return <TreePine className="w-3 h-3 text-spectral-mint drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]" />;
+  }
+  if (month === 1 && day <= 6) {
+    return <PartyPopper className="w-3 h-3 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.5)]" />;
+  }
+  if ((month === 10 && day >= 25) || (month === 11 && day <= 2)) {
+    return <Skull className="w-3 h-3 text-ghost-200 drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]" />;
+  }
+  if (month === 4 && day <= 20) {
+    return <Egg className="w-3 h-3 text-spectral-mint drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]" />;
+  }
   return null;
 }
 
@@ -132,16 +142,19 @@ export const GhosttyMascot: React.FC<GhosttyMascotProps> = ({
             }`}
           />
 
-          {seasonalEmoji() && (
-            <motion.span
-              className="absolute -top-1.5 -right-1 text-base select-none pointer-events-none"
-              animate={{ y: [0, -3, 0] }}
-              transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
-              aria-hidden
-            >
-              {seasonalEmoji()}
-            </motion.span>
-          )}
+          {(() => {
+            const seasonalBadge = getSeasonalBadge();
+            return seasonalBadge ? (
+              <motion.span
+                className="absolute -top-1.5 -right-1 p-0.5 rounded-full bg-obsidian-900/90 border border-white/20 select-none pointer-events-none flex items-center justify-center shadow-md backdrop-blur-sm"
+                animate={{ y: [0, -2, 0] }}
+                transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
+                aria-hidden
+              >
+                {seasonalBadge}
+              </motion.span>
+            ) : null;
+          })()}
 
           <AnimatePresence>
             {moodIcon && (

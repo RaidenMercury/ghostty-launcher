@@ -20,7 +20,7 @@ use commands::*;
 pub fn run() {
     #[cfg(target_os = "linux")]
     {
-        const BUILD_TAG: &str = "5";
+        const BUILD_TAG: &str = "0.1.0";
 
         if std::env::var_os("MALLOC_TRIM_THRESHOLD_").is_none() {
             std::env::set_var("MALLOC_TRIM_THRESHOLD_", "65536");
