@@ -52,11 +52,17 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Ghostty Launcher ${{ github.ref_name }}'
           releaseBody: |
-            Ghostty Launcher release multi-plataforma para Linux, Windows y macOS.
+            Ghostty Launcher v0.1.0 — Lanzador independiente y suite de modding con diseño VisionOS Glass para Minecraft.
             
-            - **Linux:** `.AppImage` y `.deb`
-            - **Windows:** Instalador `.exe` (NSIS) y `.msi`
+            ### Paquetes disponibles en esta versión:
+            - **Linux:** `.AppImage`, `.deb` (Debian/Ubuntu) y `.rpm` (Fedora/RHEL/openSUSE)
+            - **Windows:** Instalador `.exe` (NSIS)
             - **macOS:** Imagen de disco `.dmg`
+            
+            ---
+            
+            > **Nota sobre la autenticación de Microsoft / Xbox Live:**  
+            > De forma temporal, el inicio de sesión OAuth utiliza el identificador de cliente comunitario verificado por Mojang (`c36a9fb6`) mientras la aplicación oficial registrada en Azure para **Ghostty Launcher** (`1b857661-eaf1-4c25-a00f-be80204fb059`) completa las revisiones de Mojang Studios en [aka.ms/AppRegInfo](https://aka.ms/AppRegInfo). En cuanto sea aprobada en la lista blanca de la API, se activará de forma nativa sin requerir intervención del usuario.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

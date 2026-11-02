@@ -11,7 +11,9 @@ use uuid::Uuid;
 pub const GHOSTTY_MSA_CLIENT_ID: &str = "1b857661-eaf1-4c25-a00f-be80204fb059";
 pub const COMMUNITY_MSA_CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
 
-const DEFAULT_MSA_CLIENT_ID: &str = GHOSTTY_MSA_CLIENT_ID;
+/// Temporalmente se utiliza el Client ID comunitario verificado por Mojang mientras la app oficial
+/// de Azure "Ghostty Launcher" (1b857661) pasa el proceso de aprobación en https://aka.ms/AppRegInfo.
+const DEFAULT_MSA_CLIENT_ID: &str = COMMUNITY_MSA_CLIENT_ID;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DeviceCodeResponse {
