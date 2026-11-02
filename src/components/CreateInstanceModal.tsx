@@ -5,6 +5,7 @@ import { CreateInstancePayload, MojangManifest } from '../types';
 import { AccordionSection } from './AccordionSection';
 import { InstanceIcon } from './InstanceIcon';
 import { GlassSelect } from './GlassSelect';
+import { useI18n } from '../utils/i18n';
 
 interface CreateInstanceModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function CreateInstanceModal({
   onCreate,
   manifest,
 }: CreateInstanceModalProps) {
+  const { t, language } = useI18n();
   const [name, setName] = useState('');
   const [mcVersion, setMcVersion] = useState('1.21.4');
   const [versionTypeFilter, setVersionTypeFilter] = useState<'all' | 'release' | 'snapshot'>('release');
@@ -45,11 +47,11 @@ export function CreateInstanceModal({
   }, [isOpen, onClose]);
 
   const loaderOptions = [
-    { id: 'fabric', label: 'Fabric', desc: 'Ligero y modular' },
-    { id: 'neoforge', label: 'NeoForge', desc: 'Modding moderno' },
-    { id: 'forge', label: 'Forge', desc: 'Clásico compatible' },
-    { id: 'quilt', label: 'Quilt', desc: 'Comunitario' },
-    { id: 'vanilla', label: 'Vanilla', desc: 'Oficial puro' },
+    { id: 'fabric', label: 'Fabric', desc: t.create_loader_fabric_desc },
+    { id: 'neoforge', label: 'NeoForge', desc: t.create_loader_neoforge_desc },
+    { id: 'forge', label: 'Forge', desc: t.create_loader_forge_desc },
+    { id: 'quilt', label: 'Quilt', desc: t.create_loader_quilt_desc },
+    { id: 'vanilla', label: 'Vanilla', desc: t.create_loader_vanilla_desc },
   ];
 
   const allVersions = manifest?.versions || [];
@@ -104,10 +106,10 @@ export function CreateInstanceModal({
                 </div>
                 <div>
                   <h3 className="heading-display text-2xl font-extrabold text-ghost-50">
-                    NUEVA ESTANCIA DE MINECRAFT
+                    {t.create_modal_title}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Configura versión oficial, Mod Loader y memoria inicial
+                    {t.create_modal_subtitle}
                   </p>
                 </div>
               </div>
@@ -123,13 +125,13 @@ export function CreateInstanceModal({
               
               <div>
                 <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                  Nombre de la Estancia
+                  {t.create_name_label}
                 </label>
                 <input
                   type="text"
                   required
                   autoFocus
-                  placeholder="ej. Survival Técnico 1.21, Mundo Hardcore..."
+                  placeholder={t.create_name_placeholder}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2 glass-control text-xs placeholder:text-ghost-400"
@@ -140,7 +142,7 @@ export function CreateInstanceModal({
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[11px] font-mono text-ghost-300 tabular-nums">
-                    Versión de Minecraft ({filteredVersions.length} disponibles)
+                    {t.create_version_label} ({filteredVersions.length} {t.create_instances_count})
                   </label>
                   <div className="flex items-center gap-1 text-[10px] font-mono">
                     {(['release', 'snapshot', 'all'] as const).map((filterType) => (
@@ -158,7 +160,7 @@ export function CreateInstanceModal({
                           ? 'Releases'
                           : filterType === 'snapshot'
                           ? 'Snapshots'
-                          : 'Todas'}
+                          : (language === 'es' ? 'Todas' : 'All')}
                       </button>
                     ))}
                   </div>
@@ -176,7 +178,7 @@ export function CreateInstanceModal({
                     ...filteredVersions.map((v) => ({
                       value: v.id,
                       label: `${v.id} (${v.type})`,
-                      sublabel: v.releaseTime ? `Lanzado: ${v.releaseTime.split('T')[0]}` : undefined,
+                      sublabel: v.releaseTime ? `${language === 'es' ? 'Lanzado' : 'Released'}: ${v.releaseTime.split('T')[0]}` : undefined,
                       badge: v.type === 'release' ? 'Release' : v.type,
                     })),
                   ]}
@@ -186,7 +188,7 @@ export function CreateInstanceModal({
               
               <div>
                 <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                  Mod Loader
+                  {t.create_loader_label}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {loaderOptions.map((opt) => {
@@ -215,7 +217,7 @@ export function CreateInstanceModal({
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-ghost-200 font-medium">
                     <Cpu className="w-3.5 h-3.5 accent-text" />
-                    Memoria RAM Asignada
+                    {t.create_ram_label}
                   </span>
                   <span className="font-mono font-bold accent-text tabular-nums">
                     {ramGb} GB ({ramGb * 1024} MB)
@@ -234,13 +236,13 @@ export function CreateInstanceModal({
 
               
               <AccordionSection
-                title="Opciones Avanzadas (Flags JVM y Hook)"
+                title={t.create_adv_options}
                 defaultOpen={false}
               >
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] font-mono text-ghost-400 mb-1">
-                      Argumentos JVM
+                      {t.create_jvm_args}
                     </label>
                     <input
                       type="text"
@@ -251,7 +253,7 @@ export function CreateInstanceModal({
                   </div>
                   <div>
                     <label className="block text-[10px] font-mono text-ghost-400 mb-1">
-                      Comando Pre-Lanzamiento
+                      {t.create_pre_launch}
                     </label>
                     <input
                       type="text"
@@ -271,7 +273,7 @@ export function CreateInstanceModal({
                   onClick={onClose}
                   className="btn-tactile px-4 py-2 glass-control text-xs font-medium text-ghost-300"
                 >
-                  Cancelar
+                  {t.create_cancel}
                 </button>
                 <button
                   type="submit"
@@ -279,7 +281,7 @@ export function CreateInstanceModal({
                   className="btn-tactile flex items-center gap-1.5 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs disabled:opacity-50"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{isSubmitting ? 'Creando...' : 'Crear Estancia'}</span>
+                  <span>{isSubmitting ? t.create_creating : t.create_submit}</span>
                 </button>
               </div>
             </form>

@@ -136,6 +136,14 @@ fn validate_modrinth_url(url: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn is_system_identifier(id: &str) -> bool {
+    let lower = id.to_lowercase();
+    matches!(
+        lower.as_str(),
+        "minecraft" | "fabric" | "fabricloader" | "quilt_loader" | "forge" | "neoforge" | "java"
+    )
+}
+
 fn extract_mod_ids_from_jar(path: &Path) -> Vec<String> {
     let mut ids = Vec::new();
     let file = match File::open(path) {
@@ -152,16 +160,9 @@ fn extract_mod_ids_from_jar(path: &Path) -> Vec<String> {
         if entry.by_ref().take(MAX_METADATA_SIZE).read_to_string(&mut s).is_ok() {
             if let Ok(v) = serde_json::from_str::<Value>(&s) {
                 if let Some(id) = v.get("id").and_then(|i| i.as_str()) {
-                    ids.push(id.to_string());
-                }
-                if let Some(provides) = v.get("provides").and_then(|p| p.as_array()) {
-                    for p in provides {
-                        if let Some(s) = p.as_str() {
-                            let clean = s.trim();
-                            if !clean.is_empty() {
-                                ids.push(clean.to_string());
-                            }
-                        }
+                    let clean = id.trim();
+                    if !clean.is_empty() && !is_system_identifier(clean) {
+                        ids.push(clean.to_string());
                     }
                 }
             }
@@ -174,16 +175,9 @@ fn extract_mod_ids_from_jar(path: &Path) -> Vec<String> {
             if let Ok(v) = serde_json::from_str::<Value>(&s) {
                 if let Some(ql) = v.get("quilt_loader") {
                     if let Some(id) = ql.get("id").and_then(|i| i.as_str()) {
-                        ids.push(id.to_string());
-                    }
-                    if let Some(provides) = ql.get("provides").and_then(|p| p.as_array()) {
-                        for p in provides {
-                            if let Some(s) = p.as_str() {
-                                let clean = s.trim();
-                                if !clean.is_empty() {
-                                    ids.push(clean.to_string());
-                                }
-                            }
+                        let clean = id.trim();
+                        if !clean.is_empty() && !is_system_identifier(clean) {
+                            ids.push(clean.to_string());
                         }
                     }
                 }
@@ -204,7 +198,7 @@ fn extract_mod_ids_from_jar(path: &Path) -> Vec<String> {
                     for item in arr {
                         if let Some(mid) = item.get("modid").and_then(|m| m.as_str()) {
                             let clean = mid.trim();
-                            if !clean.is_empty() {
+                            if !clean.is_empty() && !is_system_identifier(clean) {
                                 ids.push(clean.to_string());
                             }
                         }
@@ -235,7 +229,7 @@ fn extract_mod_ids_from_jar(path: &Path) -> Vec<String> {
                     } else if in_mods && clean_line.starts_with("modId") {
                         if let Some(val) = clean_line.split('=').nth(1) {
                             let clean = val.trim().trim_matches('"').trim_matches('\'').trim();
-                            if !clean.is_empty() {
+                            if !clean.is_empty() && !is_system_identifier(clean) {
                                 ids.push(clean.to_string());
                             }
                         }
@@ -256,7 +250,19 @@ fn validate_version_compatibility(
     mc_version: &str,
 ) -> Result<(), String> {
     if !mc_version.is_empty() && mc_version != "all" {
-        if !ver.game_versions.iter().any(|v| v == mc_version) {
+        let exact = ver.game_versions.iter().any(|v| v == mc_version);
+        let series_match = if !exact {
+            let parts: Vec<&str> = mc_version.split('.').collect();
+            if parts.len() >= 2 {
+                let prefix = format!("{}.{}", parts[0], parts[1]);
+                ver.game_versions.iter().any(|v| v.starts_with(&prefix) || v == &prefix)
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+        if !series_match {
             return Err(format!(
                 "La versión {} no es compatible con Minecraft {}",
                 ver.version_number, mc_version
@@ -264,7 +270,14 @@ fn validate_version_compatibility(
         }
     }
     if !loader.is_empty() && loader != "vanilla" && loader != "all" {
-        if !ver.loaders.iter().any(|l| l.eq_ignore_ascii_case(loader)) {
+        let is_loader_match = ver.loaders.iter().any(|l| {
+            l.eq_ignore_ascii_case(loader)
+                || l.eq_ignore_ascii_case("minecraft")
+                || l.eq_ignore_ascii_case("datapack")
+                || (loader == "quilt" && l.eq_ignore_ascii_case("fabric"))
+                || (loader == "fabric" && l.eq_ignore_ascii_case("quilt"))
+        });
+        if !is_loader_match {
             return Err(format!(
                 "La versión {} no es compatible con el cargador {}",
                 ver.version_number, loader
@@ -784,12 +797,57 @@ impl ModrinthClient {
                 }
                 ver
             } else if let Some(ref pid) = dep.project_id {
-                let vers = Self::get_project_versions(pid, Some(&loader), Some(&mc_version))
+                // 1. Intentar con loader específico y mc_version exacta
+                let mut vers = Self::get_project_versions(pid, Some(&loader), Some(&mc_version))
                     .await
-                    .map_err(|e| {
-                        let _ = fs::remove_dir_all(&staging_dir);
-                        format!("Fallo buscando versión compatible para dependencia {}: {}", pid, e)
-                    })?;
+                    .unwrap_or_default();
+
+                // 2. Si no hay versiones, probar sin filtro de loader (para mods universales, datapacks o agnósticos)
+                if vers.is_empty() {
+                    let unloader_vers = Self::get_project_versions(pid, None, Some(&mc_version))
+                        .await
+                        .unwrap_or_default();
+                    vers = unloader_vers
+                        .into_iter()
+                        .filter(|v| {
+                            v.loaders.iter().any(|l| {
+                                l.eq_ignore_ascii_case(&loader)
+                                    || l.eq_ignore_ascii_case("minecraft")
+                                    || l.eq_ignore_ascii_case("datapack")
+                                    || (loader == "fabric" && l.eq_ignore_ascii_case("quilt"))
+                                    || (loader == "quilt" && l.eq_ignore_ascii_case("fabric"))
+                            })
+                        })
+                        .collect();
+                }
+
+                // 3. Si aún no hay versiones, buscar en toda la serie de la versión de MC (e.g. serie 1.21 para 1.21.11)
+                if vers.is_empty() {
+                    let all_vers = Self::get_project_versions(pid, None, None)
+                        .await
+                        .unwrap_or_default();
+                    let parts: Vec<&str> = mc_version.split('.').collect();
+                    let prefix = if parts.len() >= 2 {
+                        format!("{}.{}", parts[0], parts[1])
+                    } else {
+                        mc_version.clone()
+                    };
+
+                    vers = all_vers
+                        .into_iter()
+                        .filter(|v| {
+                            let mc_ok = v.game_versions.iter().any(|gv| gv == &mc_version || gv.starts_with(&prefix));
+                            let loader_ok = v.loaders.iter().any(|l| {
+                                l.eq_ignore_ascii_case(&loader)
+                                    || l.eq_ignore_ascii_case("minecraft")
+                                    || l.eq_ignore_ascii_case("datapack")
+                                    || (loader == "fabric" && l.eq_ignore_ascii_case("quilt"))
+                                    || (loader == "quilt" && l.eq_ignore_ascii_case("fabric"))
+                            });
+                            mc_ok && loader_ok
+                        })
+                        .collect();
+                }
 
                 vers.into_iter().next().ok_or_else(|| {
                     let _ = fs::remove_dir_all(&staging_dir);
@@ -835,6 +893,9 @@ impl ModrinthClient {
                 ));
             }
 
+            // Detección de dependencia ya satisfecha (por manifiesto o por archivo ya instalado en mods/)
+            let mut dependency_already_satisfied = false;
+
             if let Some(installed_entry) = manifest_mods.get(&dep_ver.project_id) {
                 let inst_path = mods_dir.join(&installed_entry.filename);
                 if inst_path.is_file() && !installed_entry.filename.ends_with(".disabled") {
@@ -853,25 +914,36 @@ impl ModrinthClient {
                         }
                     }
                     if hash_valid {
-                        if let Some(ref req_vid) = dep.version_id {
-                            if installed_entry.version_id.as_deref() == Some(req_vid) {
-                                for sub_dep in &dep_ver.dependencies {
-                                    if sub_dep.dependency_type == "required" {
-                                        queue.push_back(sub_dep.clone());
-                                    }
-                                }
-                                continue;
+                        dependency_already_satisfied = true;
+                    }
+                }
+            }
+
+            // Si el archivo exacto ya existe en mods/ o si es Fabric API y ya hay un jar de Fabric API instalado
+            if !dependency_already_satisfied {
+                let direct_file = mods_dir.join(&primary.filename);
+                if direct_file.is_file() {
+                    dependency_already_satisfied = true;
+                } else if primary.filename.starts_with("fabric-api") || dep_ver.project_id == "P7dR8mSH" {
+                    if let Ok(entries) = fs::read_dir(&mods_dir) {
+                        for e in entries.flatten() {
+                            let n = e.file_name().to_string_lossy().to_string();
+                            if n.starts_with("fabric-api") && (n.ends_with(".jar") || n.ends_with(".jar.disabled")) {
+                                dependency_already_satisfied = true;
+                                break;
                             }
-                        } else {
-                            for sub_dep in &dep_ver.dependencies {
-                                if sub_dep.dependency_type == "required" {
-                                    queue.push_back(sub_dep.clone());
-                                }
-                            }
-                            continue;
                         }
                     }
                 }
+            }
+
+            if dependency_already_satisfied {
+                for sub_dep in &dep_ver.dependencies {
+                    if sub_dep.dependency_type == "required" {
+                        queue.push_back(sub_dep.clone());
+                    }
+                }
+                continue;
             }
 
             if let Ok(entries) = fs::read_dir(&mods_dir) {
@@ -1013,12 +1085,15 @@ impl ModrinthClient {
         }
 
         let mut staged_mod_ids: HashMap<String, String> = HashMap::new();
+        let mut redundant_staging_files: HashSet<String> = HashSet::new();
         let staging_entries_check = fs::read_dir(&staging_dir).map_err(|e| e.to_string())?;
+
         for entry in staging_entries_check.flatten() {
             let path = entry.path();
             if path.is_file() && path.extension().map(|e| e == "jar").unwrap_or(false) {
                 let staged_fname = entry.file_name().to_string_lossy().to_string();
                 let staged_mids = extract_mod_ids_from_jar(&path);
+
                 for mid in staged_mids {
                     if let Some(other_staged) = staged_mod_ids.get(&mid) {
                         if other_staged != &staged_fname {
@@ -1029,7 +1104,6 @@ impl ModrinthClient {
                             ));
                         }
                     }
-                    staged_mod_ids.insert(mid.clone(), staged_fname.clone());
 
                     if let Some(existing_file) = installed_mod_map.get(&mid) {
                         let is_replacing_same_project = installed_records.iter().any(|(pid, new_fname, _)| {
@@ -1038,16 +1112,32 @@ impl ModrinthClient {
                                 manifest_mods.get(pid).map(|e| &e.filename) == Some(existing_file)
                             )
                         });
+
                         if !is_replacing_same_project {
-                            let _ = fs::remove_dir_all(&staging_dir);
-                            return Err(format!(
-                                "Colisión de mod ID '{}': ya está implementado por el archivo instalado '{}'",
-                                mid, existing_file
-                            ));
+                            if staged_fname != clean_filename {
+                                // Es una dependencia secundaria que ya está cubierta por un mod instalado en mods/
+                                redundant_staging_files.insert(staged_fname.clone());
+                                break;
+                            } else {
+                                // Es el mod principal que actualiza o sustituye un archivo previo del mismo mod ID
+                                installed_records.push((
+                                    format!("legacy_{}", mid),
+                                    staged_fname.clone(),
+                                    resolved_vid.clone(),
+                                ));
+                            }
                         }
                     }
+
+                    staged_mod_ids.insert(mid.clone(), staged_fname.clone());
                 }
             }
+        }
+
+        // Eliminar dependencias redundantes descargadas que ya estaban presentes en mods/
+        for redundant in redundant_staging_files {
+            let _ = fs::remove_file(staging_dir.join(&redundant));
+            installed_records.retain(|(_, fname, _)| fname != &redundant);
         }
 
         let backup_dir = staging_dir.join(".backup");

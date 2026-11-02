@@ -21,6 +21,7 @@ import { Account, Cape } from '../types';
 import { PlayerHead } from './PlayerHead';
 import { api } from '../services/api';
 import { SkinViewer3D } from './SkinViewer3D';
+import { useI18n } from '../utils/i18n';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -139,6 +140,7 @@ export function AccountModal({
   onDeleteAccount,
   onUpdateSkin,
 }: AccountModalProps) {
+  const { t, language } = useI18n();
   const [authTab, setAuthTab] = useState<'microsoft' | 'elyby' | 'offline'>('microsoft');
   const [username, setUsername] = useState('');
   const [elyUser, setElyUser] = useState('');
@@ -388,10 +390,10 @@ export function AccountModal({
             <div className="flex items-center justify-between pb-3.5 border-b glass-divider">
               <div>
                 <h3 className="heading-display text-2xl font-extrabold text-ghost-50">
-                  ADMINISTRACIÓN DE CUENTAS
+                  {t.acc_modal_title}
                 </h3>
                 <p className="text-xs text-ghost-400">
-                  Gestiona tus cuentas, skins y capas desde un solo lugar
+                  {t.acc_modal_subtitle}
                 </p>
               </div>
               <button
@@ -407,7 +409,7 @@ export function AccountModal({
                 <div className="flex-1 min-h-0 flex flex-col">
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase text-ghost-300 mb-2">
                     <User className="w-3.5 h-3.5 accent-text" />
-                    <span>Cuentas Registradas ({accounts.length})</span>
+                    <span>{t.acc_registered_accounts} ({accounts.length})</span>
                   </div>
 
                   <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto pr-1">
@@ -451,7 +453,7 @@ export function AccountModal({
                                 </span>
                               </div>
                               <div className="text-[10px] font-mono text-ghost-400 tabular-nums mt-0.5">
-                                {acc.skin_model === 'slim' ? 'Slim' : 'Clásico'} •{' '}
+                                {acc.skin_model === 'slim' ? 'Slim' : (language === 'es' ? 'Clásico' : 'Classic')} •{' '}
                                 {acc.uuid.substring(0, 8)}
                               </div>
                             </div>
@@ -470,7 +472,7 @@ export function AccountModal({
                                 onDeleteAccount(acc.id);
                               }}
                               className="btn-tactile p-1.5 rounded-control text-ghost-400 hover:text-spectral-rose"
-                              title={acc.is_active ? 'Cerrar sesión' : 'Eliminar cuenta'}
+                              title={acc.is_active ? (language === 'es' ? 'Cerrar sesión' : 'Log out') : (language === 'es' ? 'Eliminar cuenta' : 'Delete account')}
                             >
                               {acc.is_active ? <LogOut className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
                             </button>
@@ -524,13 +526,13 @@ export function AccountModal({
                         {deviceCodeData ? (
                           <div className="h-full flex flex-col justify-between space-y-1.5 p-2 rounded-control bg-black/35 border border-[var(--glass-border)]">
                             <div className="flex items-center justify-between text-[10px] font-mono text-ghost-300 shrink-0">
-                              <span>Código en Microsoft:</span>
+                              <span>{t.acc_code_in_ms}</span>
                               <button
                                 type="button"
                                 onClick={() => api.openExternalUrl(deviceCodeData.verification_uri)}
                                 className="accent-text hover:underline flex items-center gap-1"
                               >
-                                <span>Abrir enlace</span>
+                                <span>{t.acc_open_link}</span>
                                 <ExternalLink className="w-2.5 h-2.5" />
                               </button>
                             </div>
@@ -545,14 +547,14 @@ export function AccountModal({
                                 className="btn-tactile px-2 py-0.5 rounded glass-control text-[10px] font-mono flex items-center gap-1"
                               >
                                 <Copy className="w-3 h-3" />
-                                <span>{copiedCode ? 'Copiado' : 'Copiar'}</span>
+                                <span>{copiedCode ? t.acc_copied : t.acc_copy}</span>
                               </button>
                             </div>
 
                             <div className="flex items-center justify-between text-[10px] font-mono text-ghost-400 shrink-0">
                               <span className="flex items-center gap-1.5 text-spectral-mint truncate">
                                 <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                                <span className="truncate">Esperando autorización...</span>
+                                <span className="truncate">{t.acc_msa_waiting}</span>
                               </span>
                               <button
                                 type="button"
@@ -563,7 +565,7 @@ export function AccountModal({
                                 }}
                                 className="text-ghost-400 hover:text-spectral-rose shrink-0 ml-2"
                               >
-                                Cancelar
+                                {t.acc_cancel}
                               </button>
                             </div>
                           </div>
@@ -571,7 +573,7 @@ export function AccountModal({
                           <div className="h-full flex flex-col justify-between space-y-2">
                             <div className="space-y-1.5">
                               <span className="text-[10px] font-mono text-ghost-300 block">
-                                Autenticación Oficial Microsoft OAuth 2.0
+                                {t.acc_msa_official}
                               </span>
                               <button
                                 type="button"
@@ -582,8 +584,8 @@ export function AccountModal({
                                 <Globe className="w-3.5 h-3.5" />
                                 <span>
                                   {isAdding
-                                    ? 'Solicitando código OAuth...'
-                                    : 'Iniciar Sesión Microsoft (Device Code)'}
+                                    ? t.acc_msa_requesting
+                                    : t.acc_login_msa_btn}
                                 </span>
                               </button>
                               {oauthError && (
@@ -600,15 +602,15 @@ export function AccountModal({
                                 className="text-[10px] font-mono text-ghost-400 hover:text-ghost-200 underline block"
                               >
                                 {showManualMsa
-                                  ? 'Ocultar vinculación manual'
-                                  : '¿Vincular por Gamertag o Token directo?'}
+                                  ? t.acc_manual_link_hide
+                                  : t.acc_manual_link_prompt}
                               </button>
 
                               {showManualMsa && (
                                 <form onSubmit={handleMicrosoftSubmit} className="flex gap-1.5 pt-1.5">
                                   <input
                                     type="text"
-                                    placeholder="Gamertag o Token MSA..."
+                                    placeholder="Gamertag / MSA Token..."
                                     value={msaIdentifier}
                                     onChange={(e) => setMsaIdentifier(e.target.value)}
                                     className="flex-1 px-2.5 py-1 glass-control text-xs font-mono"
@@ -618,7 +620,7 @@ export function AccountModal({
                                     disabled={isAdding || !msaIdentifier.trim()}
                                     className="btn-tactile px-3 py-1 rounded-control glass-control text-xs font-semibold"
                                   >
-                                    Vincular
+                                    {t.acc_link_btn}
                                   </button>
                                 </form>
                               )}
@@ -632,7 +634,7 @@ export function AccountModal({
                       <form key="auth-tab-elyby" onSubmit={handleElyBySubmit} className="h-full flex flex-col justify-between space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-mono text-ghost-300">
-                            Autenticación Yggdrasil Ely.by
+                            {t.acc_elyby_official}
                           </span>
                           <button
                             type="button"
@@ -645,7 +647,7 @@ export function AccountModal({
                         </div>
                         <input
                           type="text"
-                          placeholder="Usuario o Correo de Ely.by..."
+                          placeholder={language === 'es' ? 'Usuario o Correo de Ely.by...' : 'Ely.by Username or Email...'}
                           value={elyUser}
                           onChange={(e) => setElyUser(e.target.value)}
                           className="w-full px-2.5 py-1.5 glass-control text-xs font-mono"
@@ -653,14 +655,14 @@ export function AccountModal({
                         <div className="grid grid-cols-3 gap-1.5">
                           <input
                             type="password"
-                            placeholder="Contraseña..."
+                            placeholder={language === 'es' ? 'Contraseña...' : 'Password...'}
                             value={elyPass}
                             onChange={(e) => setElyPass(e.target.value)}
                             className="col-span-2 px-2.5 py-1.5 glass-control text-xs font-mono"
                           />
                           <input
                             type="text"
-                            placeholder="2FA (opc)"
+                            placeholder={language === 'es' ? '2FA (opc)' : '2FA (opt)'}
                             value={elyTotp}
                             onChange={(e) => setElyTotp(e.target.value)}
                             className="px-2 py-1.5 glass-control text-xs font-mono text-center"
@@ -672,7 +674,7 @@ export function AccountModal({
                           className="btn-tactile w-full py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
-                          <span>{isAdding ? 'Conectando a Ely.by...' : 'Iniciar Sesión Ely.by'}</span>
+                          <span>{isAdding ? t.acc_connect_elyby : t.acc_login_elyby}</span>
                         </button>
                       </form>
                     )}
@@ -681,17 +683,17 @@ export function AccountModal({
                       <form key="auth-tab-offline" onSubmit={handleAddOffline} className="h-full flex flex-col justify-between space-y-2">
                         <div>
                           <label className="block text-[10px] font-mono text-ghost-300 mb-0.5">
-                            Añadir Perfil Offline (UUID v3)
+                            {t.acc_offline_title}
                           </label>
                           <p className="text-[10px] font-mono text-ghost-400">
-                            Crea un perfil local sin DRM para jugar offline.
+                            {t.acc_offline_desc}
                           </p>
                         </div>
 
                         <div className="flex gap-2 items-center">
                           <input
                             type="text"
-                            placeholder="Nombre de jugador..."
+                            placeholder={t.acc_player_name}
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="flex-1 px-2.5 py-2 glass-control text-xs font-mono"
@@ -702,7 +704,7 @@ export function AccountModal({
                             className="btn-tactile px-4 py-2 rounded-control accent-bg text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 shrink-0"
                           >
                             <UserPlus className="w-3.5 h-3.5" />
-                            <span>Crear</span>
+                            <span>{t.acc_create_offline}</span>
                           </button>
                         </div>
                       </form>
@@ -716,7 +718,7 @@ export function AccountModal({
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase text-ghost-300">
                     <Shirt className="w-3.5 h-3.5 accent-text" />
                     <span>
-                      Estudio de Skin:{' '}
+                      {t.acc_skin_studio}:{' '}
                       <strong className="text-ghost-50">{activeAccount?.username}</strong>
                     </span>
                   </div>
@@ -748,7 +750,7 @@ export function AccountModal({
                     <div className="sm:col-span-7 space-y-3">
                       <div>
                         <label className="block text-[10px] font-mono uppercase text-ghost-400 mb-1">
-                          Geometría de Brazos
+                          {t.acc_arm_geometry}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -760,7 +762,7 @@ export function AccountModal({
                                 : 'glass-control text-ghost-300'
                             }`}
                           >
-                            Clásico (4px)
+                            {t.acc_classic_4px}
                           </button>
                           <button
                             type="button"
@@ -771,19 +773,19 @@ export function AccountModal({
                                 : 'glass-control text-ghost-300'
                             }`}
                           >
-                            Slim (3px)
+                            {t.acc_slim_3px}
                           </button>
                         </div>
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-mono uppercase text-ghost-400 mb-1">
-                          Archivo Local (.png 64×64)
+                          {t.acc_local_file}
                         </label>
                         <div className="flex items-center gap-2">
                           <label className="btn-tactile flex-1 py-1.5 px-3 glass-control text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer text-ghost-100">
                             <Upload className="w-3.5 h-3.5 accent-text" />
-                            <span>Subir Skin (.png)</span>
+                            <span>{t.acc_upload_skin}</span>
                             <input
                               type="file"
                               accept="image/png"
@@ -797,7 +799,7 @@ export function AccountModal({
                               type="button"
                               onClick={handleResetSkin}
                               className="btn-tactile p-1.5 glass-control text-ghost-300 hover:text-spectral-rose"
-                              title="Restablecer a skin original"
+                              title={t.acc_reset_skin}
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                             </button>
@@ -807,12 +809,12 @@ export function AccountModal({
 
                       <form onSubmit={handleApplySkinNickOrUrl}>
                         <label className="block text-[10px] font-mono uppercase text-ghost-400 mb-1">
-                          Importar por Nick Premium o URL
+                          {t.acc_import_premium}
                         </label>
                         <div className="flex gap-1.5">
                           <input
                             type="text"
-                            placeholder="ej. Technoblade, Notch o URL..."
+                            placeholder={language === 'es' ? 'ej. Technoblade, Notch o URL...' : 'e.g. Technoblade, Notch or URL...'}
                             value={skinInput}
                             onChange={(e) => setSkinInput(e.target.value)}
                             className="flex-1 px-2.5 py-1.5 glass-control text-xs font-mono"
@@ -822,7 +824,7 @@ export function AccountModal({
                             disabled={!skinInput.trim()}
                             className="btn-tactile px-3 py-1.5 rounded-control accent-bg text-white text-xs font-semibold disabled:opacity-50"
                           >
-                            Aplicar
+                            {t.acc_apply}
                           </button>
                         </div>
                       </form>
@@ -835,7 +837,7 @@ export function AccountModal({
                   <div className="mt-3 pt-3 border-t glass-divider space-y-2 flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between shrink-0">
                       <label className="block text-[10px] font-mono uppercase text-ghost-400">
-                        Capas de la cuenta
+                        {t.acc_capes_title}
                       </label>
                       {activeAccount.account_type === 'Microsoft' && capes.some((c) => c.active) && (
                         <button
@@ -844,7 +846,7 @@ export function AccountModal({
                           onClick={() => handleSetCape(null)}
                           className="btn-tactile px-2.5 py-1 rounded-control glass-control text-[10px] font-mono text-ghost-300 disabled:opacity-50"
                         >
-                          Quitar capa
+                          {t.acc_remove_cape}
                         </button>
                       )}
                     </div>

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { SystemJavaInfo } from '../types';
 import { api } from '../services/api';
+import { useI18n } from '../utils/i18n';
 
 interface JavaDownloadModalProps {
   isOpen: boolean;
@@ -186,6 +187,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
   onJavaInstalled,
   onShowToast,
 }) => {
+  const { t } = useI18n();
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>('mojang');
   const [selectedMajor, setSelectedMajor] = useState<number>(25);
   const [searchTable, setSearchTable] = useState('');
@@ -268,7 +270,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
               </div>
               <div>
                 <h3 className="heading-display text-lg font-bold text-ghost-50 tracking-wide">
-                  DESCARGAR RUNTIME DE JAVA
+                  {t.java_modal_title}
                 </h3>
                 <p className="text-[11px] text-ghost-400 font-mono">
                   {currentProviderObj.name} • {currentProviderObj.subtitle}
@@ -290,7 +292,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
             <div className="col-span-3 border-r glass-divider p-3 flex flex-col justify-between bg-black/20">
               <div className="space-y-1">
                 <span className="block text-[10px] font-mono uppercase text-ghost-400 px-2 mb-2 font-semibold tracking-wider">
-                  Proveedor
+                  {t.java_provider}
                 </span>
                 <div className="space-y-1.5">
                   {PROVIDERS.map((prov) => {
@@ -318,8 +320,8 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
 
               <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 text-[10px] font-mono text-ghost-400 flex items-center gap-2 min-w-0">
                 <Shield className="w-3.5 h-3.5 accent-text shrink-0" />
-                <span className="truncate" title="Instalación automatizada en ~/.local/share/GhosttyLauncher/runtimes">
-                  Instalación automatizada
+                <span className="truncate" title={t.java_automated_install}>
+                  {t.java_automated_install}
                 </span>
               </div>
             </div>
@@ -327,7 +329,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
             {/* Column 2: Versión Principal (25% / 3 cols) */}
             <div className="col-span-3 border-r glass-divider p-3 flex flex-col bg-black/10">
               <span className="block text-[10px] font-mono uppercase text-ghost-400 px-2 mb-2 font-semibold tracking-wider">
-                Versión Principal
+                {t.java_major_version}
               </span>
 
               <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
@@ -371,16 +373,16 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                     {currentProviderObj.name}
                   </span>
                   <span className="text-[10px] font-mono text-ghost-400">
-                    {tableEntries.length} paquete(s)
+                    {tableEntries.length} {t.java_packages_count}
                   </span>
                 </div>
 
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-2 px-3 py-1.5 rounded-lg bg-black/30 border border-white/5 text-[10px] font-mono font-bold text-ghost-400 uppercase tracking-wider shrink-0 mb-1.5">
-                  <span className="col-span-3">Versión</span>
-                  <span className="col-span-5">Nombre de Java</span>
-                  <span className="col-span-2 text-center">Lanzado</span>
-                  <span className="col-span-2 text-right">Tipo</span>
+                  <span className="col-span-3">{t.java_col_version}</span>
+                  <span className="col-span-5">{t.java_col_name}</span>
+                  <span className="col-span-2 text-center">{t.java_col_released}</span>
+                  <span className="col-span-2 text-right">{t.java_col_type}</span>
                 </div>
 
                 {/* Table Rows */}
@@ -424,7 +426,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-ghost-400" />
                   <input
                     type="text"
-                    placeholder="Buscar versión o nombre..."
+                    placeholder={t.java_search_placeholder}
                     value={searchTable}
                     onChange={(e) => setSearchTable(e.target.value)}
                     className="w-full pl-8 pr-2.5 py-1.5 rounded-lg glass-control text-xs font-mono placeholder:text-ghost-500"
@@ -445,7 +447,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                 className="btn-tactile px-3 py-1.5 rounded-lg glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-300 hover:text-ghost-50"
               >
                 <RefreshCw className="w-3 h-3" />
-                <span>Refrescar</span>
+                <span>{t.java_refresh}</span>
               </button>
 
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--accent-tint)] border border-[var(--accent)]/30 text-[10px] font-mono font-bold text-[var(--accent)]">
@@ -461,7 +463,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                 disabled={isDownloading}
                 className="btn-tactile px-4 py-1.5 rounded-xl glass-control text-xs font-semibold text-ghost-300 hover:text-ghost-50"
               >
-                Cancelar
+                {t.java_cancel}
               </button>
               <button
                 type="button"
@@ -472,12 +474,12 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                 {isDownloading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Instalando...</span>
+                    <span>{t.java_installing}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    <span>Descargar</span>
+                    <span>{t.java_download_btn}</span>
                   </>
                 )}
               </button>

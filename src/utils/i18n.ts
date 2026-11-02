@@ -31,7 +31,7 @@ export interface Translations {
   instances_empty_title: string;
   drag_to_reorder: string;
 
-  // Modals & Panels
+  // Account Modal
   acc_modal_title: string;
   acc_modal_subtitle: string;
   acc_registered_accounts: string;
@@ -50,11 +50,24 @@ export interface Translations {
   acc_tab_offline: string;
   acc_login_msa_btn: string;
   acc_msa_waiting: string;
+  acc_msa_requesting: string;
+  acc_msa_official: string;
   acc_cancel: string;
   acc_code_in_ms: string;
   acc_open_link: string;
   acc_copied: string;
   acc_copy: string;
+  acc_connect_elyby: string;
+  acc_login_elyby: string;
+  acc_elyby_official: string;
+  acc_offline_title: string;
+  acc_offline_desc: string;
+  acc_player_name: string;
+  acc_create_offline: string;
+  acc_reset_skin: string;
+  acc_manual_link_prompt: string;
+  acc_manual_link_hide: string;
+  acc_link_btn: string;
 
   // Create Instance Modal
   create_modal_title: string;
@@ -68,6 +81,15 @@ export interface Translations {
   create_adv_options: string;
   create_cancel: string;
   create_submit: string;
+  create_creating: string;
+  create_instances_count: string;
+  create_jvm_args: string;
+  create_pre_launch: string;
+  create_loader_fabric_desc: string;
+  create_loader_neoforge_desc: string;
+  create_loader_forge_desc: string;
+  create_loader_quilt_desc: string;
+  create_loader_vanilla_desc: string;
 
   // Java Download Modal
   java_modal_title: string;
@@ -82,6 +104,30 @@ export interface Translations {
   java_refresh: string;
   java_download_btn: string;
   java_cancel: string;
+  java_installing: string;
+  java_automated_install: string;
+  java_packages_count: string;
+
+  // Game Logs Modal
+  logs_modal_title: string;
+  logs_clear: string;
+  logs_autoscroll: string;
+  logs_empty: string;
+
+  // Instance Settings Modal
+  inst_settings_title: string;
+  inst_settings_save: string;
+  inst_settings_saving: string;
+
+  // Discover View
+  disc_search_placeholder: string;
+  disc_featured: string;
+  disc_catalog: string;
+  disc_install: string;
+  disc_installing: string;
+  disc_installed: string;
+  disc_popular: string;
+  disc_downloads: string;
 
   // Settings View
   settings_title: string;
@@ -168,11 +214,24 @@ const es: Translations = {
   acc_tab_offline: 'Offline',
   acc_login_msa_btn: 'Iniciar Sesión Microsoft (Device Code)',
   acc_msa_waiting: 'Esperando autorización...',
+  acc_msa_requesting: 'Solicitando código OAuth...',
+  acc_msa_official: 'Autenticación Oficial Microsoft OAuth 2.0',
   acc_cancel: 'Cancelar',
   acc_code_in_ms: 'Código en Microsoft:',
   acc_open_link: 'Abrir enlace',
   acc_copied: 'Copiado',
   acc_copy: 'Copiar',
+  acc_connect_elyby: 'Conectando a Ely.by...',
+  acc_login_elyby: 'Iniciar Sesión Ely.by',
+  acc_elyby_official: 'Autenticación Yggdrasil Ely.by',
+  acc_offline_title: 'Añadir Perfil Offline (UUID v3)',
+  acc_offline_desc: 'Crea un perfil local sin DRM para jugar offline.',
+  acc_player_name: 'Nombre de jugador...',
+  acc_create_offline: 'Crear',
+  acc_reset_skin: 'Restablecer a skin original',
+  acc_manual_link_prompt: '¿Vincular por Gamertag o Token directo?',
+  acc_manual_link_hide: 'Ocultar vinculación manual',
+  acc_link_btn: 'Vincular',
 
   create_modal_title: 'NUEVA ESTANCIA DE MINECRAFT',
   create_modal_subtitle: 'Configura versión oficial, Mod Loader y memoria inicial',
@@ -185,6 +244,15 @@ const es: Translations = {
   create_adv_options: 'Opciones Avanzadas (Flags JVM y Hook)',
   create_cancel: 'Cancelar',
   create_submit: '+ Crear Estancia',
+  create_creating: 'Creando...',
+  create_instances_count: 'disponibles',
+  create_jvm_args: 'Argumentos JVM',
+  create_pre_launch: 'Comando Pre-Lanzamiento',
+  create_loader_fabric_desc: 'Ligero y modular',
+  create_loader_neoforge_desc: 'Modding moderno',
+  create_loader_forge_desc: 'Clásico compatible',
+  create_loader_quilt_desc: 'Comunitario',
+  create_loader_vanilla_desc: 'Oficial puro',
 
   java_modal_title: 'DESCARGAR RUNTIME DE JAVA',
   java_modal_subtitle: 'Mojang, Adoptium Temurin, Azul Zulu e IBM Semeru',
@@ -198,6 +266,27 @@ const es: Translations = {
   java_refresh: 'Refrescar',
   java_download_btn: 'Descargar',
   java_cancel: 'Cancelar',
+  java_installing: 'Instalando...',
+  java_automated_install: 'Instalación automatizada',
+  java_packages_count: 'paquete(s)',
+
+  logs_modal_title: 'Consola de Salida JVM',
+  logs_clear: 'Limpiar Consola',
+  logs_autoscroll: 'Auto-scroll',
+  logs_empty: 'No hay logs emitidos todavía.',
+
+  inst_settings_title: 'Ajustes de la Estancia',
+  inst_settings_save: 'Guardar Ajustes',
+  inst_settings_saving: 'Guardando...',
+
+  disc_search_placeholder: 'Buscar en',
+  disc_featured: 'DESTACADOS EN',
+  disc_catalog: 'CATÁLOGO COMPLETO',
+  disc_install: 'Instalar',
+  disc_installing: 'Instalando...',
+  disc_installed: 'Instalado',
+  disc_popular: 'Populares',
+  disc_downloads: 'desc.',
 
   settings_title: 'CONFIGURACIÓN DEL LAUNCHER & ENTORNO',
   settings_save: 'Guardar Cambios',
@@ -216,7 +305,7 @@ const es: Translations = {
   settings_particles: 'Efectos de Partículas Ambientales',
   settings_legal_title: 'AVISO LEGAL Y MARCA REGISTRADA',
   settings_legal_disclaimer: 'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.',
-  settings_legal_mojang_desc: 'Minecraft es una marca comercial de Mojang Studios / Microsoft Corporation. Ghostty Launcher es un lanzador independiente y de código abierto para la gestión de estancias y modding en Linux, de acuerdo con las Directrices Oficiales de Uso de Minecraft.',
+  settings_legal_mojang_desc: 'Minecraft es una marca comercial de Mojang Studios / Microsoft Corporation. Ghostty Launcher es un lanzador independiente y de código abierto para la gestión de estancias y modding en Linux, Windows y macOS, de acuerdo con las Directrices Oficiales de Uso de Minecraft.',
 
   ctx_new_instance: 'Nueva Instancia...',
   ctx_import_modpack: 'Importar Modpack (.mrpack)...',
@@ -264,7 +353,7 @@ const en: Translations = {
   drag_to_reorder: 'Drag to reorder',
 
   acc_modal_title: 'ACCOUNT MANAGEMENT',
-  acc_modal_subtitle: 'Manage your accounts, skins and capes from one place',
+  acc_modal_subtitle: 'Manage accounts, skins and capes all in one place',
   acc_registered_accounts: 'REGISTERED ACCOUNTS',
   acc_skin_studio: 'SKIN STUDIO',
   acc_arm_geometry: 'ARM GEOMETRY',
@@ -272,20 +361,33 @@ const en: Translations = {
   acc_slim_3px: 'Slim (3px)',
   acc_local_file: 'LOCAL FILE (.PNG 64×64)',
   acc_upload_skin: 'Upload Skin (.png)',
-  acc_import_premium: 'IMPORT BY PREMIUM NICK OR URL',
+  acc_import_premium: 'IMPORT VIA PREMIUM NICK OR URL',
   acc_apply: 'Apply',
   acc_capes_title: 'ACCOUNT CAPES',
   acc_remove_cape: 'Remove cape',
   acc_tab_minecraft: 'Minecraft',
   acc_tab_elyby: 'Ely.by',
   acc_tab_offline: 'Offline',
-  acc_login_msa_btn: 'Sign In with Microsoft (Device Code)',
+  acc_login_msa_btn: 'Sign in with Microsoft (Device Code)',
   acc_msa_waiting: 'Waiting for authorization...',
+  acc_msa_requesting: 'Requesting OAuth code...',
+  acc_msa_official: 'Official Microsoft OAuth 2.0 Auth',
   acc_cancel: 'Cancel',
-  acc_code_in_ms: 'Code in Microsoft:',
+  acc_code_in_ms: 'Microsoft Code:',
   acc_open_link: 'Open link',
   acc_copied: 'Copied',
   acc_copy: 'Copy',
+  acc_connect_elyby: 'Connecting to Ely.by...',
+  acc_login_elyby: 'Sign in with Ely.by',
+  acc_elyby_official: 'Ely.by Yggdrasil Authentication',
+  acc_offline_title: 'Add Offline Profile (UUID v3)',
+  acc_offline_desc: 'Create a local DRM-free profile for offline play.',
+  acc_player_name: 'Player username...',
+  acc_create_offline: 'Create',
+  acc_reset_skin: 'Reset to original skin',
+  acc_manual_link_prompt: 'Link via Gamertag or Direct Token?',
+  acc_manual_link_hide: 'Hide manual link',
+  acc_link_btn: 'Link',
 
   create_modal_title: 'NEW MINECRAFT INSTANCE',
   create_modal_subtitle: 'Configure official version, Mod Loader and initial memory',
@@ -295,9 +397,18 @@ const en: Translations = {
   create_loader_label: 'Mod Loader',
   create_icon_label: 'Instance Icon',
   create_ram_label: 'Allocated RAM',
-  create_adv_options: 'Advanced Options (JVM Flags & Hook)',
+  create_adv_options: 'Advanced Options (JVM Flags & Hooks)',
   create_cancel: 'Cancel',
   create_submit: '+ Create Instance',
+  create_creating: 'Creating...',
+  create_instances_count: 'available',
+  create_jvm_args: 'JVM Arguments',
+  create_pre_launch: 'Pre-Launch Command',
+  create_loader_fabric_desc: 'Lightweight & modular',
+  create_loader_neoforge_desc: 'Modern modding',
+  create_loader_forge_desc: 'Classic compatible',
+  create_loader_quilt_desc: 'Community fork',
+  create_loader_vanilla_desc: 'Pure official',
 
   java_modal_title: 'DOWNLOAD JAVA RUNTIME',
   java_modal_subtitle: 'Mojang, Adoptium Temurin, Azul Zulu & IBM Semeru',
@@ -311,6 +422,27 @@ const en: Translations = {
   java_refresh: 'Refresh',
   java_download_btn: 'Download',
   java_cancel: 'Cancel',
+  java_installing: 'Installing...',
+  java_automated_install: 'Automated installation',
+  java_packages_count: 'package(s)',
+
+  logs_modal_title: 'JVM Output Console',
+  logs_clear: 'Clear Console',
+  logs_autoscroll: 'Auto-scroll',
+  logs_empty: 'No logs emitted yet.',
+
+  inst_settings_title: 'Instance Settings',
+  inst_settings_save: 'Save Settings',
+  inst_settings_saving: 'Saving...',
+
+  disc_search_placeholder: 'Search on',
+  disc_featured: 'FEATURED ON',
+  disc_catalog: 'FULL CATALOG',
+  disc_install: 'Install',
+  disc_installing: 'Installing...',
+  disc_installed: 'Installed',
+  disc_popular: 'Popular',
+  disc_downloads: 'dls.',
 
   settings_title: 'LAUNCHER SETTINGS & ENVIRONMENT',
   settings_save: 'Save Changes',
@@ -329,7 +461,7 @@ const en: Translations = {
   settings_particles: 'Ambient Particle Effects',
   settings_legal_title: 'LEGAL NOTICE & TRADEMARK',
   settings_legal_disclaimer: 'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.',
-  settings_legal_mojang_desc: 'Minecraft is a trademark of Mojang Studios / Microsoft Corporation. Ghostty Launcher is an independent, open-source launcher for instance management and modding on Linux, complying with Minecraft Official Usage Guidelines.',
+  settings_legal_mojang_desc: 'Minecraft is a trademark of Mojang Studios / Microsoft Corporation. Ghostty Launcher is an independent, open-source launcher for instance management and modding across Linux, Windows and macOS, complying with Minecraft Official Usage Guidelines.',
 
   ctx_new_instance: 'New Instance...',
   ctx_import_modpack: 'Import Modpack (.mrpack)...',
