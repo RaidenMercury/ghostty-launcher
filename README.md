@@ -54,26 +54,33 @@ Durante años, la comunidad de Linux ha tenido que elegir entre dos extremos: la
 <table>
   <tr>
     <td width="50%">
-      <h4 align="center">Gestor de Estancias Dinámico</h4>
+      <h4 align="center">Gestor de Estancias & Canvas Hero</h4>
       <img src="assets/instances.png" alt="Instancias" />
-      <p align="center"><em>Reorganización táctil, filtros por categorías, favoritos y metadatos en tiempo real.</em></p>
+      <p align="center"><em>Filtros por grupos, favoritos, reordenamiento fluido y canvas en movimiento con el arte del modpack.</em></p>
     </td>
     <td width="50%">
-      <h4 align="center">Estudio de Skins & Capas 3D</h4>
-      <img src="assets/accounts.png" alt="Cuentas y Skins" />
-      <p align="center"><em>Previsualización en tiempo real con rotación de modelo clásico/slim, capas oficiales y soporte Ely.by / Offline.</em></p>
+      <h4 align="center">Explorador de Modrinth Integrado</h4>
+      <img src="assets/discover.png" alt="Descubrir Mods y Packs" />
+      <p align="center"><em>Búsqueda directa e instalación en un click de mods (Sodium, Iris, Fabric API), modpacks, shaders y resource packs.</em></p>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <h4 align="center">Catálogo de Java Runtimes</h4>
-      <img src="assets/java-catalog.png" alt="Catálogo Java" />
-      <p align="center"><em>Descarga e instalación automatizada de Eclipse Temurin (Adoptium), Azul Zulu y Mojang Runtimes.</em></p>
+      <h4 align="center">Estudio de Skins & Capas 3D</h4>
+      <img src="assets/accounts.png" alt="Cuentas y Skins" />
+      <p align="center"><em>Previsualización interactiva con modelo clásico/slim, capas oficiales Mojang y soporte Ely.by / Offline.</em></p>
     </td>
     <td width="50%">
-      <h4 align="center">Creación Rápida de Perfiles</h4>
-      <img src="assets/create-instance.png" alt="Nueva Instancia" />
-      <p align="center"><em>Selector inteligente de versiones oficiales, snapshots y modloaders listos para jugar.</em></p>
+      <h4 align="center">Catálogo de Java Runtimes</h4>
+      <img src="assets/java-catalog.png" alt="Catálogo Java" />
+      <p align="center"><em>Descarga e instalación automatizada de runtimes: Mojang JRE, Eclipse Temurin (Adoptium) y Azul Zulu.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <h4 align="center">Ajustes del Entorno & Menús Desplegables Glass</h4>
+      <img src="assets/settings.png" alt="Ajustes y Dropdowns" />
+      <p align="center"><em>Detección automática de JVMs instaladas, selectores estilizados GlassSelect, memoria RAM y hooks del sistema.</em></p>
     </td>
   </tr>
 </table>
