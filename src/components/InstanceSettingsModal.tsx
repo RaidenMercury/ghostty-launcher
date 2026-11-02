@@ -10,10 +10,55 @@ import {
   Save,
   Trash2,
   Plus,
+  ImagePlus,
+  Download,
 } from 'lucide-react';
 import { Instance } from '../types';
 import { api } from '../services/api';
 import { InstanceIcon, hasCustomPackIcon } from './InstanceIcon';
+import { JavaDownloadModal } from './JavaDownloadModal';
+
+export const MINECRAFT_PRESET_ICONS = [
+  { id: 'minecraft', label: 'Bloque de Hierba (3D)' },
+  { id: 'ghostty', label: 'Ghostty' },
+  { id: '/icons/minecraft/diamond_sword.png', label: 'Espada de Diamante' },
+  { id: '/icons/minecraft/diamond_pickaxe.png', label: 'Pico de Diamante' },
+  { id: '/icons/minecraft/diamond_axe.png', label: 'Hacha de Diamante' },
+  { id: '/icons/minecraft/diamond_shovel.png', label: 'Pala de Diamante' },
+  { id: '/icons/minecraft/diamond.png', label: 'Diamante' },
+  { id: '/icons/minecraft/netherite_sword.png', label: 'Espada de Netherite' },
+  { id: '/icons/minecraft/netherite_ingot.png', label: 'Lingote de Netherite' },
+  { id: '/icons/minecraft/golden_apple.png', label: 'Manzana Dorada' },
+  { id: '/icons/minecraft/totem_of_undying.png', label: 'Tótem de Inmortalidad' },
+  { id: '/icons/minecraft/ender_pearl.png', label: 'Perla de Ender' },
+  { id: '/icons/minecraft/enchanted_book.png', label: 'Libro Encantado' },
+  { id: '/icons/minecraft/book.png', label: 'Libro' },
+  { id: '/icons/minecraft/bow.png', label: 'Arco' },
+  { id: '/icons/minecraft/trident.png', label: 'Tridente' },
+  { id: '/icons/minecraft/redstone.png', label: 'Redstone' },
+  { id: '/icons/minecraft/emerald.png', label: 'Esmeralda' },
+  { id: '/icons/minecraft/iron_ingot.png', label: 'Lingote de Hierro' },
+  { id: '/icons/minecraft/gold_ingot.png', label: 'Lingote de Oro' },
+  { id: '/icons/minecraft/amethyst_shard.png', label: 'Fragmento de Amatista' },
+  { id: '/icons/minecraft/nether_star.png', label: 'Estrella del Nether' },
+  { id: '/icons/minecraft/heart_of_the_sea.png', label: 'Corazón del Mar' },
+  { id: '/icons/minecraft/experience_bottle.png', label: 'Botella de Experiencia' },
+  { id: '/icons/minecraft/elytra.png', label: 'Élitros' },
+  { id: '/icons/minecraft/firework_rocket.png', label: 'Cohete de Fuegos' },
+  { id: '/icons/minecraft/potion.png', label: 'Poción' },
+  { id: '/icons/minecraft/splash_potion.png', label: 'Poción Arrojadiza' },
+  { id: '/icons/minecraft/tnt_side.png', label: 'TNT' },
+  { id: '/icons/minecraft/crafting_table_front.png', label: 'Mesa de Trabajo' },
+  { id: '/icons/minecraft/furnace_front.png', label: 'Horno' },
+  { id: '/icons/minecraft/bookshelf.png', label: 'Librería' },
+  { id: '/icons/minecraft/oak_sapling.png', label: 'Brote de Roble' },
+  { id: '/icons/minecraft/chest_minecart.png', label: 'Vagoneta con Cofre' },
+  { id: '/icons/minecraft/tnt_minecart.png', label: 'Vagoneta con TNT' },
+  { id: '/icons/minecraft/blaze_rod.png', label: 'Vara de Blaze' },
+  { id: '/icons/minecraft/apple.png', label: 'Manzana' },
+  { id: '/icons/minecraft/bread.png', label: 'Pan' },
+  { id: '/icons/minecraft/cookie.png', label: 'Galleta' },
+];
 
 interface InstanceSettingsModalProps {
   isOpen: boolean;
@@ -37,7 +82,9 @@ export function InstanceSettingsModal({
   if (!instance) return null;
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [isJavaModalOpen, setIsJavaModalOpen] = useState(false);
   const [name, setName] = useState(instance.name);
+  const [selectedIcon, setSelectedIcon] = useState(instance.icon);
   const [ramMinMb, setRamMinMb] = useState(instance.memory_min_mb || 2048);
   const [ramMaxMb, setRamMaxMb] = useState(instance.memory_max_mb || 4096);
   const [javaPath, setJavaPath] = useState(instance.java_path || '');
@@ -68,6 +115,7 @@ export function InstanceSettingsModal({
   useEffect(() => {
     if (instance) {
       setName(instance.name);
+      setSelectedIcon(instance.icon);
       setRamMinMb(instance.memory_min_mb || 2048);
       setRamMaxMb(instance.memory_max_mb || 4096);
       setJavaPath(instance.java_path || '');
@@ -121,6 +169,7 @@ export function InstanceSettingsModal({
       const updated: Instance = {
         ...instance,
         name: name.trim() || instance.name,
+        icon: selectedIcon,
         memory_min_mb: ramMinMb,
         memory_max_mb: ramMaxMb,
         java_path: javaPath.trim() || null,
@@ -176,7 +225,7 @@ export function InstanceSettingsModal({
               <div className="relative z-10 flex items-center justify-between px-6 py-4">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-control bg-black/30 border border-white/10 p-1.5 flex items-center justify-center shrink-0">
-                    <InstanceIcon icon={instance.icon} alt={instance.name} />
+                    <InstanceIcon icon={selectedIcon} alt={name} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -298,72 +347,49 @@ export function InstanceSettingsModal({
                       ICONO DE LA ESTANCIA
                     </h3>
                     <p className="text-xs text-ghost-400">
-                      Elige un icono. Los SVG se ven nítidos a cualquier tamaño.
+                      Elige un objeto o bloque oficial de Minecraft o sube un icono personalizado (.png).
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
-                    {[
-                      'minecraft',
-                      'ghostty',
-                      '/icons/anvil.svg',
-                      '/icons/apple.svg',
-                      '/icons/axe-sharp.svg',
-                      '/icons/axe-war.svg',
-                      '/icons/bat.svg',
-                      '/icons/bow.svg',
-                      '/icons/bread.svg',
-                      '/icons/campfire.svg',
-                      '/icons/carrot.svg',
-                      '/icons/chest.svg',
-                      '/icons/chest-open.svg',
-                      '/icons/chicken.svg',
-                      '/icons/coins.svg',
-                      '/icons/compass.svg',
-                      '/icons/cow.svg',
-                      '/icons/crown.svg',
-                      '/icons/diamond.svg',
-                      '/icons/dragon.svg',
-                      '/icons/emerald.svg',
-                      '/icons/fish.svg',
-                      '/icons/ghost.svg',
-                      '/icons/gold-bar.svg',
-                      '/icons/hammer.svg',
-                      '/icons/heart.svg',
-                      '/icons/leaf.svg',
-                      '/icons/minerals.svg',
-                      '/icons/mushrooms.svg',
-                      '/icons/pick-war.svg',
-                      '/icons/potion-health.svg',
-                      '/icons/potion-magic.svg',
-                      '/icons/pumpkin.svg',
-                      '/icons/sheep.svg',
-                      '/icons/shield.svg',
-                      '/icons/shovel.svg',
-                      '/icons/skeleton.svg',
-                      '/icons/skull.svg',
-                      '/icons/slime.svg',
-                      '/icons/spider.svg',
-                      '/icons/stone-block.svg',
-                      '/icons/sword-ancient.svg',
-                      '/icons/sword-broad.svg',
-                      '/icons/sword-rusty.svg',
-                      '/icons/torch.svg',
-                      '/icons/wolf.svg',
-                      '/icons/zombie.svg',
-                    ].map((choice) => (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                    <label
+                      className={`btn-tactile aspect-square rounded-control p-2 border flex flex-col items-center justify-center cursor-pointer transition-all ${
+                        selectedIcon && selectedIcon.startsWith('data:image/')
+                          ? 'accent-pill-tint border-[var(--accent)] ring-2 ring-[var(--accent)]/50 scale-105'
+                          : 'glass-control border-white/10 hover:border-white/20'
+                      }`}
+                      title="Subir icono PNG personalizado"
+                    >
+                      <ImagePlus className="w-5 h-5 text-ghost-300 mb-1" />
+                      <span className="text-[9px] font-mono text-ghost-400">Subir PNG</span>
+                      <input
+                        type="file"
+                        accept="image/png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => setSelectedIcon(String(reader.result));
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+
+                    {MINECRAFT_PRESET_ICONS.map((choice) => (
                       <button
-                        key={choice}
+                        key={choice.id}
                         type="button"
-                        onClick={() => onUpdate({ ...instance, icon: choice })}
-                        className={`btn-tactile aspect-square rounded-control p-2 border flex items-center justify-center ${
-                          instance.icon === choice
-                            ? 'accent-pill-tint border-[var(--accent)]'
-                            : 'glass-control border-white/10'
+                        onClick={() => setSelectedIcon(choice.id)}
+                        className={`btn-tactile aspect-square rounded-control p-2 border flex items-center justify-center transition-all ${
+                          selectedIcon === choice.id
+                            ? 'accent-pill-tint border-[var(--accent)] ring-2 ring-[var(--accent)]/50 scale-105'
+                            : 'glass-control border-white/10 hover:border-white/20'
                         }`}
-                        title={choice}
+                        title={choice.label}
                       >
-                        <InstanceIcon icon={choice} alt={choice} />
+                        <InstanceIcon icon={choice.id} alt={choice.label} />
                       </button>
                     ))}
                   </div>
@@ -373,16 +399,36 @@ export function InstanceSettingsModal({
               {activeTab === 'java' && (
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                      Ruta Ejecutable de Java
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Dejar vacío para heredar el Java global"
-                      value={javaPath}
-                      onChange={(e) => setJavaPath(e.target.value)}
-                      className="w-full px-3 py-2 glass-control text-xs font-mono"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-mono text-ghost-300">
+                        Ruta Ejecutable de Java
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsJavaModalOpen(true)}
+                        className="btn-tactile text-[11px] font-mono accent-text hover:underline flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Descargar Runtimes...</span>
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Dejar vacío para heredar el Java global"
+                        value={javaPath}
+                        onChange={(e) => setJavaPath(e.target.value)}
+                        className="flex-1 px-3 py-2 glass-control text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsJavaModalOpen(true)}
+                        className="btn-tactile px-3 py-2 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200 hover:text-ghost-50 shrink-0"
+                      >
+                        <Download className="w-3.5 h-3.5 accent-text" />
+                        <span>Descargar</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-3 border-t glass-divider">
@@ -561,6 +607,15 @@ export function InstanceSettingsModal({
           </motion.div>
         </div>
       )}
+
+      <JavaDownloadModal
+        isOpen={isJavaModalOpen}
+        onClose={() => setIsJavaModalOpen(false)}
+        onJavaInstalled={(info) => {
+          setJavaPath(info.path);
+        }}
+        onShowToast={onShowToast}
+      />
     </AnimatePresence>
   );
 }

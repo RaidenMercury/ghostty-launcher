@@ -517,7 +517,7 @@ export function AccountModal({
                     </button>
                   </div>
 
-                  <div className="h-[142px] flex flex-col justify-between">
+                  <div className="h-[142px] flex flex-col justify-between overflow-hidden">
                     {authTab === 'microsoft' && (
                       <div className="h-full flex flex-col justify-between">
                         {deviceCodeData ? (

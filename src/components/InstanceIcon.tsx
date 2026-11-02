@@ -68,6 +68,7 @@ export const InstanceIcon: React.FC<InstanceIconProps> = ({
         alt={alt}
         draggable={false}
         className={`${className} object-contain rounded-[10px] select-none`}
+        style={trimmed.includes('/minecraft/') ? { imageRendering: 'pixelated' } : undefined}
         onError={() => setImgError(true)}
       />
     );
