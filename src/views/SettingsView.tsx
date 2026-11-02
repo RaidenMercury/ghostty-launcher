@@ -24,6 +24,7 @@ import {
 } from '../utils/theme';
 import { AccordionSection } from '../components/AccordionSection';
 import { JavaDownloadModal } from '../components/JavaDownloadModal';
+import { GlassSelect } from '../components/GlassSelect';
 
 interface SettingsViewProps {
   activeInstance: Instance | null;
@@ -364,6 +365,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </div>
               </div>
+
+              <div className="pt-5 space-y-2">
+                <h3 className="heading-display text-xs font-bold text-ghost-400 tracking-wider">
+                  AVISO LEGAL Y MARCA REGISTRADA
+                </h3>
+                <div className="p-3.5 rounded-control bg-black/25 border border-white/5 space-y-1.5 text-[11px] leading-relaxed text-ghost-400">
+                  <p className="font-semibold text-ghost-200">
+                    NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+                  </p>
+                  <p>
+                    NO ES UN PRODUCTO OFICIAL DE MINECRAFT. NO ESTÁ APROBADO POR NI ASOCIADO CON MOJANG O MICROSOFT.
+                  </p>
+                  <p className="text-[10px] text-ghost-400 pt-0.5">
+                    Minecraft es una marca comercial de Mojang Studios / Microsoft Corporation. Ghostty Launcher es un lanzador independiente y de código abierto para la gestión de estancias y modding en Linux, de acuerdo con las Directrices Oficiales de Uso de Minecraft.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -396,20 +414,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
                       Instalaciones Detectadas ({detectedRuntimes.length})
                     </label>
-                    <select
+                    <GlassSelect
                       value={selectedJavaPath}
-                      onChange={(e) => setSelectedJavaPath(e.target.value)}
-                      className="w-full px-3 py-2 glass-control text-xs font-mono cursor-pointer"
-                    >
-                      <option value="">
-                        Java predeterminado del sistema (/usr/bin/java)
-                      </option>
-                      {detectedRuntimes.map((rt) => (
-                        <option key={rt.path} value={rt.path}>
-                          {rt.version} — {rt.path}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedJavaPath}
+                      className="w-full"
+                      popoverWidth="w-full"
+                      options={[
+                        {
+                          value: '',
+                          label: 'Java predeterminado del sistema (/usr/bin/java)',
+                          badge: 'Auto',
+                        },
+                        ...detectedRuntimes.map((rt) => ({
+                          value: rt.path,
+                          label: `${rt.version} (Java ${rt.major_version})`,
+                          sublabel: rt.path,
+                          badge: `Java ${rt.major_version}`,
+                        })),
+                      ]}
+                    />
                   </div>
 
                   <div>

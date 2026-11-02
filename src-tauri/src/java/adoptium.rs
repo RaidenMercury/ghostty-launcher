@@ -163,7 +163,7 @@ async fn download_verified(
     Ok(())
 }
 
-fn extract(archive: &Path, dest: &Path, name: &str) -> Result<(), String> {
+pub(crate) fn extract(archive: &Path, dest: &Path, name: &str) -> Result<(), String> {
     if name.ends_with(".zip") {
         let file = fs::File::open(archive).map_err(|e| e.to_string())?;
         let mut zip = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
@@ -196,13 +196,13 @@ fn extract(archive: &Path, dest: &Path, name: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn stem(name: &str) -> String {
+pub(crate) fn stem(name: &str) -> String {
     name.trim_end_matches(".tar.gz")
         .trim_end_matches(".zip")
         .to_string()
 }
 
-fn make_executable(path: &Path) -> Result<(), String> {
+pub(crate) fn make_executable(path: &Path) -> Result<(), String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

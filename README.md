@@ -62,3 +62,11 @@ El backend incluye una traducción a Rust de
 [minecraft-launcher-core-node](https://github.com/Voxelum/minecraft-launcher-core-node)
 (MIT, © 2023 CI010); el aviso original se conserva en `THIRD_PARTY_NOTICES`.
 Los iconos SVG son de [game-icons.net](https://game-icons.net) (CC BY 3.0).
+
+## Aviso Legal / Disclaimer
+
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+
+*NO ES UN PRODUCTO OFICIAL DE MINECRAFT. NO ESTÁ APROBADO POR NI ASOCIADO CON MOJANG O MICROSOFT.*
+
+Minecraft y el logotipo de Minecraft son marcas comerciales o registradas de Mojang Studios / Microsoft Corporation. Ghostty Launcher es un proyecto de software libre e independiente desarrollado por y para la comunidad, en total conformidad con las [Directrices Oficiales de Uso y Marca de Minecraft](https://www.minecraft.net/es-es/usage-guidelines).

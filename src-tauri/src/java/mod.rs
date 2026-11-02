@@ -11,6 +11,7 @@ use crate::launcher::LauncherManager;
 use crate::models::SystemJavaInfo;
 
 pub mod adoptium;
+pub mod zulu;
 
 /// Java mínimo que exige una versión de Minecraft.
 pub fn required_major(mc_version: &str) -> u32 {

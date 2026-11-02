@@ -22,6 +22,7 @@ import { VersionSelectorModal } from '../components/VersionSelectorModal';
 import { triggerInstallSuccessConfetti } from '../utils/confetti';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { GhosttyMascot } from '../components/GhosttyMascot';
+import { GlassSelect } from '../components/GlassSelect';
 
 interface DiscoverViewProps {
   activeInstance: Instance | null;
@@ -278,38 +279,43 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-ghost-400 text-[10px] uppercase">Loader:</span>
-                <select
+                <GlassSelect
                   value={loader}
-                  onChange={(e) => setLoader(e.target.value)}
-                  className="px-2.5 py-1 glass-control text-xs uppercase cursor-pointer"
-                >
-                  <option value="all">Todos</option>
-                  <option value="fabric">Fabric</option>
-                  <option value="neoforge">NeoForge</option>
-                  <option value="forge">Forge</option>
-                  <option value="quilt">Quilt</option>
-                </select>
+                  onChange={setLoader}
+                  popoverWidth="w-36"
+                  options={[
+                    { value: 'all', label: 'Todos' },
+                    { value: 'fabric', label: 'Fabric' },
+                    { value: 'neoforge', label: 'NeoForge' },
+                    { value: 'forge', label: 'Forge' },
+                    { value: 'quilt', label: 'Quilt' },
+                  ]}
+                />
               </div>
 
               <div className="flex items-center gap-1.5">
                 <span className="text-ghost-400 text-[10px] uppercase">Versión MC:</span>
-                <select
+                <GlassSelect
                   value={gameVersion}
-                  onChange={(e) => setGameVersion(e.target.value)}
-                  className="px-2.5 py-1 glass-control text-xs tabular-nums cursor-pointer max-w-[170px]"
-                >
-                  <option value="all">Todas las versiones</option>
-                  {!manifestVersions.some((v) => v.id === '26.3') && (
-                    <option value="26.3">26.3</option>
-                  )}
-                  {manifestVersions.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.id}
-                      {activeInstance?.mc_version === v.id ? ' (Activa)' : ''}
-                      {v.type !== 'release' ? ` (${v.type})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setGameVersion}
+                  popoverWidth="w-56"
+                  options={[
+                    { value: 'all', label: 'Todas las versiones' },
+                    ...(!manifestVersions.some((v) => v.id === '26.3')
+                      ? [{ value: '26.3', label: '26.3' }]
+                      : []),
+                    ...manifestVersions.map((v) => ({
+                      value: v.id,
+                      label: v.id,
+                      badge:
+                        activeInstance?.mc_version === v.id
+                          ? 'Activa'
+                          : v.type !== 'release'
+                          ? v.type
+                          : undefined,
+                    })),
+                  ]}
+                />
 
                 <button
                   type="button"
@@ -324,17 +330,18 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
               <div className="flex items-center gap-1.5">
                 <span className="text-ghost-400 text-[10px] uppercase">Orden:</span>
-                <select
+                <GlassSelect
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-2.5 py-1 glass-control text-xs cursor-pointer"
-                >
-                  <option value="downloads">Populares</option>
-                  <option value="relevance">Relevancia</option>
-                  <option value="follows">Tendencia</option>
-                  <option value="updated">Actualizados</option>
-                  <option value="newest">Nuevos</option>
-                </select>
+                  onChange={(val) => setSortBy(val as any)}
+                  popoverWidth="w-40"
+                  options={[
+                    { value: 'downloads', label: 'Populares' },
+                    { value: 'relevance', label: 'Relevancia' },
+                    { value: 'follows', label: 'Tendencia' },
+                    { value: 'updated', label: 'Actualizados' },
+                    { value: 'newest', label: 'Nuevos' },
+                  ]}
+                />
               </div>
             </div>
 

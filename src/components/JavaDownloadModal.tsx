@@ -25,14 +25,82 @@ interface ProviderDef {
   id: ProviderId;
   name: string;
   subtitle: string;
-  iconBg: string;
+  renderLogo: () => React.ReactNode;
 }
 
+const MojangLogo: React.FC = () => (
+  <svg viewBox="0 0 32 32" className="w-5 h-5 shrink-0" fill="none">
+    <rect width="32" height="32" rx="7" fill="#E21B27" />
+    <path
+      d="M7 23V9h4.5l4.5 7.5L20.5 9H25v14h-3.8v-8.2l-4.7 7.7h-1L10.8 14.8V23H7z"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
+const AdoptiumLogo: React.FC = () => (
+  <svg viewBox="0 0 32 32" className="w-5 h-5 shrink-0" fill="none">
+    <rect width="32" height="32" rx="7" fill="#1E1338" />
+    <path
+      d="M16 6L6 24h20L16 6z"
+      fill="url(#adoptium-tri-grad)"
+    />
+    <path
+      d="M16 13l-4.5 8h9l-4.5-8z"
+      fill="#140D27"
+    />
+    <defs>
+      <linearGradient id="adoptium-tri-grad" x1="6" y1="24" x2="26" y2="6" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#EC4899" />
+        <stop offset="0.5" stopColor="#A855F7" />
+        <stop offset="1" stopColor="#3B82F6" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const AzulLogo: React.FC = () => (
+  <svg viewBox="0 0 32 32" className="w-5 h-5 shrink-0" fill="none">
+    <rect width="32" height="32" rx="7" fill="#061A30" />
+    <path
+      d="M16 5l3 7.5L27 16l-8 3.5L16 27l-3-7.5L5 16l8-3.5L16 5z"
+      fill="#00B4D8"
+    />
+    <path
+      d="M16 10l1.8 4.2L22 16l-4.2 1.8L16 22l-1.8-4.2L10 16l4.2-1.8L16 10z"
+      fill="#ADE8F4"
+    />
+  </svg>
+);
+
+const SemeruLogo: React.FC = () => (
+  <svg viewBox="0 0 32 32" className="w-5 h-5 shrink-0" fill="none">
+    <rect width="32" height="32" rx="7" fill="#0F172A" />
+    <path
+      d="M16 5l9 5.2v10.4L16 26 7 20.6V10.2L16 5z"
+      fill="#1E293B"
+      stroke="#10B981"
+      strokeWidth="1.8"
+    />
+    <text
+      x="16"
+      y="18.5"
+      textAnchor="middle"
+      fontSize="8.5"
+      fontWeight="900"
+      fontFamily="monospace"
+      fill="#10B981"
+    >
+      OJ9
+    </text>
+  </svg>
+);
+
 const PROVIDERS: ProviderDef[] = [
-  { id: 'mojang', name: 'Mojang', subtitle: 'Runtime oficial de Minecraft', iconBg: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  { id: 'adoptium', name: 'Adoptium', subtitle: 'Eclipse Temurin (Hotspot)', iconBg: 'bg-violet-500/20 text-violet-300 border-violet-500/30' },
-  { id: 'zulu', name: 'Azul Zulu', subtitle: 'Azul Systems OpenJDK', iconBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
-  { id: 'semeru', name: 'IBM Semeru abierto', subtitle: 'OpenJ9 Virtual Machine', iconBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  { id: 'mojang', name: 'Mojang', subtitle: 'Runtime oficial de Minecraft', renderLogo: () => <MojangLogo /> },
+  { id: 'adoptium', name: 'Adoptium', subtitle: 'Eclipse Temurin (Hotspot)', renderLogo: () => <AdoptiumLogo /> },
+  { id: 'zulu', name: 'Azul Zulu', subtitle: 'Azul Systems OpenJDK', renderLogo: () => <AzulLogo /> },
+  { id: 'semeru', name: 'IBM Semeru abierto', subtitle: 'OpenJ9 Virtual Machine', renderLogo: () => <SemeruLogo /> },
 ];
 
 interface JavaReleaseEntry {
@@ -120,7 +188,6 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
 }) => {
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>('mojang');
   const [selectedMajor, setSelectedMajor] = useState<number>(25);
-  const [searchMajor, setSearchMajor] = useState('');
   const [searchTable, setSearchTable] = useState('');
   const [selectedRow, setSelectedRow] = useState<JavaReleaseEntry | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -128,13 +195,7 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
   const providerCatalog = RUNTIME_CATALOG[selectedProvider] || {};
   const availableMajors = useMemo(() => {
     return MAJOR_VERSIONS.filter((m) => providerCatalog[m]?.length);
-  }, [selectedProvider, providerCatalog]);
-
-  const filteredMajors = useMemo(() => {
-    if (!searchMajor.trim()) return availableMajors;
-    const q = searchMajor.trim().toLowerCase();
-    return availableMajors.filter((m) => `java ${m}`.includes(q) || String(m).includes(q));
-  }, [availableMajors, searchMajor]);
+  }, [providerCatalog]);
 
   const tableEntries = useMemo(() => {
     const list = providerCatalog[selectedMajor] || [];
@@ -148,7 +209,6 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
     );
   }, [providerCatalog, selectedMajor, searchTable]);
 
-  // Keep selected row in sync
   React.useEffect(() => {
     if (tableEntries.length > 0) {
       const rec = tableEntries.find((e) => e.recommended) || tableEntries[0];
@@ -158,7 +218,6 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
     }
   }, [selectedProvider, selectedMajor, tableEntries]);
 
-  // Ensure selectedMajor is valid for provider
   React.useEffect(() => {
     if (!providerCatalog[selectedMajor]) {
       const first = availableMajors[0] || 21;
@@ -200,11 +259,11 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div onClick={onClose} className="fixed inset-0 modal-scrim" />
 
-        <div className="relative w-full max-w-4xl h-[580px] glass-panel-strong text-ghost-100 z-10 overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-[var(--glass-border)]">
+        <div className="relative w-full max-w-4xl h-[560px] glass-panel-strong text-ghost-100 z-10 overflow-hidden flex flex-col rounded-2xl shadow-2xl border border-[var(--glass-border)]">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-3.5 border-b glass-divider shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[var(--glass-control)] border border-white/10 flex items-center justify-center">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[var(--glass-control)] border border-white/10 flex items-center justify-center">
                 <Cpu className="w-4 h-4 accent-text" />
               </div>
               <div>
@@ -227,9 +286,9 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
 
           {/* 3 Columns Body */}
           <div className="flex-1 min-h-0 grid grid-cols-12 overflow-hidden">
-            {/* Column 1: Providers */}
-            <div className="col-span-3 border-r glass-divider p-3 flex flex-col justify-between bg-black/15">
-              <div>
+            {/* Column 1: Providers (25% / 3 cols) */}
+            <div className="col-span-3 border-r glass-divider p-3 flex flex-col justify-between bg-black/20">
+              <div className="space-y-1">
                 <span className="block text-[10px] font-mono uppercase text-ghost-400 px-2 mb-2 font-semibold tracking-wider">
                   Proveedor
                 </span>
@@ -241,17 +300,13 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                         key={prov.id}
                         type="button"
                         onClick={() => setSelectedProvider(prov.id)}
-                        className={`btn-tactile w-full px-3 py-2 rounded-xl text-left flex items-center gap-2.5 transition-all border ${
+                        className={`btn-tactile w-full px-3 py-2.5 rounded-xl text-left flex items-center gap-3 transition-all border ${
                           isSelected
                             ? 'accent-pill-tint border-[var(--accent)] font-semibold shadow-sm'
                             : 'border-transparent hover:bg-white/5 text-ghost-300 hover:text-ghost-100'
                         }`}
                       >
-                        <div
-                          className={`w-6 h-6 rounded-md border flex items-center justify-center text-[10px] font-bold ${prov.iconBg}`}
-                        >
-                          {prov.name[0]}
-                        </div>
+                        {prov.renderLogo()}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-medium truncate">{prov.name}</div>
                         </div>
@@ -261,70 +316,62 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
                 </div>
               </div>
 
-              <div className="p-2 rounded-xl bg-black/25 border border-white/5 text-[10px] font-mono text-ghost-400 flex items-center gap-2">
+              <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 text-[10px] font-mono text-ghost-400 flex items-center gap-2 min-w-0">
                 <Shield className="w-3.5 h-3.5 accent-text shrink-0" />
-                <span>Verificado SHA-256 e instalación automatizada en ~/.local/share/</span>
-              </div>
-            </div>
-
-            {/* Column 2: Versión Principal */}
-            <div className="col-span-3 border-r glass-divider p-3 flex flex-col justify-between bg-black/10">
-              <div className="flex-1 min-h-0 flex flex-col">
-                <span className="block text-[10px] font-mono uppercase text-ghost-400 px-2 mb-2 font-semibold tracking-wider">
-                  Versión Principal
+                <span className="truncate" title="Instalación automatizada en ~/.local/share/GhosttyLauncher/runtimes">
+                  Instalación automatizada
                 </span>
-
-                <div className="space-y-1 overflow-y-auto flex-1 pr-1">
-                  {filteredMajors.map((major) => {
-                    const isSelected = major === selectedMajor;
-                    const isRec = major === 21 || major === 25;
-                    return (
-                      <button
-                        key={major}
-                        type="button"
-                        onClick={() => setSelectedMajor(major)}
-                        className={`btn-tactile w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs font-mono transition-all border ${
-                          isSelected
-                            ? 'accent-bg text-white font-bold border-transparent shadow-sm'
-                            : 'border-transparent hover:bg-white/5 text-ghost-300 hover:text-ghost-100'
-                        }`}
-                      >
-                        <span>Java {major}</span>
-                        {isRec && !isSelected && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--accent-tint)] text-[var(--accent)] border border-[var(--accent)]/30 font-bold">
-                            LTS
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Major Search Input */}
-              <div className="pt-2 border-t glass-divider mt-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-ghost-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={searchMajor}
-                    onChange={(e) => setSearchMajor(e.target.value)}
-                    className="w-full pl-8 pr-2.5 py-1.5 rounded-lg glass-control text-xs font-mono placeholder:text-ghost-500"
-                  />
-                </div>
               </div>
             </div>
 
-            {/* Column 3: Main Table */}
-            <div className="col-span-6 p-4 flex flex-col justify-between min-w-0 bg-black/5">
+            {/* Column 2: Versión Principal (25% / 3 cols) */}
+            <div className="col-span-3 border-r glass-divider p-3 flex flex-col bg-black/10">
+              <span className="block text-[10px] font-mono uppercase text-ghost-400 px-2 mb-2 font-semibold tracking-wider">
+                Versión Principal
+              </span>
+
+              <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
+                {availableMajors.map((major) => {
+                  const isSelected = major === selectedMajor;
+                  const isRec = major === 21 || major === 25;
+                  return (
+                    <button
+                      key={major}
+                      type="button"
+                      onClick={() => setSelectedMajor(major)}
+                      className={`btn-tactile w-full h-9 px-3 rounded-xl text-left flex items-center justify-between text-xs font-mono transition-all border ${
+                        isSelected
+                          ? 'accent-bg text-white font-bold border-transparent shadow-sm'
+                          : 'border-transparent hover:bg-white/5 text-ghost-300 hover:text-ghost-100'
+                      }`}
+                    >
+                      <span>Java {major}</span>
+                      {isRec && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                            isSelected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-[var(--accent-tint)] text-[var(--accent)] border border-[var(--accent)]/30'
+                          }`}
+                        >
+                          LTS
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Column 3: Main Table (50% / 6 cols) */}
+            <div className="col-span-6 p-3 flex flex-col justify-between min-w-0 bg-black/5">
               <div className="flex-1 min-h-0 flex flex-col">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-xs font-mono uppercase font-bold text-ghost-200">
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <span className="text-xs font-mono font-bold text-ghost-200">
                     {currentProviderObj.name}
                   </span>
                   <span className="text-[10px] font-mono text-ghost-400">
-                    {tableEntries.length} resultado(s)
+                    {tableEntries.length} paquete(s)
                   </span>
                 </div>
 
@@ -387,13 +434,12 @@ export const JavaDownloadModal: React.FC<JavaDownloadModalProps> = ({
             </div>
           </div>
 
-          {/* Bottom Bar matching Image 1 */}
-          <div className="px-6 py-3 border-t glass-divider flex items-center justify-between shrink-0 bg-black/20">
+          {/* Bottom Bar matching Prism Launcher reference image */}
+          <div className="px-6 py-3 border-t glass-divider flex items-center justify-between shrink-0 bg-black/25">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
-                  setSearchMajor('');
                   setSearchTable('');
                 }}
                 className="btn-tactile px-3 py-1.5 rounded-lg glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-300 hover:text-ghost-50"

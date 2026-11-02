@@ -270,6 +270,7 @@ export function AccountModal({
       onAccountAuthenticated?.(account);
     } catch (err: any) {
       setOauthError(err?.toString() || 'Error al autenticar con Microsoft OAuth');
+      setDeviceCodeData(null);
       setIsWaitingDeviceAuth(false);
     } finally {
       setIsAdding(false);
@@ -517,9 +518,9 @@ export function AccountModal({
                     </button>
                   </div>
 
-                  <div className="h-[142px] flex flex-col justify-between overflow-hidden">
+                  <div className="min-h-[140px] flex flex-col justify-between pt-1">
                     {authTab === 'microsoft' && (
-                      <div className="h-full flex flex-col justify-between">
+                      <div key="auth-tab-microsoft" className="h-full flex flex-col justify-between space-y-3">
                         {deviceCodeData ? (
                           <div className="h-full flex flex-col justify-between space-y-1.5 p-2 rounded-control bg-black/35 border border-[var(--glass-border)]">
                             <div className="flex items-center justify-between text-[10px] font-mono text-ghost-300 shrink-0">
@@ -558,6 +559,7 @@ export function AccountModal({
                                 onClick={() => {
                                   setDeviceCodeData(null);
                                   setIsWaitingDeviceAuth(false);
+                                  setOauthError(null);
                                 }}
                                 className="text-ghost-400 hover:text-spectral-rose shrink-0 ml-2"
                               >
@@ -566,8 +568,11 @@ export function AccountModal({
                             </div>
                           </div>
                         ) : (
-                          <div className="h-full flex flex-col justify-between">
+                          <div className="h-full flex flex-col justify-between space-y-2">
                             <div className="space-y-1.5">
+                              <span className="text-[10px] font-mono text-ghost-300 block">
+                                Autenticación Oficial Microsoft OAuth 2.0
+                              </span>
                               <button
                                 type="button"
                                 disabled={isAdding || isWaitingDeviceAuth}
@@ -624,7 +629,7 @@ export function AccountModal({
                     )}
 
                     {authTab === 'elyby' && (
-                      <form onSubmit={handleElyBySubmit} className="h-full flex flex-col justify-between">
+                      <form key="auth-tab-elyby" onSubmit={handleElyBySubmit} className="h-full flex flex-col justify-between space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-mono text-ghost-300">
                             Autenticación Yggdrasil Ely.by
@@ -673,9 +678,9 @@ export function AccountModal({
                     )}
 
                     {authTab === 'offline' && (
-                      <form onSubmit={handleAddOffline} className="h-full flex flex-col justify-between">
+                      <form key="auth-tab-offline" onSubmit={handleAddOffline} className="h-full flex flex-col justify-between space-y-2">
                         <div>
-                          <label className="block text-[10px] font-mono text-ghost-300 mb-1">
+                          <label className="block text-[10px] font-mono text-ghost-300 mb-0.5">
                             Añadir Perfil Offline (UUID v3)
                           </label>
                           <p className="text-[10px] font-mono text-ghost-400">

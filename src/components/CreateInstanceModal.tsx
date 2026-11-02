@@ -4,6 +4,7 @@ import { X, Cpu, Plus } from 'lucide-react';
 import { CreateInstancePayload, MojangManifest } from '../types';
 import { AccordionSection } from './AccordionSection';
 import { InstanceIcon } from './InstanceIcon';
+import { GlassSelect } from './GlassSelect';
 
 interface CreateInstanceModalProps {
   isOpen: boolean;
@@ -163,20 +164,23 @@ export function CreateInstanceModal({
                   </div>
                 </div>
 
-                <select
+                <GlassSelect
                   value={mcVersion}
-                  onChange={(e) => setMcVersion(e.target.value)}
-                  className="w-full px-3.5 py-2 glass-control text-xs font-mono tabular-nums cursor-pointer"
-                >
-                  {!filteredVersions.some((v) => v.id === '26.3') && (
-                    <option value="26.3">26.3 (release)</option>
-                  )}
-                  {filteredVersions.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.id} ({v.type}) {v.releaseTime ? `• ${v.releaseTime.split('T')[0]}` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setMcVersion}
+                  className="w-full"
+                  popoverWidth="w-full"
+                  options={[
+                    ...(!filteredVersions.some((v) => v.id === '26.3')
+                      ? [{ value: '26.3', label: '26.3 (release)' }]
+                      : []),
+                    ...filteredVersions.map((v) => ({
+                      value: v.id,
+                      label: `${v.id} (${v.type})`,
+                      sublabel: v.releaseTime ? `Lanzado: ${v.releaseTime.split('T')[0]}` : undefined,
+                      badge: v.type === 'release' ? 'Release' : v.type,
+                    })),
+                  ]}
+                />
               </div>
 
               

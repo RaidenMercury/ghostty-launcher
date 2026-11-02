@@ -145,8 +145,11 @@ pub async fn download_java_runtime(
 ) -> Result<SystemJavaInfo, String> {
     match vendor.to_ascii_lowercase().as_str() {
         "temurin" | "adoptium" | "eclipse" => crate::java::adoptium::install(major_version).await,
+        "zulu" | "azul" => crate::java::zulu::install(major_version).await,
+        "mojang" => Err("Los runtimes de Mojang se distribuyen dinámicamente al lanzar Minecraft. Para instalación manual independiente, por favor usa Adoptium (Temurin) o Azul Zulu.".to_string()),
+        "semeru" | "ibm" => Err("El proveedor IBM Semeru requiere licencia especial de compilación. Por favor usa Adoptium (Temurin) o Azul Zulu.".to_string()),
         other => Err(format!(
-            "Proveedor '{other}' no soportado todavía; usa temurin (Adoptium)."
+            "Proveedor '{other}' no soportado todavía; usa Adoptium (Temurin) o Azul Zulu."
         )),
     }
 }

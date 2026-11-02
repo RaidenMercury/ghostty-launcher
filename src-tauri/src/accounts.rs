@@ -479,15 +479,21 @@ impl AccountManager {
             "TokenType": "JWT"
         });
 
-        let xbl_res: Value = client
+        let xbl_resp = client
             .post("https://user.auth.xboxlive.com/user/authenticate")
             .json(&xbl_payload)
             .send()
             .await
-            .map_err(|e| format!("Error Xbox Live Auth: {}", e))?
-            .json()
-            .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Error conectando con Xbox Live Auth: {}", e))?;
+
+        let xbl_status = xbl_resp.status();
+        let xbl_text = xbl_resp.text().await.unwrap_or_default();
+        if !xbl_status.is_success() {
+            return Err(format!("Xbox Live rechazó la autenticación (HTTP {xbl_status}): {xbl_text}"));
+        }
+
+        let xbl_res: Value = serde_json::from_str(&xbl_text)
+            .map_err(|e| format!("Respuesta ilegible de Xbox Live: {e}"))?;
 
         let xbl_token = xbl_res
             .get("Token")
@@ -511,15 +517,28 @@ impl AccountManager {
             "TokenType": "JWT"
         });
 
-        let xsts_res: Value = client
+        let xsts_resp = client
             .post("https://xsts.auth.xboxlive.com/xsts/authorize")
             .json(&xsts_payload)
             .send()
             .await
-            .map_err(|e| format!("Error XSTS Auth: {}", e))?
-            .json()
-            .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Error conectando con XSTS Auth: {}", e))?;
+
+        let xsts_status = xsts_resp.status();
+        let xsts_text = xsts_resp.text().await.unwrap_or_default();
+        if !xsts_status.is_success() {
+            if xsts_text.contains("2148916238") {
+                return Err("Esta cuenta es de un menor de edad y debe ser autorizada por una cuenta familiar de Microsoft.".to_string());
+            } else if xsts_text.contains("2148916235") {
+                return Err("Xbox Live no está disponible en tu país o región.".to_string());
+            } else if xsts_text.contains("2148916233") {
+                return Err("Esta cuenta Microsoft no tiene un perfil de Xbox creado. Ve a xbox.com para crearlo.".to_string());
+            }
+            return Err(format!("XSTS rechazó la autorización (HTTP {xsts_status}): {xsts_text}"));
+        }
+
+        let xsts_res: Value = serde_json::from_str(&xsts_text)
+            .map_err(|e| format!("Respuesta ilegible de XSTS: {e}"))?;
 
         let xsts_token = xsts_res
             .get("Token")
@@ -530,20 +549,32 @@ impl AccountManager {
             "identityToken": format!("XBL3.0 x={};{}", uhs, xsts_token)
         });
 
-        let mc_auth_res: Value = client
+        let mc_resp = client
             .post("https://api.minecraftservices.com/authentication/login_with_xbox")
             .json(&mc_login_payload)
             .send()
             .await
-            .map_err(|e| format!("Error Minecraft Services Auth: {}", e))?
-            .json()
-            .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Error conectando con Minecraft Services Auth: {}", e))?;
+
+        let mc_status = mc_resp.status();
+        let mc_text = mc_resp.text().await.unwrap_or_default();
+        if !mc_status.is_success() {
+            if mc_status.as_u16() == 403 || mc_text.contains("aka.ms/AppRegInfo") || mc_text.contains("Invalid app registration") {
+                return Err(format!(
+                    "Mojang rechazó el Client ID '{}' (HTTP 403). Mojang exige registrar aplicaciones en https://aka.ms/AppRegInfo antes de autorizar el acceso.",
+                    Self::msa_client_id()
+                ));
+            }
+            return Err(format!("Minecraft Services rechazó la autenticación (HTTP {mc_status}): {mc_text}"));
+        }
+
+        let mc_auth_res: Value = serde_json::from_str(&mc_text)
+            .map_err(|e| format!("Respuesta ilegible de Minecraft Services: {e}"))?;
 
         let mc_access_token = mc_auth_res
             .get("access_token")
             .and_then(|t| t.as_str())
-            .unwrap_or(ms_access_token)
+            .ok_or("No se recibió access_token de Minecraft Services")?
             .to_string();
 
         let profile_resp = client
@@ -551,7 +582,7 @@ impl AccountManager {
             .bearer_auth(&mc_access_token)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Error obteniendo perfil de Minecraft: {}", e))?;
 
         let (username, formatted_uuid) = if profile_resp.status().is_success() {
             let prof: Value = profile_resp.json().await.map_err(|e| e.to_string())?;

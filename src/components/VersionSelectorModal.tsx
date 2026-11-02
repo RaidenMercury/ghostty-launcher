@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ModrinthSearchHit, ModrinthVersion, Instance } from '../types';
 import { api, ProjectFullDetails } from '../services/api';
+import { GlassSelect } from './GlassSelect';
 
 interface VersionSelectorModalProps {
   isOpen: boolean;
@@ -327,51 +328,52 @@ export function VersionSelectorModal({
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-2 border-b glass-divider text-xs font-mono shrink-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <select
+                    <GlassSelect
                       value={loaderFilter}
-                      onChange={(e) => setLoaderFilter(e.target.value)}
-                      className="px-2.5 py-1 glass-control text-[11px] uppercase cursor-pointer"
-                    >
-                      <option value="all">Loader: Todos</option>
-                      <option value="fabric">Fabric</option>
-                      <option value="neoforge">NeoForge</option>
-                      <option value="forge">Forge</option>
-                      <option value="quilt">Quilt</option>
-                    </select>
+                      onChange={setLoaderFilter}
+                      popoverWidth="w-36"
+                      options={[
+                        { value: 'all', label: 'Loader: Todos' },
+                        { value: 'fabric', label: 'Fabric' },
+                        { value: 'neoforge', label: 'NeoForge' },
+                        { value: 'forge', label: 'Forge' },
+                        { value: 'quilt', label: 'Quilt' },
+                      ]}
+                    />
 
-                    <select
+                    <GlassSelect
                       value={gameVerFilter}
-                      onChange={(e) => setGameVerFilter(e.target.value)}
-                      className="px-2.5 py-1 glass-control text-[11px] tabular-nums cursor-pointer"
-                    >
-                      <option value="all">MC: Cualquiera</option>
-                      {activeInstance && (
-                        <option value={activeInstance.mc_version}>
-                          {activeInstance.mc_version} (Activa)
-                        </option>
-                      )}
-                      <option value="26.3">26.3</option>
-                      <option value="1.21.11">1.21.11</option>
-                      <option value="1.21.4">1.21.4</option>
-                      <option value="1.21.1">1.21.1</option>
-                      <option value="1.20.4">1.20.4</option>
-                      <option value="1.20.1">1.20.1</option>
-                      <option value="1.19.2">1.19.2</option>
-                      <option value="1.18.2">1.18.2</option>
-                      <option value="1.16.5">1.16.5</option>
-                      <option value="1.12.2">1.12.2</option>
-                    </select>
+                      onChange={setGameVerFilter}
+                      popoverWidth="w-48"
+                      options={[
+                        { value: 'all', label: 'MC: Cualquiera' },
+                        ...(activeInstance
+                          ? [{ value: activeInstance.mc_version, label: `${activeInstance.mc_version} (Activa)` }]
+                          : []),
+                        { value: '26.3', label: '26.3' },
+                        { value: '1.21.11', label: '1.21.11' },
+                        { value: '1.21.4', label: '1.21.4' },
+                        { value: '1.21.1', label: '1.21.1' },
+                        { value: '1.20.4', label: '1.20.4' },
+                        { value: '1.20.1', label: '1.20.1' },
+                        { value: '1.19.2', label: '1.19.2' },
+                        { value: '1.18.2', label: '1.18.2' },
+                        { value: '1.16.5', label: '1.16.5' },
+                        { value: '1.12.2', label: '1.12.2' },
+                      ]}
+                    />
 
-                    <select
+                    <GlassSelect
                       value={channelFilter}
-                      onChange={(e) => setChannelFilter(e.target.value as any)}
-                      className="px-2.5 py-1 glass-control text-[11px] capitalize cursor-pointer"
-                    >
-                      <option value="all">Canal: Todos</option>
-                      <option value="release">Release</option>
-                      <option value="beta">Beta</option>
-                      <option value="alpha">Alpha</option>
-                    </select>
+                      onChange={(val) => setChannelFilter(val as any)}
+                      popoverWidth="w-36"
+                      options={[
+                        { value: 'all', label: 'Canal: Todos' },
+                        { value: 'release', label: 'Release' },
+                        { value: 'beta', label: 'Beta' },
+                        { value: 'alpha', label: 'Alpha' },
+                      ]}
+                    />
                   </div>
 
                   <span className="text-ghost-400 text-[11px] tabular-nums">

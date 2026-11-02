@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Reorder } from 'framer-motion';
 import {
   Play,
   Sliders,
@@ -66,7 +66,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   onOpenFolder,
   onExportInstance,
   onToggleFavorite,
-  onAssignGroup,
+  onAssignGroup: _onAssignGroup,
   onOpenLogs,
   onLaunch,
   onDeleteInstance,
@@ -75,6 +75,9 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   launchBurstEnabled = true,
   ambientArtworkEnabled = true,
 }) => {
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [dragOverGroup] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showImportBar, setShowImportBar] = useState(false);
   const [importPath, setImportPath] = useState('');
@@ -141,14 +144,36 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     }
   });
 
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [dragDy, setDragDy] = useState(0);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
-  const dragStartY = useRef(0);
-  const tabsRef = useRef<HTMLDivElement | null>(null);
-  const suppressClick = useRef(false);
+  const handleReorder = (newFilteredOrder: Instance[]) => {
+    const newFilteredIds = newFilteredOrder.map((i) => i.id);
+    setOrderedIds((prev) => {
+      // Si estamos en la vista global sin búsqueda, el orden es directo
+      if (activeGroup === 'Todos' && !searchQuery.trim()) {
+        const remaining = prev.filter((id) => !newFilteredIds.includes(id));
+        const next = [...newFilteredIds, ...remaining];
+        localStorage.setItem('ghostty_instances_order', JSON.stringify(next));
+        return next;
+      }
+
+      // Si estamos en un grupo (Favoritos, Modpacks, etc.) o con búsqueda,
+      // preservamos las posiciones relativas exactas sin mover las instancias del grupo al inicio:
+      const fullOrder = prev.length > 0 ? [...prev] : instances.map((i) => i.id);
+      const indices: number[] = [];
+      for (const id of newFilteredIds) {
+        const idx = fullOrder.indexOf(id);
+        if (idx !== -1) indices.push(idx);
+      }
+      indices.sort((a, b) => a - b);
+
+      const next = [...fullOrder];
+      for (let i = 0; i < indices.length && i < newFilteredIds.length; i++) {
+        next[indices[i]] = newFilteredIds[i];
+      }
+
+      localStorage.setItem('ghostty_instances_order', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const sortedInstances = useMemo(() => {
     const list = [...instances];
@@ -165,15 +190,17 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     return list;
   }, [instances, orderedIds]);
 
-  const filteredInstances = sortedInstances.filter((inst) => {
-    const matchesSearch = inst.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
-    if (activeGroup === 'Todos') return true;
-    if (activeGroup === 'Favoritos') return Boolean(inst.favorite);
-    const assigned =
-      inst.group || instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
-    return assigned.toLowerCase() === activeGroup.toLowerCase();
-  });
+  const filteredInstances = useMemo(() => {
+    return sortedInstances.filter((inst) => {
+      const matchesSearch = inst.name.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      if (activeGroup === 'Todos') return true;
+      if (activeGroup === 'Favoritos') return Boolean(inst.favorite);
+      const assigned =
+        inst.group || instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
+      return assigned.toLowerCase() === activeGroup.toLowerCase();
+    });
+  }, [sortedInstances, searchQuery, activeGroup, instanceGroups]);
 
   const handleCreateGroup = () => {
     const trimmed = newGroupName.trim();
@@ -198,61 +225,6 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     if (activeGroup === groupName) {
       setActiveGroup('Todos');
     }
-  };
-
-  const moveInstance = (fromId: string, toId: string) => {
-    const order = sortedInstances.map((i) => i.id);
-    const from = order.indexOf(fromId);
-    const to = order.indexOf(toId);
-    if (from === -1 || to === -1) return;
-    order.splice(from, 1);
-    order.splice(to, 0, fromId);
-    setOrderedIds(order);
-    localStorage.setItem('ghostty_instances_order', JSON.stringify(order));
-  };
-
-  const handlePointerDown = (e: React.PointerEvent, id: string) => {
-    if (e.button !== 0) return;
-    dragStartY.current = e.clientY;
-    setDragId(id);
-    setDragActive(false);
-    setDragDy(0);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragId) return;
-    const dy = e.clientY - dragStartY.current;
-    if (!dragActive && Math.abs(dy) < 8) return;
-
-    setDragActive(true);
-    setDragDy(dy);
-    suppressClick.current = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-    const under = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-    const card = under?.closest('[data-instance-id]');
-    const group = under?.closest('[data-group-tab]');
-    setDragOverId(card?.getAttribute('data-instance-id') || null);
-    setDragOverGroup(group?.getAttribute('data-group-tab') || null);
-  };
-
-  const handlePointerUp = () => {
-    if (dragActive && dragId) {
-      const inst = instances.find((i) => i.id === dragId);
-      if (dragOverGroup && inst) {
-        onAssignGroup?.(inst, dragOverGroup);
-      } else if (dragOverId && dragOverId !== dragId) {
-        moveInstance(dragId, dragOverId);
-      }
-    }
-    setDragId(null);
-    setDragActive(false);
-    setDragDy(0);
-    setDragOverId(null);
-    setDragOverGroup(null);
-    window.setTimeout(() => {
-      suppressClick.current = false;
-    }, 0);
   };
 
   const handleLaunchClick = (e: React.MouseEvent, inst: Instance) => {
@@ -478,114 +450,121 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
               />
             </div>
           ) : (
-            filteredInstances.map((inst) => {
-              const isSelected = currentHero?.id === inst.id;
-              const isDragOver = dragOverId === inst.id && dragId !== inst.id;
-              const isDragged = dragId === inst.id && dragActive;
-              const isFavorite = Boolean(inst.favorite);
+            <>
+              <Reorder.Group
+                axis="y"
+                values={filteredInstances}
+                onReorder={handleReorder}
+                className="space-y-2.5"
+              >
+                {filteredInstances.map((inst) => {
+                  const isSelected = currentHero?.id === inst.id;
+                  const isFavorite = Boolean(inst.favorite);
+                  const isDragging = draggingId === inst.id;
 
-              return (
-                <div
-                  key={inst.id}
-                  data-instance-id={inst.id}
-                  onPointerDown={(e) => handlePointerDown(e, inst.id)}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
-                  style={
-                    isDragged
-                      ? {
-                          transform: `translateY(${dragDy}px)`,
-                          zIndex: 40,
-                          position: 'relative',
-                          pointerEvents: 'none',
-                        }
-                      : undefined
-                  }
-                  className={`transition-shadow ${
-                    isDragOver ? 'border-t-2 border-[var(--accent)] pt-1' : ''
-                  } ${isDragged ? 'shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]' : ''}`}
-                >
-                  <SpotlightCard
-                    onClick={() => {
-                      if (suppressClick.current) return;
-                      onSelectInstance(inst);
-                    }}
-                    isSelected={isSelected}
-                    className="glass-card instance-card p-3.5 cursor-pointer group relative"
-                  >
-                    <div className="flex items-center gap-3 relative z-10">
-                      <div
-                        className="cursor-grab active:cursor-grabbing text-ghost-500 hover:text-ghost-300 transition-colors shrink-0 -ml-1 p-0.5"
-                        title="Arrastra para reordenar"
+                  return (
+                    <Reorder.Item
+                      key={inst.id}
+                      value={inst}
+                      onDragStart={() => setDraggingId(inst.id)}
+                      onDragEnd={() => setDraggingId(null)}
+                      whileDrag={{
+                        scale: 1.025,
+                        zIndex: 50,
+                        boxShadow: '0 20px 48px -10px rgba(0, 0, 0, 0.85)',
+                        cursor: 'grabbing',
+                      }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                      className="relative cursor-pointer select-none"
+                    >
+                      <SpotlightCard
+                        onClick={() => {
+                          if (draggingId) return;
+                          onSelectInstance(inst);
+                        }}
+                        isSelected={isSelected && !isDragging}
+                        className={`glass-card instance-card p-3.5 cursor-pointer group relative transition-all duration-150 ${
+                          isDragging
+                            ? 'shadow-2xl brightness-105 border-white/25'
+                            : isSelected
+                            ? 'ring-2 ring-[var(--accent)]/70 bg-[var(--glass-hover)] shadow-md'
+                            : 'hover:border-white/20'
+                        }`}
                       >
-                        <GripVertical className="w-3.5 h-3.5" />
-                      </div>
-
-                      <div className="w-11 h-11 rounded-control glass-control p-1.5 flex items-center justify-center shrink-0">
-                        <InstanceIcon icon={inst.icon} alt={inst.name} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3
-                            className={`text-sm font-semibold truncate transition-colors ${
-                              isSelected ? 'text-ghost-50' : 'text-ghost-200 group-hover:text-ghost-50'
-                            }`}
+                        <div className="flex items-center gap-3 relative z-10">
+                          <div
+                            className="cursor-grab active:cursor-grabbing text-ghost-500 hover:text-ghost-300 transition-colors shrink-0 -ml-1 p-0.5"
+                            title="Arrastra para reordenar"
                           >
-                            {inst.name}
-                          </h3>
-                          {isSelected && (
-                            <span className="w-2 h-2 rounded-full accent-bg shrink-0" />
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 mt-1">
-                          <div className="flex items-center gap-1.5 text-[11px] font-mono text-ghost-400 tabular-nums truncate">
-                            <span className="uppercase text-ghost-200 font-medium">
-                              {inst.loader}
-                            </span>
-                            <span>•</span>
-                            <span>{inst.mc_version}</span>
-                            <span>•</span>
-                            <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
+                            <GripVertical className="w-3.5 h-3.5" />
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {inst.group && (
-                              <span
-                                className="p-0.5 text-ghost-400"
-                                title={`Grupo: ${inst.group}`}
+                          <div className="w-11 h-11 rounded-control glass-control p-1.5 flex items-center justify-center shrink-0">
+                            <InstanceIcon icon={inst.icon} alt={inst.name} />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3
+                                className={`text-sm font-semibold truncate transition-colors ${
+                                  isSelected ? 'text-ghost-50' : 'text-ghost-200 group-hover:text-ghost-50'
+                                }`}
                               >
-                                <Folder className="w-3.5 h-3.5" />
-                              </span>
-                            )}
+                                {inst.name}
+                              </h3>
+                              {isSelected && (
+                                <span className="w-2 h-2 rounded-full accent-bg shrink-0" />
+                              )}
+                            </div>
 
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleFavorite?.(inst);
-                              }}
-                              className={`p-0.5 transition-colors ${
-                                isFavorite
-                                  ? 'text-spectral-rose'
-                                  : 'text-spectral-rose/40 hover:text-spectral-rose'
-                              }`}
-                              title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
-                              />
-                            </button>
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <div className="flex items-center gap-1.5 text-[11px] font-mono text-ghost-400 tabular-nums truncate">
+                                <span className="uppercase text-ghost-200 font-medium">
+                                  {inst.loader}
+                                </span>
+                                <span>•</span>
+                                <span>{inst.mc_version}</span>
+                                <span>•</span>
+                                <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {inst.group && (
+                                  <span
+                                    className="p-0.5 text-ghost-400"
+                                    title={`Grupo: ${inst.group}`}
+                                  >
+                                    <Folder className="w-3.5 h-3.5" />
+                                  </span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleFavorite?.(inst);
+                                  }}
+                                  className={`p-0.5 transition-colors ${
+                                    isFavorite
+                                      ? 'text-spectral-rose'
+                                      : 'text-spectral-rose/40 hover:text-spectral-rose'
+                                  }`}
+                                  title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                                >
+                                  <Star
+                                    className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                                  />
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </SpotlightCard>
-                </div>
-              );
-            })
+                      </SpotlightCard>
+                    </Reorder.Item>
+                  );
+                })}
+              </Reorder.Group>
+            </>
           )}
         </div>
       </div>
