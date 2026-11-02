@@ -27,6 +27,7 @@ import { SpotlightCard } from '../components/SpotlightCard';
 import { AccordionSection } from '../components/AccordionSection';
 import { GhosttyMascot } from '../components/GhosttyMascot';
 import { HeroMovingCanvas } from '../components/HeroMovingCanvas';
+import { useI18n } from '../utils/i18n';
 
 interface InstancesViewProps {
   instances: Instance[];
@@ -75,6 +76,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   launchBurstEnabled = true,
   ambientArtworkEnabled = true,
 }) => {
+  const { t } = useI18n();
   const tabsRef = useRef<HTMLDivElement>(null);
   const [dragOverGroup] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -265,7 +267,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             <Search className="w-3.5 h-3.5 absolute left-3.5 top-2.5 text-ghost-400" />
             <input
               type="text"
-              placeholder="Buscar estancias..."
+              placeholder={t.search_instances_placeholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 glass-control text-xs placeholder:text-ghost-400 font-sans"
@@ -623,7 +625,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-ghost-300 mt-2 tabular-nums">
                       <span className="flex items-center gap-1.5 text-spectral-mint">
                         <Clock className="w-3.5 h-3.5" />
-                        Listo para jugar
+                        {t.ready_to_play}
                       </span>
                       <span className="opacity-40">•</span>
                       <span>RAM: {currentHero.memory_max_mb ? (currentHero.memory_max_mb / 1024).toFixed(1) : '4.0'} GB</span>
@@ -647,13 +649,13 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   {playingInstanceId === currentHero.id ? (
                     <>
                       <Loader2 className="w-5 h-5 relative z-10 animate-spin" />
-                      <span className="relative z-10">EN PARTIDA</span>
+                      <span className="relative z-10">{t.in_game}</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-5 h-5 fill-current relative z-10" />
                       <span className="relative z-10">
-                        {isLaunching ? 'INICIANDO...' : 'JUGAR AHORA'}
+                        {isLaunching ? t.launching : t.play_now}
                       </span>
                     </>
                   )}
@@ -669,7 +671,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
                   >
                     <Package className="w-4 h-4 accent-text" />
-                    <span>Gestor de Mods</span>
+                    <span>{t.btn_mod_manager}</span>
                   </button>
 
                   <button
@@ -677,7 +679,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
                   >
                     <Sliders className="w-4 h-4 text-ghost-300" />
-                    <span>Ajustes de la Estancia</span>
+                    <span>{t.btn_instance_settings}</span>
                   </button>
 
                   {onOpenFolder && (
@@ -686,7 +688,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
                     >
                       <FolderOpen className="w-4 h-4 text-ghost-300" />
-                      <span>Abrir Carpeta</span>
+                      <span>{t.btn_open_folder}</span>
                     </button>
                   )}
 
@@ -697,7 +699,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       title="Ver consola y registros JVM de la estancia"
                     >
                       <Terminal className="w-4 h-4 text-ghost-300" />
-                      <span>Consola / Logs</span>
+                      <span>{t.btn_console_logs}</span>
                     </button>
                   )}
 
@@ -710,7 +712,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                         className="btn-tactile px-4 py-2.5 glass-control text-xs font-medium flex items-center gap-2 text-ghost-100"
                       >
                         <Share2 className="w-4 h-4 text-ghost-300" />
-                        <span>Exportar</span>
+                        <span>{t.btn_export}</span>
                       </button>
 
                       {exportMenuFor === currentHero.id && (
@@ -744,7 +746,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   className="btn-tactile px-3.5 py-2.5 glass-control hover:border-spectral-rose/50 text-xs font-medium flex items-center gap-1.5 text-spectral-rose"
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Eliminar</span>
+                  <span>{t.btn_delete}</span>
                 </button>
               </div>
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Instance } from '../types';
 import { THEME_PRESETS, ThemePresetId } from '../utils/theme';
+import { useI18n } from '../utils/i18n';
 
 export interface ContextMenuState {
   isOpen: boolean;
@@ -85,6 +86,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onRenameGroup,
   onDeleteGroup,
 }) => {
+  const { t } = useI18n();
   useEffect(() => {
     if (!menu.isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -156,7 +158,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 opacity-80" />
-                    <span>Crear instancia</span>
+                    <span>{t.ctx_new_instance}</span>
                   </button>
                   <button
                     type="button"
@@ -164,7 +166,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
                   >
                     <Sliders className="w-3.5 h-3.5 opacity-80" />
-                    <span>Renombrar grupo</span>
+                    <span>{t.ctx_rename_group}</span>
                   </button>
                   <button
                     type="button"
@@ -172,7 +174,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-spectral-rose hover:bg-spectral-rose hover:text-white transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5 opacity-80" />
-                    <span>Eliminar grupo</span>
+                    <span>{t.ctx_delete_group}</span>
                   </button>
                 </>
               ) : (
@@ -183,7 +185,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 opacity-80" />
-                    <span>Nueva Instancia...</span>
+                    <span>{t.ctx_new_instance}</span>
                   </button>
                   <button
                     type="button"
@@ -191,7 +193,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors"
                   >
                     <Upload className="w-3.5 h-3.5 opacity-80" />
-                    <span>Importar Modpack (.mrpack)...</span>
+                    <span>{t.ctx_import_modpack}</span>
                   </button>
                 </>
               )}
@@ -273,7 +275,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             >
               <span className="flex items-center gap-2.5">
                 <Plus className="w-3.5 h-3.5 opacity-80" />
-                <span>Nueva Instancia...</span>
+                <span>{t.ctx_new_instance}</span>
               </span>
               <span className="text-[10px] font-mono opacity-60">⌥N</span>
             </button>
@@ -285,7 +287,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             >
               <span className="flex items-center gap-2.5">
                 <Upload className="w-3.5 h-3.5 opacity-80" />
-                <span>Importar Modpack (.mrpack)...</span>
+                <span>{t.ctx_import_modpack}</span>
               </span>
               <span className="text-[10px] font-mono opacity-60">⌥I</span>
             </button>
@@ -303,7 +305,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               ) : (
                 <Star className="w-3.5 h-3.5 opacity-80" />
               )}
-              <span>{activeInstance?.favorite ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}</span>
+              <span>{activeInstance?.favorite ? t.ctx_favorite_remove : t.ctx_favorite_add}</span>
             </button>
 
             <button
@@ -323,7 +325,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
             >
               <Image className="w-3.5 h-3.5 opacity-80" />
-              <span>Cambiar icono...</span>
+              <span>{t.ctx_change_icon}</span>
             </button>
 
             <button
@@ -333,7 +335,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-ghost-100 hover:accent-bg hover:text-white transition-colors disabled:opacity-40"
             >
               <Copy className="w-3.5 h-3.5 opacity-80" />
-              <span>Duplicar Instancia</span>
+              <span>{t.ctx_duplicate}</span>
             </button>
 
             <button
@@ -343,7 +345,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               className="w-full px-2.5 py-1.5 rounded-[8px] flex items-center gap-2.5 text-spectral-rose hover:bg-spectral-rose hover:text-white transition-colors disabled:opacity-40"
             >
               <Trash2 className="w-3.5 h-3.5 opacity-80" />
-              <span>Eliminar Instancia</span>
+              <span>{t.ctx_delete_instance}</span>
             </button>
 
             <div className="my-1 border-t glass-divider" />

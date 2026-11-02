@@ -32,9 +32,10 @@ Thumbs.db
 .windsurf/
 .github/agents/
 .github/skills/
+!.github/workflows/
 skills/
 agents/
-workflows/
+/workflows/
 orchestration/
 reference/
 graphify-out/

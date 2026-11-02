@@ -25,6 +25,7 @@ import {
 import { AccordionSection } from '../components/AccordionSection';
 import { JavaDownloadModal } from '../components/JavaDownloadModal';
 import { GlassSelect } from '../components/GlassSelect';
+import { useI18n } from '../utils/i18n';
 
 interface SettingsViewProps {
   activeInstance: Instance | null;
@@ -43,6 +44,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   themeSettings,
   onUpdateThemeSettings,
 }) => {
+  const { t, language, setLanguage } = useI18n();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
   const [isJavaModalOpen, setIsJavaModalOpen] = useState(false);
 
@@ -191,12 +193,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const navItems: { id: SettingsSectionId; label: string; icon: React.ComponentType<any> }[] = [
-    { id: 'general', label: 'General', icon: Sliders },
-    { id: 'java', label: 'Java Runtime', icon: Cpu },
-    { id: 'memory', label: 'Memoria & JVM', icon: MemoryStick },
-    { id: 'discord', label: 'Discord RPC', icon: Activity },
-    { id: 'appearance', label: 'Apariencia', icon: Palette },
-    { id: 'advanced', label: 'Avanzado', icon: Terminal },
+    { id: 'general', label: t.settings_tab_general, icon: Sliders },
+    { id: 'java', label: t.settings_tab_java, icon: Cpu },
+    { id: 'memory', label: t.settings_tab_memory, icon: MemoryStick },
+    { id: 'discord', label: t.settings_tab_discord, icon: Activity },
+    { id: 'appearance', label: t.settings_tab_appearance, icon: Palette },
+    { id: 'advanced', label: t.settings_tab_advanced, icon: Terminal },
   ];
 
   return (
@@ -205,7 +207,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="px-6 py-4 border-b glass-divider flex items-center justify-between shrink-0">
         <div>
           <h2 className="heading-display text-2xl font-extrabold text-ghost-50 tracking-wide">
-            CONFIGURACIÓN DEL LAUNCHER & ENTORNO
+            {t.settings_title}
           </h2>
           <p className="text-xs text-ghost-400 font-mono">
             {activeInstance
@@ -220,7 +222,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className="btn-tactile flex items-center gap-2 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs shadow-md disabled:opacity-50"
         >
           <Save className="w-3.5 h-3.5" />
-          <span>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</span>
+          <span>{isSaving ? t.settings_saving : t.settings_save}</span>
         </button>
       </div>
 
@@ -671,6 +673,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="space-y-6 divide-y glass-divider">
               
               <div className="space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    {t.settings_language}
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    {t.settings_language_desc}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('es')}
+                    className={`btn-tactile px-5 py-2.5 rounded-control text-xs font-semibold flex items-center gap-2 border transition-all ${
+                      language === 'es'
+                        ? 'accent-bg text-white border-transparent shadow-sm'
+                        : 'glass-control text-ghost-300 hover:text-ghost-50'
+                    }`}
+                  >
+                    <span>Español</span>
+                    {language === 'es' && <Check className="w-3.5 h-3.5" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('en')}
+                    className={`btn-tactile px-5 py-2.5 rounded-control text-xs font-semibold flex items-center gap-2 border transition-all ${
+                      language === 'en'
+                        ? 'accent-bg text-white border-transparent shadow-sm'
+                        : 'glass-control text-ghost-300 hover:text-ghost-50'
+                    }`}
+                  >
+                    <span>English</span>
+                    {language === 'en' && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-5 space-y-3">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
                     TEMAS DE VIDRIO ESMERILADO (VISIONOS)

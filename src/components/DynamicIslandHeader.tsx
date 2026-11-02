@@ -13,6 +13,7 @@ import {
 import { Instance, Account } from '../types';
 import { GhosttyMascot, MascotMood } from './GhosttyMascot';
 import { InstanceIcon } from './InstanceIcon';
+import { useI18n } from '../utils/i18n';
 
 export type MainTabId = 'instances' | 'discover' | 'mods' | 'settings';
 
@@ -64,11 +65,12 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
   mascotMood,
   onTriggerMascotReaction,
 }) => {
+  const { t } = useI18n();
   const tabs = [
-    { id: 'instances', label: 'Estancias', icon: Gamepad2, shortcut: '1' },
-    { id: 'discover', label: 'Descubrir', icon: Compass, shortcut: '2' },
-    { id: 'mods', label: 'Contenido', icon: Package, shortcut: '3' },
-    { id: 'settings', label: 'Ajustes', icon: Settings, shortcut: '4' },
+    { id: 'instances', label: t.nav_instances, icon: Gamepad2, shortcut: '1' },
+    { id: 'discover', label: t.nav_discover, icon: Compass, shortcut: '2' },
+    { id: 'mods', label: t.nav_content, icon: Package, shortcut: '3' },
+    { id: 'settings', label: t.nav_settings, icon: Settings, shortcut: '4' },
   ] as const;
 
   const showClosePill = isIslandExpanded && currentTab !== 'instances';
@@ -242,7 +244,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
           title="Crear una nueva instancia de Minecraft"
         >
           <Plus className="w-3.5 h-3.5 accent-text shrink-0" />
-          <span className="hidden sm:inline whitespace-nowrap">Nueva Instancia</span>
+          <span className="hidden sm:inline whitespace-nowrap">{t.nav_new_instance}</span>
         </button>
 
         <div className="w-[1px] h-5 bg-[var(--divider-color)] mx-1 shrink-0" />
