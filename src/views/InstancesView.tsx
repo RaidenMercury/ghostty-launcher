@@ -23,10 +23,10 @@ import {
 import { Instance } from '../types';
 import { triggerLaunchConfetti } from '../utils/confetti';
 import { InstanceIcon } from '../components/InstanceIcon';
-import { PreblurImage } from '../components/PreblurImage';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { AccordionSection } from '../components/AccordionSection';
 import { GhosttyMascot } from '../components/GhosttyMascot';
+import { HeroMovingCanvas } from '../components/HeroMovingCanvas';
 
 interface InstancesViewProps {
   instances: Instance[];
@@ -466,6 +466,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     <Reorder.Item
                       key={inst.id}
                       value={inst}
+                      data-instance-id={inst.id}
                       onDragStart={() => setDraggingId(inst.id)}
                       onDragEnd={() => setDraggingId(null)}
                       whileDrag={{
@@ -478,6 +479,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       className="relative cursor-pointer select-none"
                     >
                       <SpotlightCard
+                        data-instance-id={inst.id}
                         onClick={() => {
                           if (draggingId) return;
                           onSelectInstance(inst);
@@ -574,34 +576,16 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           <>
             <div className="relative h-64 lg:h-72 w-full overflow-hidden shrink-0 flex flex-col justify-end p-8 border-b glass-divider">
               {ambientArtworkEnabled && (
-                currentHero.icon &&
-                (currentHero.icon.startsWith('http') ||
-                  currentHero.icon.startsWith('data:image') ||
-                  currentHero.icon.startsWith('/')) ? (
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <PreblurImage
-                      src={currentHero.icon}
-                      blur={12}
-                      className="hero-ambient absolute opacity-40 pointer-events-none"
-                      style={{ inset: '-20%' }}
-                    />
-                    <div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{
-                        background:
-                          'radial-gradient(ellipse 70% 60% at 20% 30%, rgba(var(--accent-rgb), 0.25), transparent 70%)',
-                      }}
-                    />
-                  </div>
-                ) : (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <HeroMovingCanvas icon={currentHero.icon} />
                   <div
-                    className="absolute inset-0 opacity-40 pointer-events-none"
+                    className="absolute inset-0 pointer-events-none"
                     style={{
                       background:
-                        'radial-gradient(ellipse 70% 60% at 15% 25%, rgba(var(--accent-rgb), 0.38), transparent 70%), radial-gradient(ellipse 60% 50% at 85% 65%, rgba(16, 185, 129, 0.22), transparent 65%), radial-gradient(ellipse 45% 40% at 50% 10%, rgba(139, 92, 246, 0.16), transparent 60%)',
+                        'radial-gradient(ellipse 70% 60% at 20% 30%, rgba(var(--accent-rgb), 0.22), transparent 70%)',
                     }}
                   />
-                )
+                </div>
               )}
               <div className="absolute inset-0 smoked-scrim-hero pointer-events-none" />
 

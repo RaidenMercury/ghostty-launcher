@@ -100,15 +100,26 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [menu.isOpen, onClose]);
 
   const menuWidth = 264;
-  const menuHeight = 470;
+  const estimatedHeight =
+    context === 'empty'
+      ? 110
+      : context === 'group'
+      ? 160
+      : 390;
+
   const safeX =
     typeof window !== 'undefined'
       ? Math.min(Math.max(8, menu.x), window.innerWidth - menuWidth - 12)
       : menu.x;
-  const safeY =
-    typeof window !== 'undefined'
-      ? Math.min(Math.max(8, menu.y), window.innerHeight - menuHeight - 12)
-      : menu.y;
+
+  let safeY = menu.y;
+  if (typeof window !== 'undefined') {
+    if (menu.y + estimatedHeight > window.innerHeight - 12) {
+      safeY = Math.max(12, menu.y - estimatedHeight);
+    } else {
+      safeY = Math.max(12, menu.y);
+    }
+  }
 
   const runAction = (fn: () => void) => {
     onClose();
