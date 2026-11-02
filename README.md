@@ -23,12 +23,7 @@
 
 ---
 
-<p align="center">
-  <img src="assets/preview.png" alt="Ghostty Launcher Preview" width="100%" />
-</p>
-
-<!-- Si agregas un GIF de demostración en assets/demo.gif, puedes descomentar la siguiente línea: -->
-<!-- <p align="center"><img src="assets/demo.gif" alt="Ghostty Launcher Demo" width="100%" /></p> -->
+<p align="center"><img src="assets/test.gif" alt="Ghostty Launcher Preview" width="100%" /></p> -->
 
 ---
 
