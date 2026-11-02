@@ -8,7 +8,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use uuid::Uuid;
 
-const DEFAULT_MSA_CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
+pub const GHOSTTY_MSA_CLIENT_ID: &str = "1b857661-eaf1-4c25-a00f-be80204fb059";
+pub const COMMUNITY_MSA_CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
+
+const DEFAULT_MSA_CLIENT_ID: &str = GHOSTTY_MSA_CLIENT_ID;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DeviceCodeResponse {
@@ -97,6 +100,9 @@ pub struct AccountManager;
 
 impl AccountManager {
     fn msa_client_id() -> String {
+        if std::env::var("GHOSTTY_USE_COMMUNITY_AUTH").map_or(false, |v| v == "1") {
+            return COMMUNITY_MSA_CLIENT_ID.to_string();
+        }
         std::env::var("GHOSTTY_MSA_CLIENT_ID")
             .ok()
             .filter(|v| !v.trim().is_empty())
