@@ -172,6 +172,14 @@ pub struct ModFileInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ImportedContentItem {
+    pub filename: String,
+    pub category: String,
+    pub target_path: String,
+    pub size: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemJavaInfo {
     pub path: String,
     pub version: String,

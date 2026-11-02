@@ -246,6 +246,96 @@ impl InstanceManager {
         }
         Ok(())
     }
+
+    pub fn import_local_content(
+        instance_id: &str,
+        paths: &[String],
+    ) -> Result<Vec<crate::models::ImportedContentItem>, String> {
+        let mut results = Vec::new();
+
+        for raw_path in paths {
+            let path = Path::new(raw_path);
+            if !path.exists() {
+                continue;
+            }
+
+            let file_name = match path.file_name() {
+                Some(n) => n.to_string_lossy().to_string(),
+                None => continue,
+            };
+
+            let lower_name = file_name.to_lowercase();
+            let mut category = "mods";
+
+            if lower_name.ends_with(".jar") {
+                category = "mods";
+            } else if lower_name.ends_with(".zip") {
+                category = "resourcepacks";
+                if let Ok(file) = fs::File::open(path) {
+                    if let Ok(mut archive) = zip::ZipArchive::new(file) {
+                        let mut has_shaders = false;
+                        let mut has_pack_mcmeta = false;
+                        let mut has_mod_meta = false;
+
+                        for i in 0..archive.len().min(128) {
+                            if let Ok(entry) = archive.by_index(i) {
+                                let ename = entry.name().to_lowercase();
+                                if ename == "pack.mcmeta" || ename.starts_with("assets/") {
+                                    has_pack_mcmeta = true;
+                                }
+                                if ename.starts_with("shaders/") || ename.ends_with(".vsh") || ename.ends_with(".fsh") {
+                                    has_shaders = true;
+                                }
+                                if ename == "fabric.mod.json" || ename.starts_with("meta-inf/mods.toml") || ename == "quilt.mod.json" {
+                                    has_mod_meta = true;
+                                }
+                            }
+                        }
+
+                        if has_shaders {
+                            category = "shaderpacks";
+                        } else if has_mod_meta {
+                            category = "mods";
+                        } else if has_pack_mcmeta {
+                            category = "resourcepacks";
+                        }
+                    }
+                }
+            } else if path.is_dir() {
+                if path.join("shaders").exists() {
+                    category = "shaderpacks";
+                } else if path.join("pack.mcmeta").exists() {
+                    category = "resourcepacks";
+                }
+            } else {
+                continue;
+            }
+
+            let dest_dir = Self::content_dir(instance_id, category)?;
+            let dest_path = dest_dir.join(&file_name);
+
+            if path.is_dir() {
+                copy_dir_recursive(path, &dest_path).map_err(|e| e.to_string())?;
+                results.push(crate::models::ImportedContentItem {
+                    filename: file_name,
+                    category: category.to_string(),
+                    target_path: dest_path.to_string_lossy().to_string(),
+                    size: 0,
+                });
+            } else {
+                fs::copy(path, &dest_path).map_err(|e| e.to_string())?;
+                let size = dest_path.metadata().map(|m| m.len()).unwrap_or(0);
+                results.push(crate::models::ImportedContentItem {
+                    filename: file_name,
+                    category: category.to_string(),
+                    target_path: dest_path.to_string_lossy().to_string(),
+                    size,
+                });
+            }
+        }
+
+        Ok(results)
+    }
 }
 
 /// Icono del mod dentro del jar (`icon.png`, `logo.png`, `pack.png`), como data URI.
@@ -296,4 +386,19 @@ fn encode_base64(data: &[u8]) -> String {
         out.push(if chunk.len() > 2 { TABLE[(b[2] & 0x3f) as usize] as char } else { '=' });
     }
     out
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dest = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&entry.path(), &dest)?;
+        } else {
+            fs::copy(entry.path(), dest)?;
+        }
+    }
+    Ok(())
 }

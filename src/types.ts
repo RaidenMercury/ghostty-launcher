@@ -132,6 +132,13 @@ export interface ModFileInfo {
   icon?: string | null;
 }
 
+export interface ImportedContentItem {
+  filename: string;
+  category: string;
+  target_path: string;
+  size: number;
+}
+
 export interface SystemJavaInfo {
   path: string;
   version: string;

@@ -84,6 +84,10 @@ pub struct ModrinthVersion {
     pub files: Vec<ModrinthFile>,
     #[serde(default)]
     pub dependencies: Vec<ModrinthDependency>,
+    #[serde(default)]
+    pub version_type: String,
+    #[serde(default)]
+    pub date_published: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -285,6 +289,20 @@ fn validate_version_compatibility(
         }
     }
     Ok(())
+}
+
+fn sort_versions_by_stability_and_date(vers: &mut [ModrinthVersion]) {
+    vers.sort_by(|a, b| {
+        let type_score = |v: &ModrinthVersion| match v.version_type.as_str() {
+            "release" => 3,
+            "beta" => 2,
+            "alpha" => 1,
+            _ => 0,
+        };
+        type_score(b)
+            .cmp(&type_score(a))
+            .then_with(|| b.date_published.cmp(&a.date_published))
+    });
 }
 
 fn safe_replace_file(src: &Path, dest: &Path) -> Result<(), std::io::Error> {
@@ -735,10 +753,13 @@ impl ModrinthClient {
         staged_filenames.insert(clean_filename.to_lowercase());
 
         let mut files_to_download: Vec<(String, String, ModrinthFile)> = Vec::new();
+        // Priorizar dependencias con versión fijada (version_id: Some) sobre versiones flotantes
+        dependencies_to_fetch.sort_by_key(|d| if d.version_id.is_some() { 0 } else { 1 });
         let mut queue: VecDeque<ModrinthDependency> = VecDeque::from(dependencies_to_fetch);
-        let mut visited_projects: HashMap<String, String> = HashMap::new();
+        // visited_projects guarda (version_id, is_pinned)
+        let mut visited_projects: HashMap<String, (String, bool)> = HashMap::new();
         if let (Some(ref r_pid), Some(ref r_vid)) = (&root_project_id, &resolved_vid) {
-            visited_projects.insert(r_pid.clone(), r_vid.clone());
+            visited_projects.insert(r_pid.clone(), (r_vid.clone(), true));
         }
 
         let mut installed_records: Vec<(String, String, Option<String>)> = Vec::new();
@@ -763,17 +784,27 @@ impl ModrinthClient {
 
             let pid_opt = dep.project_id.clone();
             if let Some(ref pid) = pid_opt {
-                if let Some(selected_vid) = visited_projects.get(pid) {
+                if let Some((selected_vid, is_pinned)) = visited_projects.get(pid).cloned() {
                     if let Some(ref req_vid) = dep.version_id {
-                        if selected_vid != req_vid {
-                            let _ = fs::remove_dir_all(&staging_dir);
-                            return Err(format!(
-                                "Conflicto de versiones: el proyecto {} requiere la versión {}, pero ya se seleccionó la versión {}",
-                                pid, req_vid, selected_vid
-                            ));
+                        if &selected_vid != req_vid {
+                            if !is_pinned {
+                                // Reemplazar la versión flotante elegida anteriormente por la versión fijada requerida
+                                files_to_download.retain(|(p, _, _)| p != pid);
+                                installed_records.retain(|(p, _, _)| p != pid);
+                            } else {
+                                let _ = fs::remove_dir_all(&staging_dir);
+                                return Err(format!(
+                                    "Conflicto de versiones: el proyecto {} requiere la versión {}, pero ya se seleccionó la versión {}",
+                                    pid, req_vid, selected_vid
+                                ));
+                            }
+                        } else {
+                            continue;
                         }
+                    } else {
+                        // Requerimiento flotante ya satisfecho
+                        continue;
                     }
-                    continue;
                 }
             }
 
@@ -801,6 +832,7 @@ impl ModrinthClient {
                 let mut vers = Self::get_project_versions(pid, Some(&loader), Some(&mc_version))
                     .await
                     .unwrap_or_default();
+                sort_versions_by_stability_and_date(&mut vers);
 
                 // 2. Si no hay versiones, probar sin filtro de loader (para mods universales, datapacks o agnósticos)
                 if vers.is_empty() {
@@ -819,6 +851,7 @@ impl ModrinthClient {
                             })
                         })
                         .collect();
+                    sort_versions_by_stability_and_date(&mut vers);
                 }
 
                 // 3. Si aún no hay versiones, buscar en toda la serie de la versión de MC (e.g. serie 1.21 para 1.21.11)
@@ -847,6 +880,7 @@ impl ModrinthClient {
                             mc_ok && loader_ok
                         })
                         .collect();
+                    sort_versions_by_stability_and_date(&mut vers);
                 }
 
                 vers.into_iter().next().ok_or_else(|| {
@@ -861,17 +895,24 @@ impl ModrinthClient {
                 return Err("Dependencia requerida sin project_id ni version_id válidos".to_string());
             };
 
-            if let Some(selected_vid) = visited_projects.get(&dep_ver.project_id) {
-                if selected_vid != &dep_ver.id {
-                    let _ = fs::remove_dir_all(&staging_dir);
-                    return Err(format!(
-                        "Conflicto de versiones: el proyecto {} requiere la versión {}, pero ya se seleccionó la versión {}",
-                        dep_ver.project_id, dep_ver.id, selected_vid
-                    ));
+            let is_this_pinned = dep.version_id.is_some();
+            if let Some((selected_vid, is_pinned)) = visited_projects.get(&dep_ver.project_id).cloned() {
+                if selected_vid != dep_ver.id {
+                    if !is_pinned && is_this_pinned {
+                        files_to_download.retain(|(p, _, _)| p != &dep_ver.project_id);
+                        installed_records.retain(|(p, _, _)| p != &dep_ver.project_id);
+                    } else {
+                        let _ = fs::remove_dir_all(&staging_dir);
+                        return Err(format!(
+                            "Conflicto de versiones: el proyecto {} requiere la versión {}, pero ya se seleccionó la versión {}",
+                            dep_ver.project_id, dep_ver.id, selected_vid
+                        ));
+                    }
+                } else {
+                    continue;
                 }
-                continue;
             }
-            visited_projects.insert(dep_ver.project_id.clone(), dep_ver.id.clone());
+            visited_projects.insert(dep_ver.project_id.clone(), (dep_ver.id.clone(), is_this_pinned));
 
             let primary = dep_ver
                 .files
@@ -1284,5 +1325,52 @@ mod tests {
         assert!(validate_modrinth_url("https://edge.modrinth.com/data/ABC/file.jar").is_ok());
         assert!(validate_modrinth_url("http://cdn.modrinth.com/insecure.jar").is_err());
         assert!(validate_modrinth_url("https://evil.com/malicious.jar").is_err());
+    }
+
+    #[test]
+    fn test_sort_versions_by_stability_and_date() {
+        let mut vers = vec![
+            ModrinthVersion {
+                id: "v_beta_new".into(),
+                project_id: "p1".into(),
+                name: "Beta New".into(),
+                version_number: "2.0-beta".into(),
+                game_versions: vec!["1.21.11".into()],
+                loaders: vec!["fabric".into()],
+                files: vec![],
+                dependencies: vec![],
+                version_type: "beta".into(),
+                date_published: "2026-11-02T10:00:00Z".into(),
+            },
+            ModrinthVersion {
+                id: "v_release_stable".into(),
+                project_id: "p1".into(),
+                name: "Stable Release".into(),
+                version_number: "1.9.0".into(),
+                game_versions: vec!["1.21.11".into()],
+                loaders: vec!["fabric".into()],
+                files: vec![],
+                dependencies: vec![],
+                version_type: "release".into(),
+                date_published: "2026-11-01T10:00:00Z".into(),
+            },
+            ModrinthVersion {
+                id: "v_alpha".into(),
+                project_id: "p1".into(),
+                name: "Alpha".into(),
+                version_number: "2.1-alpha".into(),
+                game_versions: vec!["1.21.11".into()],
+                loaders: vec!["fabric".into()],
+                files: vec![],
+                dependencies: vec![],
+                version_type: "alpha".into(),
+                date_published: "2026-11-02T12:00:00Z".into(),
+            },
+        ];
+
+        sort_versions_by_stability_and_date(&mut vers);
+        assert_eq!(vers[0].id, "v_release_stable", "Release must come before beta and alpha");
+        assert_eq!(vers[1].id, "v_beta_new", "Beta must come before alpha");
+        assert_eq!(vers[2].id, "v_alpha");
     }
 }

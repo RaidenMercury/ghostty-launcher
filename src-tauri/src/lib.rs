@@ -92,6 +92,7 @@ pub fn run() {
             get_instance_mods,
             toggle_instance_mod,
             delete_instance_mod,
+            import_local_content,
             get_config,
             save_config,
             update_discord_rpc,

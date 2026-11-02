@@ -8,6 +8,7 @@ import {
   Download,
   Trash2,
   Package,
+  Upload,
 } from 'lucide-react';
 import { Instance, ModFileInfo } from '../types';
 import { api } from '../services/api';
@@ -17,18 +18,23 @@ import { useI18n } from '../utils/i18n';
 
 interface ModsManagerViewProps {
   activeInstance: Instance | null;
+  refreshKey?: number;
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
   onGoDiscover?: () => void;
+  onImportFiles?: (paths: string[]) => Promise<void>;
 }
 
 export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   activeInstance,
+  refreshKey,
   onShowToast,
   onGoDiscover,
+  onImportFiles,
 }) => {
   const { language } = useI18n();
   const [mods, setMods] = useState<ModFileInfo[]>([]);
   const iconRequest = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<'all' | 'enabled' | 'disabled'>('all');
@@ -56,7 +62,46 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
     if (activeInstance) {
       loadMods();
     }
-  }, [activeInstance, kind]);
+  }, [activeInstance, kind, refreshKey]);
+
+  const handleManualFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeInstance || !e.target.files || e.target.files.length === 0) return;
+    const fileList = Array.from(e.target.files);
+    e.target.value = '';
+
+    const paths: string[] = [];
+    for (const file of fileList) {
+      const nativePath = (file as any).path;
+      if (nativePath) {
+        paths.push(nativePath);
+      }
+    }
+
+    if (paths.length > 0) {
+      if (onImportFiles) {
+        await onImportFiles(paths);
+      } else {
+        try {
+          setLoading(true);
+          await api.importLocalContent(activeInstance.id, paths);
+          await loadMods();
+          onShowToast('success', 'Archivos importados', `${paths.length} archivo(s) añadidos.`);
+        } catch (err: any) {
+          onShowToast('error', 'Error al importar', err.toString());
+        } finally {
+          setLoading(false);
+        }
+      }
+    } else {
+      onShowToast(
+        'warning',
+        'Arrastra los archivos',
+        language === 'es'
+          ? 'Arrastra y suelta tus archivos (.jar / .zip) directamente dentro de la ventana del launcher.'
+          : 'Drag and drop your (.jar / .zip) files directly onto the launcher window.'
+      );
+    }
+  };
 
   const loadMods = async () => {
     if (!activeInstance) return;
@@ -270,6 +315,29 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".jar,.zip"
+              className="hidden"
+              onChange={handleManualFileInput}
+            />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="btn-tactile flex items-center gap-1.5 px-3 py-1.5 glass-control text-xs text-ghost-200 hover:text-ghost-50"
+              title={
+                language === 'es'
+                  ? 'Importar mods (.jar), texturas o shaders (.zip)'
+                  : 'Import mods (.jar), textures or shaders (.zip)'
+              }
+            >
+              <Upload className="w-3.5 h-3.5 text-ghost-300" />
+              <span>{language === 'es' ? 'Importar' : 'Import'}</span>
+            </button>
+
             {onGoDiscover && (
               <button
                 onClick={onGoDiscover}
@@ -310,7 +378,11 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
             <GhosttyMascot
               mood="idle"
               size="md"
-              caption={`No hay ${kindMeta[kind].plural} todavía. Descárgalos desde Descubrir o añade el archivo a la carpeta.`}
+              caption={
+                language === 'es'
+                  ? `No hay ${kindMeta[kind].plural} todavía. Arrastra archivos (.jar / .zip) aquí o descárgalos desde Descubrir.`
+                  : `No ${kindMeta[kind].plural} yet. Drag & drop (.jar / .zip) files here or discover more.`
+              }
             />
           </div>
         ) : (

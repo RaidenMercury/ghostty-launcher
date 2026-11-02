@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { PackageOpen } from 'lucide-react';
+import { PackageOpen, FolderInput } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DynamicIslandHeader,
@@ -92,11 +92,18 @@ export function App() {
   ]);
   const [mascotMood, setMascotMood] = useState<MascotMood>('idle');
   const [isDraggingPack, setIsDraggingPack] = useState(false);
+  const [isDraggingContent, setIsDraggingContent] = useState(false);
+  const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
   const [overlayBlur, setOverlayBlur] = useState(false);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const dragImportRef = useRef<((fileOrPath: File | string) => void) | null>(null);
+  const dragContextRef = useRef({ currentTab, activeInstance });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  useEffect(() => {
+    dragContextRef.current = { currentTab, activeInstance };
+  }, [currentTab, activeInstance]);
 
   useEffect(() => {
     applyThemeToDocument(themeSettings);
@@ -537,6 +544,46 @@ export function App() {
     }
   };
 
+  const handleImportContent = async (instanceId: string, paths: string[]) => {
+    if (!paths || paths.length === 0) return;
+    startDownloadActivity('Importando contenido local...');
+    try {
+      const items = await api.importLocalContent(instanceId, paths);
+      if (items.length === 0) {
+        addToast(
+          'warning',
+          'Sin contenido compatible',
+          'No se encontraron archivos válidos (.jar para mods, .zip para texturas o shaders).'
+        );
+        return;
+      }
+      const counts = { mods: 0, resourcepacks: 0, shaderpacks: 0 };
+      for (const item of items) {
+        if (item.category === 'mods') counts.mods++;
+        else if (item.category === 'resourcepacks') counts.resourcepacks++;
+        else if (item.category === 'shaderpacks') counts.shaderpacks++;
+      }
+      const summary: string[] = [];
+      if (counts.mods > 0) summary.push(`${counts.mods} mod(s)`);
+      if (counts.resourcepacks > 0) summary.push(`${counts.resourcepacks} textura(s)`);
+      if (counts.shaderpacks > 0) summary.push(`${counts.shaderpacks} shader(s)`);
+
+      if (themeSettings.launchBurstEnabled) {
+        triggerInstallSuccessConfetti();
+      }
+      addToast(
+        'success',
+        'Contenido importado con éxito',
+        `Añadido a "${activeInstance?.name || 'instancia'}": ${summary.join(', ')}.`
+      );
+      setContentRefreshKey((k) => k + 1);
+    } catch (e: any) {
+      addToast('error', 'Error al importar contenido', e.toString());
+    } finally {
+      endDownloadActivity();
+    }
+  };
+
   dragImportRef.current = handleImportModpack;
 
   useEffect(() => {
@@ -547,14 +594,31 @@ export function App() {
       .then(({ getCurrentWebview }) =>
         getCurrentWebview().onDragDropEvent((event) => {
           const payload = event.payload as { type: string; paths?: string[] };
+          const { currentTab: tab, activeInstance: inst } = dragContextRef.current;
+          const isContentMode = tab === 'mods' && !!inst;
+
           if (payload.type === 'enter' || payload.type === 'over') {
-            setIsDraggingPack(true);
+            if (isContentMode) {
+              setIsDraggingContent(true);
+              setIsDraggingPack(false);
+            } else {
+              setIsDraggingPack(true);
+              setIsDraggingContent(false);
+            }
           } else if (payload.type === 'drop') {
             setIsDraggingPack(false);
-            const path = payload.paths?.[0];
-            if (path) dragImportRef.current?.(path);
+            setIsDraggingContent(false);
+            const paths = payload.paths || [];
+            if (paths.length > 0) {
+              if (isContentMode && inst) {
+                void handleImportContent(inst.id, paths);
+              } else {
+                dragImportRef.current?.(paths[0]);
+              }
+            }
           } else {
             setIsDraggingPack(false);
+            setIsDraggingContent(false);
           }
         })
       )
@@ -816,6 +880,7 @@ export function App() {
     isLogsOpen ||
     !!selectedInstanceForSettings ||
     isDraggingPack ||
+    isDraggingContent ||
     overlayBlur ||
     !!confirmModal?.isOpen;
 
@@ -906,7 +971,7 @@ export function App() {
       <main
         className="flex-1 flex overflow-hidden relative z-10"
         style={{
-          contain: isDraggingPack || overlayBlur ? 'paint' : undefined,
+          contain: isDraggingPack || isDraggingContent || overlayBlur ? 'paint' : undefined,
         }}
       >
         <div
@@ -996,8 +1061,12 @@ export function App() {
                     {currentTab === 'mods' && (
                       <ModsManagerView
                         activeInstance={activeInstance}
+                        refreshKey={contentRefreshKey}
                         onShowToast={addToast}
                         onGoDiscover={() => setCurrentTab('discover')}
+                        onImportFiles={(paths) =>
+                          activeInstance ? handleImportContent(activeInstance.id, paths) : Promise.resolve()
+                        }
                       />
                     )}
 
@@ -1029,6 +1098,22 @@ export function App() {
             </h2>
             <p className="text-xs text-ghost-400 mt-1">
               Se importará como instancia nueva (.mrpack o .zip de CurseForge).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isDraggingContent && (
+        <div className="glass-overlay flex items-center justify-center">
+          <div className="glass-modal glass-panel-strong px-10 py-8 text-center max-w-sm mx-6">
+            <div className="w-14 h-14 mx-auto rounded-full accent-pill-tint flex items-center justify-center mb-3">
+              <FolderInput className="w-7 h-7 accent-text" />
+            </div>
+            <h2 className="heading-display text-xl font-bold text-ghost-50">
+              Añadir a {activeInstance?.name || 'la instancia'}
+            </h2>
+            <p className="text-xs text-ghost-400 mt-1">
+              Suelta mods (.jar), texturas (.zip) o shaders (.zip) para importarlos a esta instancia.
             </p>
           </div>
         </div>
@@ -1077,7 +1162,7 @@ export function App() {
 
               {groupOptions.length === 0 && (
                 <p className="text-[11px] text-ghost-400 pt-2">
-                  No hay grupos todavía. Crea uno con “+ Grupo” en la barra de arriba.
+                  No hay grupos todavía. Crea uno con “Grupo” en la barra de arriba.
                 </p>
               )}
             </div>

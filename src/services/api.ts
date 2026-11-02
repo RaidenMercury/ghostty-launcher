@@ -7,6 +7,7 @@ import {
   ModrinthSearchHit,
   ModrinthVersion,
   ModFileInfo,
+  ImportedContentItem,
   SystemJavaInfo,
   Cape,
   ModContentType,
@@ -604,6 +605,10 @@ export const api = {
     list.push(fallbackMod);
     mockMods[instanceId] = list;
     return fallbackMod;
+  },
+
+  async importLocalContent(instanceId: string, paths: string[]): Promise<ImportedContentItem[]> {
+    return invokeTauri<ImportedContentItem[]>('import_local_content', { instanceId, paths });
   },
 
   async launchGame(instance: Instance, username: string, uuid: string): Promise<string> {

@@ -107,6 +107,14 @@ pub fn delete_instance_mod(
 }
 
 #[tauri::command]
+pub async fn import_local_content(
+    instance_id: String,
+    paths: Vec<String>,
+) -> Result<Vec<crate::models::ImportedContentItem>, String> {
+    InstanceManager::import_local_content(&instance_id, &paths)
+}
+
+#[tauri::command]
 pub fn get_config() -> Result<LauncherConfig, String> {
     LauncherManager::load_config()
 }
