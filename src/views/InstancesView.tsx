@@ -437,7 +437,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
               title="Crear nuevo grupo para organizar tus modpacks"
             >
               <FolderPlus className="w-3 h-3" />
-              <span>+ Grupo</span>
+              <span>{t.group_add_group}</span>
             </button>
           )}
         </div>
