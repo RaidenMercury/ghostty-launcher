@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,14 +24,17 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   title,
   description,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel,
+  cancelLabel,
   variant = 'default',
   icon,
   inputConfig,
   onConfirm,
   onClose,
 }) => {
+  const { t, language } = useI18n();
+  const effectiveConfirmLabel = confirmLabel || (language === 'es' ? 'Confirmar' : 'Confirm');
+  const effectiveCancelLabel = cancelLabel || t.acc_cancel;
   const [val, setVal] = useState(inputConfig?.defaultValue || '');
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -141,7 +145,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 onClick={onClose}
                 className="btn-tactile px-4 py-2 glass-control text-xs font-medium text-ghost-300 hover:text-ghost-100 rounded-control"
               >
-                {cancelLabel}
+                {effectiveCancelLabel}
               </button>
               <button
                 onClick={() => onConfirm(inputConfig ? val.trim() : undefined)}
@@ -152,7 +156,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     : 'bg-white/15 hover:bg-white/20 border border-white/20 text-ghost-50'
                 }`}
               >
-                {confirmLabel}
+                {effectiveConfirmLabel}
               </button>
             </div>
           </div>

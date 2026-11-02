@@ -2,6 +2,7 @@ import React from 'react';
 import { Cpu, ShieldCheck, FolderOpen, Sliders, Terminal } from 'lucide-react';
 import { Instance, Account } from '../types';
 import { InstanceIcon } from './InstanceIcon';
+import { useI18n } from '../utils/i18n';
 
 interface StatusFooterDockProps {
   activeInstance: Instance | null;
@@ -24,6 +25,7 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
   onOpenLogs,
   discordEnabled = true,
 }) => {
+  const { t, language } = useI18n();
   return (
     <footer className="relative z-30 w-full px-6 py-2 bg-[var(--glass-surface-strong)] border-t glass-divider flex items-center justify-between text-xs font-mono text-ghost-400 select-none">
       <div className="flex items-center gap-4">
@@ -34,7 +36,7 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
             }`}
           />
           <span className="text-ghost-200 font-medium text-[11px]">
-            {discordEnabled ? 'DISCORD RPC ACTIVO' : 'DISCORD RPC DESACTIVADO'}
+            {discordEnabled ? t.status_discord_active : t.status_discord_off}
           </span>
         </div>
 
@@ -52,7 +54,7 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
 
         <div className="hidden md:flex items-center gap-1.5 text-[11px] tabular-nums">
           <ShieldCheck className="w-3.5 h-3.5 text-ghost-300" />
-          <span>PERFILES:</span>
+          <span>{t.status_profiles_count}:</span>
           <span className="text-ghost-100 font-semibold">{instancesCount}</span>
         </div>
       </div>
@@ -84,7 +86,7 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
                 <button
                   onClick={onOpenLogs}
                   className="btn-tactile p-1 rounded hover:bg-white/10 text-ghost-400 hover:text-ghost-100"
-                  title="Ver consola de salida"
+                  title={language === 'es' ? 'Ver consola de salida' : 'View output console'}
                 >
                   <Terminal className="w-3.5 h-3.5" />
                 </button>
@@ -92,14 +94,14 @@ export const StatusFooterDock: React.FC<StatusFooterDockProps> = ({
               <button
                 onClick={() => onOpenInstanceFolder(activeInstance.id)}
                 className="btn-tactile p-1 rounded hover:bg-white/10 text-ghost-400 hover:text-ghost-100"
-                title="Abrir directorio de la estancia"
+                title={language === 'es' ? 'Abrir directorio de la estancia' : 'Open instance folder'}
               >
                 <FolderOpen className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onOpenInstanceSettings(activeInstance)}
                 className="btn-tactile p-1 rounded hover:bg-white/10 text-ghost-400 hover:text-ghost-100"
-                title="Ajustes de la estancia"
+                title={language === 'es' ? 'Ajustes de la estancia' : 'Instance settings'}
               >
                 <Sliders className="w-3.5 h-3.5" />
               </button>

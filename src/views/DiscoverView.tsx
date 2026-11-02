@@ -23,6 +23,7 @@ import { triggerInstallSuccessConfetti } from '../utils/confetti';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { GhosttyMascot } from '../components/GhosttyMascot';
 import { GlassSelect } from '../components/GlassSelect';
+import { useI18n } from '../utils/i18n';
 
 interface DiscoverViewProps {
   activeInstance: Instance | null;
@@ -43,6 +44,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   onStartDownloadActivity,
   onEndDownloadActivity,
 }) => {
+  const { t, language } = useI18n();
   const [provider, setProvider] = useState<ModProvider>('modrinth');
   const [projectType, setProjectType] = useState<ProjectTypeFilter>('mod');
   const [query, setQuery] = useState('');
@@ -254,7 +256,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               <Search className="w-3.5 h-3.5 absolute left-3.5 top-2.5 text-ghost-400" />
               <input
                 type="text"
-                placeholder={`Buscar en ${provider.toUpperCase()}...`}
+                placeholder={`${t.disc_search_placeholder} ${provider.toUpperCase()}...`}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 glass-control text-xs placeholder:text-ghost-400"
@@ -267,7 +269,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               className={`btn-tactile p-2 glass-control text-xs ${
                 filtersExpanded ? 'accent-text accent-border' : 'text-ghost-300'
               }`}
-              title="Mostrar/ocultar filtros de versión y loader"
+              title={language === 'es' ? 'Mostrar/ocultar filtros de versión y loader' : 'Show/hide version and loader filters'}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
             </button>
@@ -284,7 +286,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                   onChange={setLoader}
                   popoverWidth="w-36"
                   options={[
-                    { value: 'all', label: 'Todos' },
+                    { value: 'all', label: language === 'es' ? 'Todos' : 'All' },
                     { value: 'fabric', label: 'Fabric' },
                     { value: 'neoforge', label: 'NeoForge' },
                     { value: 'forge', label: 'Forge' },
@@ -294,13 +296,15 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-ghost-400 text-[10px] uppercase">Versión MC:</span>
+                <span className="text-ghost-400 text-[10px] uppercase">
+                  {language === 'es' ? 'Versión MC:' : 'MC Version:'}
+                </span>
                 <GlassSelect
                   value={gameVersion}
                   onChange={setGameVersion}
                   popoverWidth="w-56"
                   options={[
-                    { value: 'all', label: 'Todas las versiones' },
+                    { value: 'all', label: language === 'es' ? 'Todas las versiones' : 'All versions' },
                     ...(!manifestVersions.some((v) => v.id === '26.3')
                       ? [{ value: '26.3', label: '26.3' }]
                       : []),
@@ -309,7 +313,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       label: v.id,
                       badge:
                         activeInstance?.mc_version === v.id
-                          ? 'Activa'
+                          ? (language === 'es' ? 'Activa' : 'Active')
                           : v.type !== 'release'
                           ? v.type
                           : undefined,
@@ -329,24 +333,26 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-ghost-400 text-[10px] uppercase">Orden:</span>
+                <span className="text-ghost-400 text-[10px] uppercase">
+                  {language === 'es' ? 'Orden:' : 'Sort:'}
+                </span>
                 <GlassSelect
                   value={sortBy}
                   onChange={(val) => setSortBy(val as any)}
                   popoverWidth="w-40"
                   options={[
-                    { value: 'downloads', label: 'Populares' },
-                    { value: 'relevance', label: 'Relevancia' },
-                    { value: 'follows', label: 'Tendencia' },
-                    { value: 'updated', label: 'Actualizados' },
-                    { value: 'newest', label: 'Nuevos' },
+                    { value: 'downloads', label: t.disc_popular },
+                    { value: 'relevance', label: language === 'es' ? 'Relevancia' : 'Relevance' },
+                    { value: 'follows', label: language === 'es' ? 'Tendencia' : 'Trending' },
+                    { value: 'updated', label: language === 'es' ? 'Actualizados' : 'Updated' },
+                    { value: 'newest', label: language === 'es' ? 'Nuevos' : 'Newest' },
                   ]}
                 />
               </div>
             </div>
 
             <span className="text-[11px] text-ghost-400 tabular-nums">
-              {totalHits.toLocaleString()} recursos ({provider.toUpperCase()})
+              {totalHits.toLocaleString()} {language === 'es' ? 'recursos' : 'resources'} ({provider.toUpperCase()})
             </span>
           </div>
         )}
@@ -376,10 +382,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 <div className="flex items-center justify-between">
                   <h3 className="heading-display text-lg font-extrabold text-ghost-50 flex items-center gap-2 tracking-wider">
                     <Sparkles className="w-4 h-4 accent-text" />
-                    <span>DESTACADOS EN {provider.toUpperCase()}</span>
+                    <span>{t.disc_featured} {provider.toUpperCase()}</span>
                   </h3>
                   <span className="text-[11px] font-mono text-ghost-400">
-                    Haz clic en un proyecto para ver su página completa
+                    {language === 'es' ? 'Haz clic en un proyecto para ver su página completa' : 'Click on a project to view full page'}
                   </span>
                 </div>
 
@@ -410,7 +416,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                               {hit.title}
                             </h4>
                             <span className="text-[10px] font-mono text-ghost-300 block truncate">
-                              por {hit.author}
+                              {language === 'es' ? 'por' : 'by'} {hit.author}
                             </span>
                           </div>
                         </div>
@@ -422,7 +428,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
                       <div className="relative z-10 mt-3 pt-2.5 border-t glass-divider flex items-center justify-between text-[11px] font-mono gap-2">
                         <span className="text-ghost-300 tabular-nums truncate">
-                          {(hit.downloads / 1000).toFixed(0)}k descargas
+                          {(hit.downloads / 1000).toFixed(0)}k {t.disc_downloads}
                         </span>
 
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -430,7 +436,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                             type="button"
                             onClick={() => openHitModal(hit, 'details')}
                             className="btn-tactile p-1.5 rounded-control glass-control flex items-center justify-center text-ghost-200 hover:text-ghost-50"
-                            title="Ver página del proyecto"
+                            title={language === 'es' ? 'Ver página del proyecto' : 'View project page'}
                           >
                             <FileText className="w-3.5 h-3.5 accent-text" />
                           </button>
@@ -438,7 +444,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                             type="button"
                             onClick={() => openHitModal(hit, 'versions')}
                             className="btn-tactile p-1.5 rounded-control glass-control flex items-center justify-center text-ghost-300 hover:text-ghost-50"
-                            title="Seleccionar versión específica"
+                            title={language === 'es' ? 'Seleccionar versión específica' : 'Select specific version'}
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -446,10 +452,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                             type="button"
                             onClick={() => handleInstallLatest(hit)}
                             className="btn-tactile px-2.5 py-1 rounded-control accent-bg text-white font-semibold flex items-center gap-1 shrink-0"
-                            title={hit.project_type === 'modpack' ? 'Crear estancia' : 'Instalar última versión'}
+                            title={hit.project_type === 'modpack' ? (language === 'es' ? 'Crear estancia' : 'Create instance') : (language === 'es' ? 'Instalar última versión' : 'Install latest version')}
                           >
                             <Download className="w-3 h-3" />
-                            <span>{hit.project_type === 'modpack' ? 'Crear' : 'Instalar'}</span>
+                            <span>{hit.project_type === 'modpack' ? (language === 'es' ? 'Crear' : 'Create') : t.disc_install}</span>
                           </button>
                         </div>
                       </div>
@@ -462,11 +468,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
             <section className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="heading-display text-lg font-extrabold text-ghost-50 tracking-wider">
-                  {query.trim() ? `RESULTADOS PARA "${query.toUpperCase()}"` : 'CATÁLOGO COMPLETO'}
+                  {query.trim() ? `${language === 'es' ? 'RESULTADOS PARA' : 'RESULTS FOR'} "${query.toUpperCase()}"` : t.disc_catalog}
                 </h3>
                 {activeInstance && projectType !== 'modpack' && (
                   <span className="text-[11px] font-mono text-ghost-300">
-                    Destino: <strong className="text-ghost-50">{activeInstance.name}</strong>
+                    {language === 'es' ? 'Destino:' : 'Target:'} <strong className="text-ghost-50">{activeInstance.name}</strong>
                   </span>
                 )}
               </div>
@@ -521,7 +527,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                         type="button"
                         onClick={() => openHitModal(hit, 'details')}
                         className="btn-tactile p-2 rounded-control glass-control flex items-center justify-center text-ghost-200 hover:text-ghost-50"
-                        title="Ver página de información del mod"
+                        title={language === 'es' ? 'Ver página de información del mod' : 'View project details page'}
                       >
                         <FileText className="w-3.5 h-3.5 accent-text" />
                       </button>
@@ -530,10 +536,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                         type="button"
                         onClick={() => openHitModal(hit, 'versions')}
                         className="btn-tactile px-2.5 py-1.5 glass-control text-xs flex items-center gap-1.5 text-ghost-200"
-                        title="Elegir versión específica"
+                        title={language === 'es' ? 'Elegir versión específica' : 'Select specific version'}
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Versiones</span>
+                        <span>{language === 'es' ? 'Versiones' : 'Versions'}</span>
                       </button>
 
                       <button
@@ -542,7 +548,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                         className="btn-tactile px-3.5 py-1.5 rounded-control accent-bg text-white font-semibold flex items-center gap-1.5"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>{hit.project_type === 'modpack' ? 'Crear' : 'Instalar'}</span>
+                        <span>{hit.project_type === 'modpack' ? (language === 'es' ? 'Crear' : 'Create') : t.disc_install}</span>
                       </button>
                     </div>
                   </motion.div>

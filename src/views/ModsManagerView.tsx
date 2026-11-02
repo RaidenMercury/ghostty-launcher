@@ -13,6 +13,7 @@ import { Instance, ModFileInfo } from '../types';
 import { api } from '../services/api';
 import { InstanceIcon } from '../components/InstanceIcon';
 import { GhosttyMascot } from '../components/GhosttyMascot';
+import { useI18n } from '../utils/i18n';
 
 interface ModsManagerViewProps {
   activeInstance: Instance | null;
@@ -25,6 +26,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   onShowToast,
   onGoDiscover,
 }) => {
+  const { language } = useI18n();
   const [mods, setMods] = useState<ModFileInfo[]>([]);
   const iconRequest = useRef(0);
   const [loading, setLoading] = useState(false);
@@ -33,10 +35,22 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   const [kind, setKind] = useState<'mods' | 'resourcepacks' | 'shaderpacks'>('mods');
 
   const kindMeta = {
-    mods: { label: 'Mods', plural: 'mods', hint: 'Gestor de mods .jar' },
-    resourcepacks: { label: 'Texturas', plural: 'resource packs', hint: 'Paquetes de texturas .zip' },
-    shaderpacks: { label: 'Shaders', plural: 'shaders', hint: 'Paquetes de shaders .zip' },
-  } as const;
+    mods: {
+      label: 'Mods',
+      plural: 'mods',
+      hint: language === 'es' ? 'Gestor de mods .jar' : '.jar mod manager',
+    },
+    resourcepacks: {
+      label: language === 'es' ? 'Texturas' : 'Resource Packs',
+      plural: language === 'es' ? 'paquetes de recursos' : 'resource packs',
+      hint: language === 'es' ? 'Paquetes de texturas .zip' : '.zip texture packs',
+    },
+    shaderpacks: {
+      label: 'Shaders',
+      plural: 'shaders',
+      hint: language === 'es' ? 'Paquetes de shaders .zip' : '.zip shader packs',
+    },
+  };
 
   useEffect(() => {
     if (activeInstance) {
@@ -193,7 +207,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               </div>
             )}
             <div className="border-l glass-divider pl-4">
-              <span className="text-ghost-400 block text-[10px]">PESO TOTAL</span>
+              <span className="text-ghost-400 block text-[10px]">{language === 'es' ? 'PESO TOTAL' : 'TOTAL SIZE'}</span>
               <span className="text-sm font-bold text-ghost-100">
                 {(totalSizeBytes / (1024 * 1024)).toFixed(1)} MB
               </span>
@@ -225,7 +239,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-ghost-400" />
               <input
                 type="text"
-                placeholder={`Filtrar ${kindMeta[kind].plural}...`}
+                placeholder={`${language === 'es' ? 'Filtrar' : 'Filter'} ${kindMeta[kind].plural}...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 glass-control text-xs placeholder:text-ghost-400"
@@ -244,7 +258,11 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                       : 'text-ghost-300 hover:text-ghost-50'
                   }`}
                 >
-                  {st === 'all' ? 'Todos' : st === 'enabled' ? 'Activos' : 'Inactivos'}
+                  {st === 'all'
+                    ? (language === 'es' ? 'Todos' : 'All')
+                    : st === 'enabled'
+                    ? (language === 'es' ? 'Activos' : 'Enabled')
+                    : (language === 'es' ? 'Inactivos' : 'Disabled')}
                 </button>
               ))}
             </div>
@@ -258,23 +276,23 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 className="btn-tactile flex items-center gap-1.5 px-3.5 py-1.5 rounded-control accent-bg text-white font-semibold text-xs"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Añadir recursos</span>
+                <span>{language === 'es' ? 'Añadir recursos' : 'Add resources'}</span>
               </button>
             )}
 
             <button
               onClick={handleOpenFolder}
               className="btn-tactile flex items-center gap-1.5 px-3 py-1.5 glass-control text-xs text-ghost-200"
-              title="Abrir carpeta de contenido"
+              title={language === 'es' ? 'Abrir carpeta de contenido' : 'Open content folder'}
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              <span>Carpeta</span>
+              <span>{language === 'es' ? 'Carpeta' : 'Folder'}</span>
             </button>
 
             <button
               onClick={loadMods}
               className="btn-tactile p-1.5 glass-control text-ghost-300 hover:text-ghost-50"
-              title="Recargar contenido"
+              title={language === 'es' ? 'Recargar contenido' : 'Reload content'}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>

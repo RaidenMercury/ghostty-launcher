@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Terminal, Copy, Trash2, Square } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface GameLogsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const GameLogsModal: React.FC<GameLogsModalProps> = ({
   onClearLogs,
   onStopGame,
 }) => {
+  const { t, language } = useI18n();
   const handleCopy = () => {
     navigator.clipboard?.writeText(logs.join('\n'));
   };
@@ -46,10 +48,10 @@ export const GameLogsModal: React.FC<GameLogsModalProps> = ({
                 <Terminal className="w-4 h-4 accent-text" />
                 <div>
                   <h3 className="heading-display text-lg font-bold text-ghost-50">
-                    Consola de Salida JVM • {instanceName}
+                    {t.logs_modal_title} • {instanceName}
                   </h3>
                   <p className="text-[11px] font-mono text-ghost-400">
-                    {isRunning ? 'Proceso activo en ejecución' : 'Proceso finalizado'}
+                    {isRunning ? (language === 'es' ? 'Proceso activo en ejecución' : 'Process running') : (language === 'es' ? 'Proceso finalizado' : 'Process terminated')}
                   </p>
                 </div>
               </div>
@@ -60,14 +62,14 @@ export const GameLogsModal: React.FC<GameLogsModalProps> = ({
                   className="btn-tactile px-2.5 py-1.5 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200"
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copiar</span>
+                  <span>{t.acc_copy}</span>
                 </button>
                 <button
                   onClick={onClearLogs}
                   className="btn-tactile px-2.5 py-1.5 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Limpiar</span>
+                  <span>{language === 'es' ? 'Limpiar' : 'Clear'}</span>
                 </button>
                 {isRunning && (
                   <button
@@ -75,7 +77,7 @@ export const GameLogsModal: React.FC<GameLogsModalProps> = ({
                     className="btn-tactile px-3 py-1.5 rounded-control bg-spectral-rose/20 border border-spectral-rose/40 text-spectral-rose text-xs font-mono font-bold flex items-center gap-1.5"
                   >
                     <Square className="w-3 h-3 fill-current" />
-                    <span>Detener</span>
+                    <span>{language === 'es' ? 'Detener' : 'Stop'}</span>
                   </button>
                 )}
                 <button
@@ -90,7 +92,7 @@ export const GameLogsModal: React.FC<GameLogsModalProps> = ({
             
             <div className="flex-1 overflow-y-auto p-5 font-mono text-[11px] space-y-1.5 bg-black/35 select-text">
               {logs.length === 0 ? (
-                <p className="text-ghost-400 italic">No hay líneas de registro todavía...</p>
+                <p className="text-ghost-400 italic">{t.logs_empty}</p>
               ) : (
                 logs.map((line, idx) => (
                   <div
