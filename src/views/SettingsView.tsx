@@ -21,6 +21,7 @@ import {
   THEME_PRESETS,
   ACCENT_SWATCHES,
   ThemePresetId,
+  UI_SCALE_OPTIONS,
 } from '../utils/theme';
 import { AccordionSection } from '../components/AccordionSection';
 import { JavaDownloadModal } from '../components/JavaDownloadModal';
@@ -708,6 +709,46 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <span>English</span>
                     {language === 'en' && <Check className="w-3.5 h-3.5" />}
                   </button>
+                </div>
+              </div>
+
+              {/* Responsive UI Scaling */}
+              <div className="pt-5 space-y-3">
+                <div>
+                  <h3 className="heading-display text-xl font-bold text-ghost-50">
+                    {t.settings_ui_scale}
+                  </h3>
+                  <p className="text-xs text-ghost-400">
+                    {t.settings_ui_scale_desc}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  {UI_SCALE_OPTIONS.map((opt) => {
+                    const active = (themeSettings.uiScale ?? 'auto') === opt.id;
+                    return (
+                      <button
+                        key={String(opt.id)}
+                        type="button"
+                        onClick={() =>
+                          onUpdateThemeSettings({ ...themeSettings, uiScale: opt.id })
+                        }
+                        className={`btn-tactile p-3 rounded-card text-left border transition-all flex flex-col justify-between ${
+                          active
+                            ? 'accent-ring border-transparent bg-white/[0.08]'
+                            : 'glass-control text-ghost-300 hover:text-ghost-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className="text-xs font-bold text-ghost-50">{opt.label}</span>
+                          {active && <Check className="w-3.5 h-3.5 accent-text" />}
+                        </div>
+                        <span className="text-[10px] text-ghost-400 font-mono">
+                          {opt.id === 'auto' ? t.settings_ui_scale_auto : opt.ratioText}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

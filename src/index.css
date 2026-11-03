@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --ui-scale: 1;
     --bg-void: #08060e;
     --bg-elevated: #110d1d;
     --glass-surface: rgba(20, 15, 34, 0.86);
@@ -20,6 +21,10 @@
     --select-text: #f8fafc;
     --accent: #a855f7;
     --accent-rgb: 168, 85, 247;
+  }
+
+  html {
+    font-size: calc(16px * var(--ui-scale, 1));
   }
 
   * {

@@ -1,4 +1,5 @@
 export type ThemePresetId = 'obsidian' | 'midnight' | 'graphite' | 'light';
+export type UiScaleSetting = 'auto' | 0.75 | 0.85 | 1 | 1.15;
 
 export interface ThemeSettings {
   preset: ThemePresetId;
@@ -6,6 +7,7 @@ export interface ThemeSettings {
   particlesEnabled: boolean;
   launchBurstEnabled: boolean;
   ambientArtworkEnabled: boolean;
+  uiScale?: UiScaleSetting;
 }
 
 export interface ThemePresetMeta {
@@ -130,7 +132,58 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   particlesEnabled: true,
   launchBurstEnabled: true,
   ambientArtworkEnabled: true,
+  uiScale: 'auto',
 };
+
+export const UI_SCALE_OPTIONS: { id: UiScaleSetting; label: string; ratioText: string }[] = [
+  { id: 'auto', label: 'Auto', ratioText: 'Dinámico' },
+  { id: 0.75, label: '75%', ratioText: 'Ultra compacto (720p)' },
+  { id: 0.85, label: '85%', ratioText: 'Compacto' },
+  { id: 1, label: '100%', ratioText: 'Estándar' },
+  { id: 1.15, label: '115%', ratioText: 'Ampliado' },
+];
+
+export function calculateAutoUiScale(): number {
+  if (typeof window === 'undefined') return 1;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  // Resolución base del launcher: 1100x720
+  const ratioW = w / 1100;
+  const ratioH = h / 720;
+  const minRatio = Math.min(ratioW, ratioH);
+
+  if (minRatio < 1) {
+    // Escala descendente suave acotada entre 75% y 100%
+    return Math.max(0.75, Math.round(minRatio * 100) / 100);
+  }
+  return 1;
+}
+
+export function resolveEffectiveUiScale(setting?: UiScaleSetting): number {
+  if (!setting || setting === 'auto') {
+    return calculateAutoUiScale();
+  }
+  return typeof setting === 'number' ? setting : 1;
+}
+
+let resizeListenerAttached = false;
+let currentScaleSetting: UiScaleSetting = 'auto';
+
+function ensureScaleResizeListener(): void {
+  if (typeof window === 'undefined' || resizeListenerAttached) return;
+  resizeListenerAttached = true;
+
+  let rAF = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(rAF);
+    rAF = requestAnimationFrame(() => {
+      if (currentScaleSetting === 'auto') {
+        const scale = calculateAutoUiScale();
+        document.documentElement.style.setProperty('--ui-scale', scale.toFixed(2));
+      }
+    });
+  });
+}
 
 function hexToRgbString(hex: string): string {
   const clean = hex.replace('#', '').trim();
@@ -177,4 +230,10 @@ export function applyThemeToDocument(settings: ThemeSettings): void {
   root.dataset.theme = settings.preset;
   root.style.colorScheme = settings.preset === 'light' ? 'light' : 'dark';
   root.classList.toggle('dark', settings.preset !== 'light');
+
+  // Aplicar escalado responsivo de UI
+  currentScaleSetting = settings.uiScale ?? 'auto';
+  ensureScaleResizeListener();
+  const effectiveScale = resolveEffectiveUiScale(currentScaleSetting);
+  root.style.setProperty('--ui-scale', effectiveScale.toFixed(2));
 }

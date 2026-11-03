@@ -142,6 +142,9 @@ export interface Translations {
   settings_tab_advanced: string;
   settings_language: string;
   settings_language_desc: string;
+  settings_ui_scale: string;
+  settings_ui_scale_desc: string;
+  settings_ui_scale_auto: string;
   settings_theme_preset: string;
   settings_accent_color: string;
   settings_particles: string;
@@ -300,6 +303,9 @@ const es: Translations = {
   settings_tab_advanced: 'Avanzado',
   settings_language: 'IDIOMA DEL LAUNCHER',
   settings_language_desc: 'Elige el idioma de la interfaz de usuario.',
+  settings_ui_scale: 'ESCALA DE LA INTERFAZ',
+  settings_ui_scale_desc: 'Reescala dinámicamente toda la interfaz para pantallas de menor resolución (720p, Steam Deck) o monitores grandes sin romper el diseño.',
+  settings_ui_scale_auto: 'Automático (Recomendado)',
   settings_theme_preset: 'TEMA VISUAL & CRISTAL',
   settings_accent_color: 'COLOR DE ACENTO',
   settings_particles: 'Efectos de Partículas Ambientales',
@@ -456,6 +462,9 @@ const en: Translations = {
   settings_tab_advanced: 'Advanced',
   settings_language: 'LAUNCHER LANGUAGE',
   settings_language_desc: 'Select user interface language.',
+  settings_ui_scale: 'UI SCALING',
+  settings_ui_scale_desc: 'Dynamically rescales the entire interface for lower resolution screens (720p, Steam Deck) or large monitors without breaking layout.',
+  settings_ui_scale_auto: 'Auto (Recommended)',
   settings_theme_preset: 'VISUAL THEME & GLASS',
   settings_accent_color: 'ACCENT COLOR',
   settings_particles: 'Ambient Particle Effects',
