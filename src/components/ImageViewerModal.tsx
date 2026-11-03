@@ -88,22 +88,19 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && images.length > 0 && currentImg && (
-        <motion.div
-          key="image-viewer-modal"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.16 }}
-          className="fixed inset-0 z-[70] flex flex-col items-center justify-between p-4 sm:p-6 select-none"
-        >
-          {/* Backdrop Scrim */}
-          <div
+        <div className="fixed inset-0 z-[70] flex flex-col items-center justify-between p-4 sm:p-6 select-none pointer-events-none">
+          {/* Backdrop Scrim - Standard modal-scrim without nested backdrop-filters */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/85 backdrop-blur-md cursor-pointer"
+            className="fixed inset-0 modal-scrim pointer-events-auto cursor-pointer"
           />
 
           {/* Top Controls Bar */}
-          <div className="relative z-10 w-full max-w-5xl flex items-center justify-between gap-3 shrink-0 py-1">
+          <div className="relative z-10 w-full max-w-5xl flex items-center justify-between gap-3 shrink-0 py-1 pointer-events-auto">
             <div className="flex items-center gap-3">
               <span className="text-xs font-mono px-3 py-1 rounded-full glass-control text-ghost-200 tabular-nums shadow-lg">
                 {currentIndex + 1} {t.viewer_counter} {images.length}
@@ -136,7 +133,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           </div>
 
           {/* Main Stage (Image & Chevrons) */}
-          <div className="relative z-10 w-full flex-1 flex items-center justify-center min-h-0 my-2">
+          <div className="relative z-10 w-full flex-1 flex items-center justify-center min-h-0 my-2 pointer-events-auto">
             {/* Prev Button */}
             {images.length > 1 && (
               <button
@@ -168,7 +165,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
               {/* Caption / Description if present */}
               {(currentImg.title || currentImg.description) && (
-                <div className="mt-2.5 px-4 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-center max-w-lg">
+                <div className="mt-2.5 px-4 py-1.5 rounded-full bg-black/80 border border-white/10 text-center max-w-lg shadow-lg">
                   {currentImg.title && (
                     <p className="text-xs font-semibold text-ghost-50 truncate">
                       {currentImg.title}
@@ -197,7 +194,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
           {/* Thumbnail Strip */}
           {images.length > 1 && (
-            <div className="relative z-10 w-full max-w-2xl flex items-center justify-center gap-2 overflow-x-auto py-2 shrink-0 px-2 scrollbar-none">
+            <div className="relative z-10 w-full max-w-2xl flex items-center justify-center gap-2 overflow-x-auto py-2 shrink-0 px-2 scrollbar-none pointer-events-auto">
               {images.map((img, idx) => (
                 <button
                   key={img.url + idx}
@@ -219,7 +216,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
               ))}
             </div>
           )}
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

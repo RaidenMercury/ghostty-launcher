@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   Download,
+  X,
 } from 'lucide-react';
 import { Instance, SystemJavaInfo } from '../types';
 import { api } from '../services/api';
@@ -34,6 +35,7 @@ interface SettingsViewProps {
   onShowToast: (type: 'success' | 'warning' | 'error' | 'info', title: string, message?: string) => void;
   themeSettings: ThemeSettings;
   onUpdateThemeSettings: (next: ThemeSettings) => void;
+  onClose?: () => void;
 }
 
 type SettingsSectionId = 'general' | 'java' | 'memory' | 'discord' | 'appearance' | 'advanced';
@@ -44,6 +46,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onShowToast,
   themeSettings,
   onUpdateThemeSettings,
+  onClose,
 }) => {
   const { t, language, setLanguage } = useI18n();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
@@ -162,6 +165,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     if (!activeInstance) {
       onShowToast('success', 'Preferencias Globales Guardadas', 'Tema, Discord RPC y ajustes de sistema actualizados.');
+      onClose?.();
       return;
     }
 
@@ -186,6 +190,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       await onUpdateInstance(updated);
       onShowToast('success', 'Ajustes Guardados', `Configuración sincronizada con "${activeInstance.name}".`);
+      onClose?.();
     } catch (e: any) {
       onShowToast('error', 'Error al guardar', e.toString());
     } finally {
@@ -217,14 +222,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleSaveAll}
-          disabled={isSaving}
-          className="btn-tactile flex items-center gap-2 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs shadow-md disabled:opacity-50"
-        >
-          <Save className="w-3.5 h-3.5" />
-          <span>{isSaving ? t.settings_saving : t.settings_save}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="btn-tactile flex items-center gap-2 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs shadow-md disabled:opacity-50"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{isSaving ? t.settings_saving : t.settings_save}</span>
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-tactile p-2 rounded-control glass-control text-ghost-300 hover:text-ghost-50"
+              title={t.common_close || 'Cerrar'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       

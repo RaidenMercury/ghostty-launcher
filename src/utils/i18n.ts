@@ -281,6 +281,7 @@ export interface Translations {
 
   // Common
   common_cancel: string;
+  common_close: string;
   common_save: string;
   common_saving: string;
   common_delete: string;
@@ -562,6 +563,7 @@ const es: Translations = {
   status_profiles_count: 'PERFILES',
 
   common_cancel: 'Cancelar',
+  common_close: 'Cerrar',
   common_save: 'Guardar Ajustes',
   common_saving: 'Guardando...',
   common_delete: 'Eliminar',
@@ -842,6 +844,7 @@ const en: Translations = {
   status_profiles_count: 'PROFILES',
 
   common_cancel: 'Cancel',
+  common_close: 'Close',
   common_save: 'Save Settings',
   common_saving: 'Saving...',
   common_delete: 'Delete',

@@ -1077,6 +1077,10 @@ export function App() {
                         onShowToast={addToast}
                         themeSettings={themeSettings}
                         onUpdateThemeSettings={handleUpdateThemeSettings}
+                        onClose={() => {
+                          setIsIslandExpanded(false);
+                          setCurrentTab('instances');
+                        }}
                       />
                     )}
                   </div>
