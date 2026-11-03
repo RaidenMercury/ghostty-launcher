@@ -213,6 +213,14 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   ambientArtworkEnabled = true,
 }) => {
   const { t } = useI18n();
+
+  const getGroupLabel = (name: string): string => {
+    const lower = name.toLowerCase();
+    if (lower === 'todos' || lower === 'all') return t.group_all;
+    if (lower === 'favoritos' || lower === 'favorites') return t.group_favorites;
+    if (lower === 'modpacks') return t.group_modpacks;
+    return name;
+  };
   const tabsRef = useRef<HTMLDivElement>(null);
   const [dragOverGroup] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -369,8 +377,10 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     return sortedInstances.filter((inst) => {
       const matchesSearch = inst.name.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
-      if (activeGroup === 'Todos') return true;
-      if (activeGroup === 'Favoritos') return Boolean(inst.favorite);
+      const isAll = activeGroup.toLowerCase() === 'todos' || activeGroup.toLowerCase() === 'all';
+      const isFav = activeGroup.toLowerCase() === 'favoritos' || activeGroup.toLowerCase() === 'favorites';
+      if (isAll) return true;
+      if (isFav) return Boolean(inst.favorite);
       const assigned =
         inst.group || instanceGroups[inst.id] || (inst.loader === 'vanilla' ? 'Vanilla' : 'Modpacks');
       return assigned.toLowerCase() === activeGroup.toLowerCase();
@@ -517,9 +527,11 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
         >
           {customGroups.map((g) => {
             const active = activeGroup === g;
+            const isAll = g.toLowerCase() === 'todos' || g.toLowerCase() === 'all';
+            const isFav = g.toLowerCase() === 'favoritos' || g.toLowerCase() === 'favorites';
             const count = sortedInstances.filter((inst) => {
-              if (g === 'Todos') return true;
-              if (g === 'Favoritos') return Boolean(inst.favorite);
+              if (isAll) return true;
+              if (isFav) return Boolean(inst.favorite);
               const assigned =
                 inst.group ||
                 instanceGroups[inst.id] ||
@@ -543,12 +555,12 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       ? 'accent-pill-tint font-bold'
                       : 'glass-control text-ghost-300 hover:text-ghost-50'
                   }`}
-                  title={`Filtrar por grupo "${g}" o arrastra una estancia aquí`}
+                  title={`Filtrar por grupo "${getGroupLabel(g)}" o arrastra una estancia aquí`}
                 >
-                  <span>{g}</span>
+                  <span>{getGroupLabel(g)}</span>
                   <span className="opacity-60 text-[9px] tabular-nums">({count})</span>
                 </button>
-                {g !== 'Todos' && g !== 'Favoritos' && (
+                {!isAll && !isFav && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -556,7 +568,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       handleDeleteGroup(g);
                     }}
                     className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-spectral-rose text-white text-[9px] items-center justify-center hidden group-hover/tab:flex font-bold"
-                    title={`Eliminar grupo "${g}"`}
+                    title={`Eliminar grupo "${getGroupLabel(g)}"`}
                   >
                     ×
                   </button>
@@ -828,8 +840,8 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
               <div className="divide-y glass-divider">
                 <AccordionSection
-                  title="Parámetros de Memoria y Máquina Virtual Java"
-                  subtitle="Configuración activa de ejecución para este perfil"
+                  title={t.inst_param_memory}
+                  subtitle={t.inst_param_memory_desc}
                   badge={`${((currentHero.memory_min_mb || 2048) / 1024).toFixed(1)}G – ${((currentHero.memory_max_mb || 4096) / 1024).toFixed(1)}G`}
                   icon={<Cpu className="w-4 h-4 accent-text" />}
                   defaultOpen={true}
@@ -837,16 +849,16 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 text-xs font-mono">
                     <div>
                       <span className="text-[10px] uppercase text-ghost-400 block mb-1">
-                        Ejecutable Java
+                        {t.inst_java_exec}
                       </span>
                       <span className="text-ghost-100 truncate block">
-                        {currentHero.java_path || 'Heredado del sistema (/usr/bin/java)'}
+                        {currentHero.java_path || t.inst_java_default}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] uppercase text-ghost-400 block mb-1">
-                        Argumentos JVM
+                        {t.inst_jvm_args}
                       </span>
                       <span className="text-ghost-200 truncate block">
                         {currentHero.jvm_args || '-XX:+UseG1GC'}
@@ -855,19 +867,19 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
                     <div>
                       <span className="text-[10px] uppercase text-ghost-400 block mb-1">
-                        Modo de Pantalla
+                        {t.inst_resolution}
                       </span>
                       <span className="text-ghost-100 tabular-nums block">
                         {currentHero.resolution?.width || 1920}×{currentHero.resolution?.height || 1080}{' '}
-                        {currentHero.resolution?.fullscreen ? '(Pantalla Completa)' : '(Ventana)'}
+                        {currentHero.resolution?.fullscreen ? `(${t.inst_fullscreen})` : `(${t.inst_windowed})`}
                       </span>
                     </div>
                   </div>
                 </AccordionSection>
 
                 <AccordionSection
-                  title="Hooks del Sistema & Variables de Entorno"
-                  subtitle="Comandos pre/post-lanzamiento y variables aisladas"
+                  title={t.inst_hooks}
+                  subtitle={t.settings_hooks_desc}
                   badge={`${Object.keys(currentHero.env_vars || {}).length} vars`}
                   icon={<Terminal className="w-4 h-4 text-ghost-300" />}
                   defaultOpen={false}
@@ -875,18 +887,18 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 text-xs font-mono">
                     <div>
                       <span className="text-[10px] uppercase text-ghost-400 block mb-1">
-                        Hook Pre-Lanzamiento
+                        {t.settings_hooks_pre}
                       </span>
                       <span className="text-ghost-200 block">
-                        {currentHero.pre_launch_command || 'Ninguno configurado'}
+                        {currentHero.pre_launch_command || t.inst_hooks_none}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase text-ghost-400 block mb-1">
-                        Hook Post-Salida
+                        {t.settings_hooks_post}
                       </span>
                       <span className="text-ghost-200 block">
-                        {currentHero.post_exit_command || 'Ninguno configurado'}
+                        {currentHero.post_exit_command || t.inst_hooks_none}
                       </span>
                     </div>
                   </div>

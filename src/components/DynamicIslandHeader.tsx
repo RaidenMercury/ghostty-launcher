@@ -105,7 +105,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
             </h1>
           </div>
           <p className="text-[10px] text-ghost-400 font-mono tracking-wide mt-0.5">
-            visionOS Glass • Modding Suite
+            {t.header_tagline}
           </p>
         </div>
       </div>
@@ -181,7 +181,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
                     </span>
                   </div>
                   <span className="text-[9px] font-mono text-ghost-300 tabular-nums block">
-                    En juego • {formatElapsed(liveActivity.elapsedSeconds)}
+                    {t.in_game} • {formatElapsed(liveActivity.elapsedSeconds)}
                   </span>
                 </div>
 
@@ -190,7 +190,7 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
                     type="button"
                     onClick={onOpenLogs}
                     className="btn-tactile h-6 px-2 rounded-full glass-control text-[10px] font-mono flex items-center gap-1 text-ghost-200 hover:text-ghost-50"
-                    title="Ver consola de logs en vivo"
+                    title={t.btn_console_logs}
                   >
                     <Terminal className="w-3 h-3" />
                     <span className="hidden lg:inline">Logs</span>
@@ -199,10 +199,10 @@ export const DynamicIslandHeader: React.FC<DynamicIslandHeaderProps> = ({
                     type="button"
                     onClick={onStopGame}
                     className="btn-tactile h-6 px-2 rounded-full bg-spectral-rose/20 hover:bg-spectral-rose/30 border border-spectral-rose/40 text-spectral-rose text-[10px] font-mono font-semibold flex items-center gap-1"
-                    title="Detener proceso de Minecraft"
+                    title={t.ctx_stop_instance}
                   >
                     <Square className="w-2.5 h-2.5 fill-current" />
-                    <span>Detener</span>
+                    <span>{t.nav_instances === 'Instances' ? 'Stop' : 'Detener'}</span>
                   </button>
                 </div>
               </>

@@ -271,17 +271,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="space-y-4">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    VENTANA Y RESOLUCIÓN DE JUEGO
+                    {t.settings_res_title}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Dimensiones iniciales de la ventana de Minecraft al lanzarse.
+                    {t.settings_res_desc}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 max-w-md">
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Ancho (px)
+                      {t.settings_res_width}
                     </label>
                     <input
                       type="number"
@@ -292,7 +292,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Alto (px)
+                      {t.settings_res_height}
                     </label>
                     <input
                       type="number"
@@ -303,7 +303,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </div>
 
-                
+                {/* Fullscreen switch */}
                 <label className="flex items-center gap-3 cursor-pointer pt-1">
                   <input
                     type="checkbox"
@@ -312,7 +312,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer"
                   />
                   <span className="text-xs text-ghost-100 font-medium">
-                    Iniciar Minecraft directamente en Pantalla Completa (<code>--fullscreen</code>)
+                    {t.settings_res_fullscreen}
                   </span>
                 </label>
               </div>
@@ -320,16 +320,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="pt-5 space-y-4">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    CONEXIÓN DIRECTA Y COMPORTAMIENTO
+                    {t.settings_connect_title}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Servidor automático al entrar y acción de la ventana del launcher.
+                    {t.settings_connect_desc}
                   </p>
                 </div>
 
                 <div className="max-w-md">
                   <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                    Servidor Auto-Conectar (Opcional)
+                    {t.settings_connect_server}
                   </label>
                   <input
                     type="text"
@@ -342,14 +342,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="max-w-md">
                   <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                    Al iniciar el juego:
+                    {t.settings_behavior_launch}
                   </label>
                   <div className="flex items-center gap-2">
                     {(
                       [
-                        { id: 'keep', label: 'Mantener Abierto' },
-                        { id: 'minimize', label: 'Minimizar Isla' },
-                        { id: 'close', label: 'Cerrar Launcher' },
+                        { id: 'keep', label: t.settings_behavior_keep },
+                        { id: 'minimize', label: t.settings_behavior_minimize },
+                        { id: 'close', label: t.settings_behavior_close },
                       ] as const
                     ).map((opt) => (
                       <button
@@ -395,10 +395,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="heading-display text-xl font-bold text-ghost-50">
-                      SELECCIÓN DE EJECUTABLE JAVA
+                      {t.settings_java_title}
                     </h3>
                     <p className="text-xs text-ghost-400">
-                      Elige una instalación detectada en tu equipo o especifica una ruta manual.
+                      {t.settings_java_desc}
                     </p>
                   </div>
 
@@ -408,14 +408,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="btn-tactile px-3 py-1.5 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isScanningJava ? 'animate-spin' : ''}`} />
-                    <span>Detectar JVMs</span>
+                    <span>{t.settings_java_scan_btn}</span>
                   </button>
                 </div>
 
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Instalaciones Detectadas ({detectedRuntimes.length})
+                      {t.settings_java_detected_count} ({detectedRuntimes.length})
                     </label>
                     <GlassSelect
                       value={selectedJavaPath}
@@ -425,7 +425,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       options={[
                         {
                           value: '',
-                          label: 'Java predeterminado del sistema (/usr/bin/java)',
+                          label: t.settings_java_system_default,
                           badge: 'Auto',
                         },
                         ...detectedRuntimes.map((rt) => ({
@@ -440,7 +440,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Ruta del Binario Java
+                      {t.settings_java_binary_path}
                     </label>
                     <input
                       type="text"
@@ -457,10 +457,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="heading-display text-xl font-bold text-ghost-50">
-                      DESCARGAR RUNTIME DE JAVA
+                      {t.settings_java_download_title}
                     </h3>
                     <p className="text-xs text-ghost-400">
-                      Runtimes oficiales de Mojang, Adoptium Temurin, Azul Zulu e IBM Semeru OpenJ9.
+                      {t.settings_java_download_desc}
                     </p>
                   </div>
                   <button
@@ -469,7 +469,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="btn-tactile px-5 py-2.5 rounded-xl accent-bg text-white text-xs font-semibold flex items-center gap-2 shadow-sm"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Abrir Catálogo de Java...</span>
+                    <span>{t.settings_java_catalog_btn}</span>
                   </button>
                 </div>
               </div>
@@ -482,10 +482,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="heading-display text-xl font-bold text-ghost-50">
-                      ASIGNACIÓN DE MEMORIA RAM
+                      {t.settings_mem_title}
                     </h3>
                     <p className="text-xs text-ghost-400">
-                      Memoria reservada para el heap de Java (<code>-Xms</code> y <code>-Xmx</code>).
+                      {t.settings_mem_desc}
                     </p>
                   </div>
                   <span className="text-sm font-mono font-bold accent-text tabular-nums">
@@ -493,7 +493,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </span>
                 </div>
 
-                
                 <div className="w-full h-2.5 rounded-full bg-black/35 overflow-hidden border border-white/10">
                   <div
                     style={{ width: `${Math.min(100, (maxRamMb / 32768) * 100)}%` }}
@@ -504,7 +503,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-1">
                   <div>
                     <div className="flex justify-between text-xs font-mono mb-1.5 tabular-nums">
-                      <span className="text-ghost-300">RAM Mínima (-Xms)</span>
+                      <span className="text-ghost-300">{t.settings_mem_min}</span>
                       <span className="text-ghost-50 font-semibold">{minRamMb} MB</span>
                     </div>
                     <input
@@ -520,7 +519,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                   <div>
                     <div className="flex justify-between text-xs font-mono mb-1.5 tabular-nums">
-                      <span className="text-ghost-300">RAM Máxima (-Xmx)</span>
+                      <span className="text-ghost-300">{t.settings_mem_max}</span>
                       <span className="text-ghost-50 font-semibold">{maxRamMb} MB</span>
                     </div>
                     <input
@@ -539,10 +538,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="pt-5 space-y-3">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    PERFILES DE RECOLECTOR DE BASURA (GC) & FLAGS JVM
+                    {t.settings_gc_title}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Optimiza los tirones de FPS según el tamaño de tu modpack.
+                    {t.settings_gc_desc}
                   </p>
                 </div>
 
@@ -592,10 +591,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    DISCORD RICH PRESENCE PERSONALIZADO
+                    {t.settings_discord_title}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Muestra tu actividad en tiempo real con el icono oficial de GhosttyLauncher.
+                    {t.settings_discord_desc}
                   </p>
                 </div>
 
@@ -624,7 +623,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                    Línea Principal (Detalles)
+                    {t.settings_discord_line1}
                   </label>
                   <input
                     type="text"
@@ -635,7 +634,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                    Línea Secundaria (Estado)
+                    {t.settings_discord_line2}
                   </label>
                   <input
                     type="text"
@@ -646,7 +645,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              
               <div className="p-4 rounded-card glass-card max-w-md flex items-center gap-4">
                 <div className="relative shrink-0">
                   <div className="w-16 h-16 rounded-control bg-black/40 p-2 flex items-center justify-center border border-white/10">
@@ -657,12 +655,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="min-w-0 flex-1">
                   <div className="text-[10px] uppercase font-mono font-bold text-ghost-400 tracking-wider">
-                    Jugando a un juego
+                    {t.settings_discord_preview_title}
                   </div>
                   <div className="text-sm font-bold text-ghost-50 truncate">{discordDetails}</div>
                   <div className="text-xs text-ghost-200 truncate">{discordState}</div>
                   <div className="text-[11px] text-spectral-mint font-mono mt-0.5 tabular-nums">
-                    00:42:18 transcurrido
+                    00:42:18
                   </div>
                 </div>
               </div>
@@ -755,10 +753,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="pt-5 space-y-3">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    TEMAS DE VIDRIO ESMERILADO (VISIONOS)
+                    {t.settings_theme_preset}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Cambia la atmósfera base de las capas translúcidas del launcher.
+                    {t.settings_theme_preset_desc}
                   </p>
                 </div>
 
@@ -798,14 +796,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              
+              {/* Unique accent color */}
               <div className="pt-5 space-y-3">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    COLOR DE ACENTO ÚNICO
+                    {t.settings_accent_color}
                   </h3>
                   <p className="text-xs text-ghost-400">
-                    Se aplica con moderación al botón Jugar, selección activa, foco e indicadores.
+                    {t.settings_accent_color_desc}
                   </p>
                 </div>
 
@@ -835,7 +833,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     );
                   })}
 
-                  
+                  {/* Custom color picker */}
                   <label className="btn-tactile px-3 py-1.5 rounded-full glass-control text-xs font-mono flex items-center gap-2 cursor-pointer">
                     <input
                       type="color"
@@ -850,18 +848,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              
+              {/* Kinetic particles */}
               <div className="pt-5 space-y-3">
                 <div>
                   <h3 className="heading-display text-xl font-bold text-ghost-50">
-                    EFECTOS CINÉTICOS Y PARTÍCULAS
+                    {t.settings_particles}
                   </h3>
                 </div>
 
                 <div className="space-y-2.5">
                   <label className="flex items-center justify-between py-1.5 cursor-pointer">
                     <span className="text-xs text-ghost-100">
-                      Partículas flotantes de fondo
+                      {t.settings_particles_floating}
                     </span>
                     <input
                       type="checkbox"
@@ -878,7 +876,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                   <label className="flex items-center justify-between py-1.5 cursor-pointer">
                     <span className="text-xs text-ghost-100">
-                      Explosión de partículas al pulsar Jugar o Instalar
+                      {t.settings_particles_burst}
                     </span>
                     <input
                       type="checkbox"
@@ -895,7 +893,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                   <label className="flex items-center justify-between py-1.5 cursor-pointer">
                     <span className="text-xs text-ghost-100">
-                      Arte del modpack difuminado y animado en el fondo
+                      {t.settings_particles_artwork}
                     </span>
                     <input
                       type="checkbox"
@@ -914,18 +912,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
 
-          
+          {/* Tab Avanzado */}
           {activeSection === 'advanced' && (
             <div className="divide-y glass-divider">
               <AccordionSection
-                title="Comandos Pre-Lanzamiento y Post-Salida (Hooks)"
-                subtitle="Ejecuta scripts personalizados antes de iniciar o al cerrar Minecraft"
+                title={t.settings_hooks_title}
+                subtitle={t.settings_hooks_desc}
                 defaultOpen={true}
               >
                 <div className="space-y-3 pt-1">
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Comando Pre-Lanzamiento
+                      {t.settings_hooks_pre}
                     </label>
                     <input
                       type="text"
@@ -937,7 +935,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                      Comando Post-Salida
+                      {t.settings_hooks_post}
                     </label>
                     <input
                       type="text"
@@ -951,8 +949,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </AccordionSection>
 
               <AccordionSection
-                title="Variables de Entorno"
-                subtitle="Variables inyectadas al proceso de Java (ej. MESA_GL_VERSION_OVERRIDE)"
+                title={t.settings_env_title}
+                subtitle={t.settings_env_desc}
                 badge={`${Object.keys(envVars).length}`}
                 defaultOpen={true}
               >

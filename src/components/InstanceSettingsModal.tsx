@@ -17,6 +17,7 @@ import { Instance } from '../types';
 import { api } from '../services/api';
 import { InstanceIcon, hasCustomPackIcon } from './InstanceIcon';
 import { JavaDownloadModal } from './JavaDownloadModal';
+import { useI18n } from '../utils/i18n';
 
 export const MINECRAFT_PRESET_ICONS = [
   { id: 'minecraft', label: 'Bloque de Hierba (3D)' },
@@ -79,6 +80,7 @@ export function InstanceSettingsModal({
   onShowToast,
   initialTab,
 }: InstanceSettingsModalProps) {
+  const { t } = useI18n();
   if (!instance) return null;
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -252,7 +254,7 @@ export function InstanceSettingsModal({
                     className="btn-tactile flex items-center gap-1.5 px-3 py-1.5 glass-control text-xs font-medium text-ghost-200"
                   >
                     <FolderOpen className="w-3.5 h-3.5 accent-text" />
-                    <span>Directorio</span>
+                    <span>{t.inst_settings_folder_btn}</span>
                   </button>
 
                   <button
@@ -265,14 +267,14 @@ export function InstanceSettingsModal({
               </div>
             </div>
 
-            
+            {/* Sub-Tabs de configuración */}
             <div className="flex px-6 border-b glass-divider gap-2 pt-2 text-xs font-mono">
               {(
                 [
-                  { id: 'general', label: 'General & Hooks', icon: Sliders },
-                  { id: 'iconos', label: 'Icono', icon: Image },
-                  { id: 'java', label: 'Java & Memoria', icon: Cpu },
-                  { id: 'display', label: 'Pantalla & Red', icon: Monitor },
+                  { id: 'general', label: t.inst_settings_tab_general, icon: Sliders },
+                  { id: 'iconos', label: t.inst_settings_tab_icons, icon: Image },
+                  { id: 'java', label: t.inst_settings_tab_java, icon: Cpu },
+                  { id: 'display', label: t.inst_settings_tab_display, icon: Monitor },
                 ] as const
               ).map((tab) => {
                 const Icon = tab.icon;
@@ -294,13 +296,13 @@ export function InstanceSettingsModal({
               })}
             </div>
 
-            
+            {/* Contenido scrolleable */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {activeTab === 'general' && (
                 <div className="space-y-5">
                   <div>
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                      Nombre de la Estancia
+                      {t.inst_settings_name_label}
                     </label>
                     <input
                       type="text"
@@ -313,7 +315,7 @@ export function InstanceSettingsModal({
                   <div className="space-y-3.5 pt-4 border-t glass-divider">
                     <div>
                       <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                        Comando Pre-Lanzamiento
+                        {t.inst_settings_pre_launch}
                       </label>
                       <input
                         type="text"
@@ -326,7 +328,7 @@ export function InstanceSettingsModal({
 
                     <div>
                       <label className="block text-[11px] font-mono text-ghost-300 mb-1">
-                        Comando Post-Salida
+                        {t.inst_settings_post_exit}
                       </label>
                       <input
                         type="text"
@@ -344,10 +346,10 @@ export function InstanceSettingsModal({
                 <div className="space-y-4">
                   <div>
                     <h3 className="heading-display text-xl font-bold text-ghost-50">
-                      ICONO DE LA ESTANCIA
+                      {t.inst_settings_icons_title}
                     </h3>
                     <p className="text-xs text-ghost-400">
-                      Elige un objeto o bloque oficial de Minecraft o sube un icono personalizado (.png).
+                      {t.inst_settings_icons_desc}
                     </p>
                   </div>
 
@@ -358,10 +360,10 @@ export function InstanceSettingsModal({
                           ? 'accent-pill-tint border-[var(--accent)] ring-2 ring-[var(--accent)]/50 scale-105'
                           : 'glass-control border-white/10 hover:border-white/20'
                       }`}
-                      title="Subir icono PNG personalizado"
+                      title={t.inst_settings_upload_png}
                     >
                       <ImagePlus className="w-5 h-5 text-ghost-300 mb-1" />
-                      <span className="text-[9px] font-mono text-ghost-400">Subir PNG</span>
+                      <span className="text-[9px] font-mono text-ghost-400">{t.inst_settings_upload_png}</span>
                       <input
                         type="file"
                         accept="image/png"
@@ -401,7 +403,7 @@ export function InstanceSettingsModal({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[11px] font-mono text-ghost-300">
-                        Ruta Ejecutable de Java
+                        {t.inst_settings_java_path}
                       </label>
                       <button
                         type="button"
@@ -409,13 +411,13 @@ export function InstanceSettingsModal({
                         className="btn-tactile text-[11px] font-mono accent-text hover:underline flex items-center gap-1"
                       >
                         <Download className="w-3 h-3" />
-                        <span>Descargar Runtimes...</span>
+                        <span>{t.inst_settings_java_download}</span>
                       </button>
                     </div>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Dejar vacío para heredar el Java global"
+                        placeholder={t.inst_settings_java_placeholder}
                         value={javaPath}
                         onChange={(e) => setJavaPath(e.target.value)}
                         className="flex-1 px-3 py-2 glass-control text-xs font-mono"
@@ -426,7 +428,7 @@ export function InstanceSettingsModal({
                         className="btn-tactile px-3 py-2 glass-control text-xs font-mono flex items-center gap-1.5 text-ghost-200 hover:text-ghost-50 shrink-0"
                       >
                         <Download className="w-3.5 h-3.5 accent-text" />
-                        <span>Descargar</span>
+                        <span>{t.disc_install}</span>
                       </button>
                     </div>
                   </div>
@@ -434,7 +436,7 @@ export function InstanceSettingsModal({
                   <div className="grid grid-cols-2 gap-4 pt-3 border-t glass-divider">
                     <div>
                       <div className="flex justify-between text-xs mb-1 tabular-nums">
-                        <span className="text-ghost-300">RAM Mínima (-Xms)</span>
+                        <span className="text-ghost-300">{t.inst_settings_ram_min}</span>
                         <span className="font-mono font-bold text-ghost-50">{ramMinMb} MB</span>
                       </div>
                       <input
@@ -450,7 +452,7 @@ export function InstanceSettingsModal({
 
                     <div>
                       <div className="flex justify-between text-xs mb-1 tabular-nums">
-                        <span className="text-ghost-300">RAM Máxima (-Xmx)</span>
+                        <span className="text-ghost-300">{t.inst_settings_ram_max}</span>
                         <span className="font-mono font-bold accent-text">{ramMaxMb} MB</span>
                       </div>
                       <input
@@ -467,7 +469,7 @@ export function InstanceSettingsModal({
 
                   <div className="pt-3 border-t glass-divider">
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                      Argumentos JVM
+                      {t.inst_settings_jvm_args}
                     </label>
                     <textarea
                       rows={2}
@@ -479,19 +481,19 @@ export function InstanceSettingsModal({
 
                   <div className="space-y-3 pt-3 border-t glass-divider">
                     <label className="block text-[11px] font-mono text-ghost-300">
-                      Variables de Entorno
+                      {t.inst_settings_env_vars}
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="CLAVE"
+                        placeholder={t.inst_settings_env_key}
                         value={newEnvKey}
                         onChange={(e) => setNewEnvKey(e.target.value)}
                         className="flex-1 px-3 py-1.5 glass-control text-xs font-mono"
                       />
                       <input
                         type="text"
-                        placeholder="VALOR"
+                        placeholder={t.inst_settings_env_val}
                         value={newEnvVal}
                         onChange={(e) => setNewEnvVal(e.target.value)}
                         className="flex-1 px-3 py-1.5 glass-control text-xs font-mono"
@@ -535,7 +537,7 @@ export function InstanceSettingsModal({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                        Ancho de Ventana (px)
+                        {t.inst_settings_res_width}
                       </label>
                       <input
                         type="number"
@@ -546,7 +548,7 @@ export function InstanceSettingsModal({
                     </div>
                     <div>
                       <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                        Alto de Ventana (px)
+                        {t.inst_settings_res_height}
                       </label>
                       <input
                         type="number"
@@ -565,17 +567,17 @@ export function InstanceSettingsModal({
                       className="w-4 h-4 accent-[var(--accent)] cursor-pointer"
                     />
                     <span className="text-xs text-ghost-100 font-medium">
-                      Iniciar siempre en modo Pantalla Completa (--fullscreen)
+                      {t.inst_settings_fullscreen_opt}
                     </span>
                   </label>
 
                   <div className="pt-4 border-t glass-divider">
                     <label className="block text-[11px] font-mono text-ghost-300 mb-1.5">
-                      Auto-Conectar a Servidor al Iniciar (Opcional)
+                      {t.inst_settings_autoconnect}
                     </label>
                     <input
                       type="text"
-                      placeholder="ej. play.hypixel.net:25565"
+                      placeholder={t.inst_settings_autoconnect_hint}
                       value={serverConnect}
                       onChange={(e) => setServerConnect(e.target.value)}
                       className="w-full px-3 py-2 glass-control text-xs font-mono"
@@ -585,14 +587,14 @@ export function InstanceSettingsModal({
               )}
             </div>
 
-            
+            {/* Footer */}
             <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t glass-divider">
               <button
                 type="button"
                 onClick={onClose}
                 className="btn-tactile px-4 py-2 glass-control text-ghost-300 text-xs font-medium"
               >
-                Cancelar
+                {t.common_cancel}
               </button>
               <button
                 type="button"
@@ -601,7 +603,7 @@ export function InstanceSettingsModal({
                 className="btn-tactile flex items-center gap-2 px-5 py-2 rounded-control accent-bg text-white font-semibold text-xs disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'Guardando...' : 'Guardar Ajustes'}</span>
+                <span>{isSaving ? t.inst_settings_saving : t.inst_settings_save}</span>
               </button>
             </div>
           </motion.div>

@@ -31,7 +31,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
   onGoDiscover,
   onImportFiles,
 }) => {
-  const { language } = useI18n();
+  const { t, language } = useI18n();
   const [mods, setMods] = useState<ModFileInfo[]>([]);
   const iconRequest = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -42,19 +42,19 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
 
   const kindMeta = {
     mods: {
-      label: 'Mods',
+      label: t.mods_tab_mods,
       plural: 'mods',
-      hint: language === 'es' ? 'Gestor de mods .jar' : '.jar mod manager',
+      hint: t.mods_hint_mods,
     },
     resourcepacks: {
-      label: language === 'es' ? 'Texturas' : 'Resource Packs',
+      label: t.mods_tab_textures,
       plural: language === 'es' ? 'paquetes de recursos' : 'resource packs',
-      hint: language === 'es' ? 'Paquetes de texturas .zip' : '.zip texture packs',
+      hint: t.mods_hint_textures,
     },
     shaderpacks: {
-      label: 'Shaders',
+      label: t.mods_tab_shaders,
       plural: 'shaders',
-      hint: language === 'es' ? 'Paquetes de shaders .zip' : '.zip shader packs',
+      hint: t.mods_hint_shaders,
     },
   };
 
@@ -204,7 +204,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
         <GhosttyMascot
           mood="idle"
           size="lg"
-          caption="Selecciona una estancia para gestionar sus mods."
+          caption={t.mods_select_instance_prompt}
         />
       </div>
     );
@@ -237,22 +237,22 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
             {kind === 'mods' ? (
               <>
                 <div>
-                  <span className="text-ghost-400 block text-[10px]">ACTIVOS</span>
+                  <span className="text-ghost-400 block text-[10px]">{t.mods_count_active}</span>
                   <span className="text-sm font-bold text-spectral-mint">{enabledCount}</span>
                 </div>
                 <div className="border-l glass-divider pl-4">
-                  <span className="text-ghost-400 block text-[10px]">INACTIVOS</span>
+                  <span className="text-ghost-400 block text-[10px]">{t.mods_count_inactive}</span>
                   <span className="text-sm font-bold text-ghost-200">{disabledCount}</span>
                 </div>
               </>
             ) : (
               <div>
-                <span className="text-ghost-400 block text-[10px]">ARCHIVOS</span>
+                <span className="text-ghost-400 block text-[10px]">{t.mods_count_files}</span>
                 <span className="text-sm font-bold text-ghost-200">{mods.length}</span>
               </div>
             )}
             <div className="border-l glass-divider pl-4">
-              <span className="text-ghost-400 block text-[10px]">{language === 'es' ? 'PESO TOTAL' : 'TOTAL SIZE'}</span>
+              <span className="text-ghost-400 block text-[10px]">{t.mods_total_size}</span>
               <span className="text-sm font-bold text-ghost-100">
                 {(totalSizeBytes / (1024 * 1024)).toFixed(1)} MB
               </span>
@@ -284,7 +284,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-ghost-400" />
               <input
                 type="text"
-                placeholder={`${language === 'es' ? 'Filtrar' : 'Filter'} ${kindMeta[kind].plural}...`}
+                placeholder={t.mods_search_placeholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 glass-control text-xs placeholder:text-ghost-400"
@@ -304,10 +304,10 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                   }`}
                 >
                   {st === 'all'
-                    ? (language === 'es' ? 'Todos' : 'All')
+                    ? t.mods_filter_all
                     : st === 'enabled'
-                    ? (language === 'es' ? 'Activos' : 'Enabled')
-                    : (language === 'es' ? 'Inactivos' : 'Disabled')}
+                    ? t.mods_filter_enabled
+                    : t.mods_filter_disabled}
                 </button>
               ))}
             </div>
@@ -335,7 +335,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               }
             >
               <Upload className="w-3.5 h-3.5 text-ghost-300" />
-              <span>{language === 'es' ? 'Importar' : 'Import'}</span>
+              <span>{t.mods_import_btn}</span>
             </button>
 
             {onGoDiscover && (
@@ -344,7 +344,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                 className="btn-tactile flex items-center gap-1.5 px-3.5 py-1.5 rounded-control accent-bg text-white font-semibold text-xs"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{language === 'es' ? 'Añadir recursos' : 'Add resources'}</span>
+                <span>{t.mods_add_resources_btn}</span>
               </button>
             )}
 
@@ -354,7 +354,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
               title={language === 'es' ? 'Abrir carpeta de contenido' : 'Open content folder'}
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              <span>{language === 'es' ? 'Carpeta' : 'Folder'}</span>
+              <span>{t.mods_folder_btn}</span>
             </button>
 
             <button
@@ -378,11 +378,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
             <GhosttyMascot
               mood="idle"
               size="md"
-              caption={
-                language === 'es'
-                  ? `No hay ${kindMeta[kind].plural} todavía. Arrastra archivos (.jar / .zip) aquí o descárgalos desde Descubrir.`
-                  : `No ${kindMeta[kind].plural} yet. Drag & drop (.jar / .zip) files here or discover more.`
-              }
+              caption={t.mods_empty_desc}
             />
           </div>
         ) : (
@@ -410,7 +406,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                           ? 'accent-bg border-transparent'
                           : 'bg-black/40 border-white/15'
                       }`}
-                      title={mod.enabled ? 'Desactivar mod' : 'Activar mod'}
+                      title={mod.enabled ? t.mods_toggle_off : t.mods_toggle_on}
                     >
                       <span
                         className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-100 mt-0.5 ${
@@ -453,7 +449,7 @@ export const ModsManagerView: React.FC<ModsManagerViewProps> = ({
                     <button
                       onClick={() => handleDelete(mod.filename)}
                       className="btn-tactile p-1.5 rounded-control text-ghost-400 hover:text-spectral-rose hover:bg-spectral-rose/10 opacity-70 group-hover:opacity-100 transition-opacity"
-                      title="Eliminar mod permanentemente"
+                      title={t.mods_delete_title}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
