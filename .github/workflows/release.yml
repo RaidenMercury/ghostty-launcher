@@ -52,15 +52,26 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Ghostty Launcher ${{ github.ref_name }}'
           releaseBody: |
-            Ghostty Launcher v0.1.0 — Lanzador independiente y suite de modding con diseño VisionOS Glass para Minecraft.
-            
-            ### Paquetes disponibles en esta versión:
-            - **Linux:** `.AppImage`, `.deb` (Debian/Ubuntu) y `.rpm` (Fedora/RHEL/openSUSE)
-            - **Windows:** Instalador `.exe` (NSIS)
-            - **macOS:** Imagen de disco `.dmg`
-            
+            ## Ghostty Launcher ${{ github.ref_name }} — Novedades y Mejoras
+
+            Esta versión incorpora importantes mejoras de rendimiento, nuevo visor de imágenes in-launcher, drag & drop para mods locales, soporte de escalado dinámico de interfaz y paridad total de traducción.
+
+            ### 🚀 Nuevas Características y Mejoras:
+            - **📸 Visor de Fotos In-Launcher (Lightbox):** Visualización integrada para capturas de pantalla de mods, modpacks, shaders y resource packs con efecto de desenfoque esmerilado (`.island-backdrop`), carrusel inferior de miniaturas auto-centrado geométricamente y cierre rápido al hacer clic en cualquier espacio vacío o con tecla `Escape`.
+            - **📦 Drag-and-Drop y Contenido Local:** Posibilidad de arrastrar y soltar archivos `.jar` (mods), `.zip` (resourcepacks / shaders) directamente sobre la pestaña "Contenido" para instalarlos al instante en la instancia activa.
+            - **🖥️ Escalado Dinámico de Interfaz:** Ajuste responsivo de la interfaz (`--ui-scale`: Auto, 75%, 85%, 100%, 115%) ideal para pantallas compactas (720p, Steam Deck) o monitores de alta resolución.
+            - **🌐 Paridad 100% de Idioma:** Traducción exhaustiva en Español e Inglés en todas las pantallas, modales y ajustes.
+            - **⚙️ Ajustes Mejorados:** Cierre automático al pulsar "Guardar Cambios" y nuevo botón de cierre rápido `X`.
+            - **⚡ Rendimiento y Fluidez:** Optimización de animaciones y reordenamiento de instancias por arrastre sin lag en Windows y Linux.
+            - **🔐 Autenticación Microsoft:** Client ID oficial de Ghostty Launcher configurado en Microsoft Entra ID.
+
+            ### 📦 Paquetes disponibles en este Release:
+            - **Linux:** `.AppImage` (Universal portable), `.deb` (Debian / Ubuntu / Mint) y `.rpm` (Fedora / RHEL / openSUSE).
+            - **Windows:** Instalador `.exe` (NSIS) de 64 bits.
+            - **macOS:** Imagen de disco `.dmg` (Universal / Apple Silicon & Intel).
+
             ---
-            
+
             > **Nota sobre la autenticación de Microsoft / Xbox Live:**  
             > De forma temporal, el inicio de sesión OAuth utiliza el identificador de cliente comunitario verificado por Mojang (`c36a9fb6`) mientras la aplicación oficial registrada en Azure para **Ghostty Launcher** (`1b857661-eaf1-4c25-a00f-be80204fb059`) completa las revisiones de Mojang Studios en [aka.ms/AppRegInfo](https://aka.ms/AppRegInfo). En cuanto sea aprobada en la lista blanca de la API, se activará de forma nativa sin requerir intervención del usuario.
           releaseDraft: false
