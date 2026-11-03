@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, Reorder } from 'framer-motion';
+import { motion, Reorder, useDragControls } from 'framer-motion';
 import {
   Play,
   Sliders,
@@ -55,6 +55,142 @@ function formatPlaytime(secs: number = 0): string {
   const hours = (secs / 3600).toFixed(1);
   return `${hours} h jugadas`;
 }
+
+interface InstanceReorderItemProps {
+  inst: Instance;
+  isSelected: boolean;
+  isFavorite: boolean;
+  isDragging: boolean;
+  onSelectInstance: (inst: Instance) => void;
+  onToggleFavorite?: (inst: Instance) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}
+
+const InstanceReorderItem: React.FC<InstanceReorderItemProps> = ({
+  inst,
+  isSelected,
+  isFavorite,
+  isDragging,
+  onSelectInstance,
+  onToggleFavorite,
+  onDragStart,
+  onDragEnd,
+}) => {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      key={inst.id}
+      value={inst}
+      data-instance-id={inst.id}
+      dragListener={false}
+      dragControls={dragControls}
+      dragMomentum={false}
+      dragElastic={0}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.6 }}
+      style={{ willChange: 'transform' }}
+      className={`relative select-none ${isDragging ? 'z-50' : 'z-0'}`}
+    >
+      <SpotlightCard
+        data-instance-id={inst.id}
+        disableScale={isDragging}
+        onClick={() => {
+          if (isDragging) return;
+          onSelectInstance(inst);
+        }}
+        isSelected={isSelected && !isDragging}
+        className={`glass-card instance-card p-3.5 cursor-pointer group relative ${
+          isDragging
+            ? 'shadow-2xl brightness-110 border-white/30 backdrop-blur-none bg-[#161622]'
+            : isSelected
+            ? 'ring-2 ring-[var(--accent)]/70 bg-[var(--glass-hover)] shadow-md transition-colors duration-150'
+            : 'hover:border-white/20 transition-colors duration-150'
+        }`}
+      >
+        <div className="flex items-center gap-3 relative z-10">
+          <div
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              e.stopPropagation();
+              dragControls.start(e);
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Arrastra para reordenar"
+            className="cursor-grab active:cursor-grabbing text-ghost-500 hover:text-ghost-200 transition-colors shrink-0 -ml-1 p-1 touch-none"
+            title="Arrastra para reordenar"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+
+          <div className="w-11 h-11 rounded-control glass-control p-1.5 flex items-center justify-center shrink-0">
+            <InstanceIcon icon={inst.icon} alt={inst.name} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3
+                className={`text-sm font-semibold truncate transition-colors ${
+                  isSelected ? 'text-ghost-50' : 'text-ghost-200 group-hover:text-ghost-50'
+                }`}
+              >
+                {inst.name}
+              </h3>
+              {isSelected && (
+                <span className="w-2 h-2 rounded-full accent-bg shrink-0" />
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-mono text-ghost-400 tabular-nums truncate">
+                <span className="uppercase text-ghost-200 font-medium">
+                  {inst.loader}
+                </span>
+                <span>•</span>
+                <span>{inst.mc_version}</span>
+                <span>•</span>
+                <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {inst.group && (
+                  <span
+                    className="p-0.5 text-ghost-400"
+                    title={`Grupo: ${inst.group}`}
+                  >
+                    <Folder className="w-3.5 h-3.5" />
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite?.(inst);
+                  }}
+                  className={`p-0.5 transition-colors ${
+                    isFavorite
+                      ? 'text-spectral-rose'
+                      : 'text-spectral-rose/40 hover:text-spectral-rose'
+                  }`}
+                  title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                >
+                  <Star
+                    className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SpotlightCard>
+    </Reorder.Item>
+  );
+};
 
 export const InstancesView: React.FC<InstancesViewProps> = ({
   instances,
@@ -146,33 +282,70 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
     }
   });
 
+  const isDirtyRef = useRef(false);
+  const persistTimerRef = useRef<number | null>(null);
+  const latestOrderRef = useRef<string[] | null>(null);
+
+  const flushPersist = () => {
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    if (isDirtyRef.current && latestOrderRef.current) {
+      try {
+        localStorage.setItem('ghostty_instances_order', JSON.stringify(latestOrderRef.current));
+      } catch {}
+      isDirtyRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      flushPersist();
+    };
+  }, []);
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    window.setTimeout(flushPersist, 0);
+  };
+
   const handleReorder = (newFilteredOrder: Instance[]) => {
     const newFilteredIds = newFilteredOrder.map((i) => i.id);
     setOrderedIds((prev) => {
+      let next: string[];
       // Si estamos en la vista global sin búsqueda, el orden es directo
       if (activeGroup === 'Todos' && !searchQuery.trim()) {
         const remaining = prev.filter((id) => !newFilteredIds.includes(id));
-        const next = [...newFilteredIds, ...remaining];
-        localStorage.setItem('ghostty_instances_order', JSON.stringify(next));
-        return next;
+        next = [...newFilteredIds, ...remaining];
+      } else {
+        // Si estamos en un grupo (Favoritos, Modpacks, etc.) o con búsqueda,
+        // preservamos las posiciones relativas exactas sin mover las instancias del grupo al inicio:
+        const fullOrder = prev.length > 0 ? [...prev] : instances.map((i) => i.id);
+        const indices: number[] = [];
+        for (const id of newFilteredIds) {
+          const idx = fullOrder.indexOf(id);
+          if (idx !== -1) indices.push(idx);
+        }
+        indices.sort((a, b) => a - b);
+
+        next = [...fullOrder];
+        for (let i = 0; i < indices.length && i < newFilteredIds.length; i++) {
+          next[indices[i]] = newFilteredIds[i];
+        }
       }
 
-      // Si estamos en un grupo (Favoritos, Modpacks, etc.) o con búsqueda,
-      // preservamos las posiciones relativas exactas sin mover las instancias del grupo al inicio:
-      const fullOrder = prev.length > 0 ? [...prev] : instances.map((i) => i.id);
-      const indices: number[] = [];
-      for (const id of newFilteredIds) {
-        const idx = fullOrder.indexOf(id);
-        if (idx !== -1) indices.push(idx);
-      }
-      indices.sort((a, b) => a - b);
+      isDirtyRef.current = true;
+      latestOrderRef.current = next;
 
-      const next = [...fullOrder];
-      for (let i = 0; i < indices.length && i < newFilteredIds.length; i++) {
-        next[indices[i]] = newFilteredIds[i];
+      if (persistTimerRef.current !== null) {
+        window.clearTimeout(persistTimerRef.current);
       }
+      persistTimerRef.current = window.setTimeout(() => {
+        persistTimerRef.current = null;
+        flushPersist();
+      }, 300);
 
-      localStorage.setItem('ghostty_instances_order', JSON.stringify(next));
       return next;
     });
   };
@@ -452,123 +625,26 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
               />
             </div>
           ) : (
-            <>
-              <Reorder.Group
-                axis="y"
-                values={filteredInstances}
-                onReorder={handleReorder}
-                className="space-y-2.5"
-              >
-                {filteredInstances.map((inst) => {
-                  const isSelected = currentHero?.id === inst.id;
-                  const isFavorite = Boolean(inst.favorite);
-                  const isDragging = draggingId === inst.id;
-
-                  return (
-                    <Reorder.Item
-                      key={inst.id}
-                      value={inst}
-                      data-instance-id={inst.id}
-                      onDragStart={() => setDraggingId(inst.id)}
-                      onDragEnd={() => setDraggingId(null)}
-                      whileDrag={{
-                        scale: 1.025,
-                        zIndex: 50,
-                        boxShadow: '0 20px 48px -10px rgba(0, 0, 0, 0.85)',
-                        cursor: 'grabbing',
-                      }}
-                      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-                      className="relative cursor-pointer select-none"
-                    >
-                      <SpotlightCard
-                        data-instance-id={inst.id}
-                        onClick={() => {
-                          if (draggingId) return;
-                          onSelectInstance(inst);
-                        }}
-                        isSelected={isSelected && !isDragging}
-                        className={`glass-card instance-card p-3.5 cursor-pointer group relative transition-all duration-150 ${
-                          isDragging
-                            ? 'shadow-2xl brightness-105 border-white/25'
-                            : isSelected
-                            ? 'ring-2 ring-[var(--accent)]/70 bg-[var(--glass-hover)] shadow-md'
-                            : 'hover:border-white/20'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 relative z-10">
-                          <div
-                            className="cursor-grab active:cursor-grabbing text-ghost-500 hover:text-ghost-300 transition-colors shrink-0 -ml-1 p-0.5"
-                            title="Arrastra para reordenar"
-                          >
-                            <GripVertical className="w-3.5 h-3.5" />
-                          </div>
-
-                          <div className="w-11 h-11 rounded-control glass-control p-1.5 flex items-center justify-center shrink-0">
-                            <InstanceIcon icon={inst.icon} alt={inst.name} />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <h3
-                                className={`text-sm font-semibold truncate transition-colors ${
-                                  isSelected ? 'text-ghost-50' : 'text-ghost-200 group-hover:text-ghost-50'
-                                }`}
-                              >
-                                {inst.name}
-                              </h3>
-                              {isSelected && (
-                                <span className="w-2 h-2 rounded-full accent-bg shrink-0" />
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between gap-2 mt-1">
-                              <div className="flex items-center gap-1.5 text-[11px] font-mono text-ghost-400 tabular-nums truncate">
-                                <span className="uppercase text-ghost-200 font-medium">
-                                  {inst.loader}
-                                </span>
-                                <span>•</span>
-                                <span>{inst.mc_version}</span>
-                                <span>•</span>
-                                <span>{inst.memory_max_mb ? (inst.memory_max_mb / 1024).toFixed(0) : '4'}G</span>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {inst.group && (
-                                  <span
-                                    className="p-0.5 text-ghost-400"
-                                    title={`Grupo: ${inst.group}`}
-                                  >
-                                    <Folder className="w-3.5 h-3.5" />
-                                  </span>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleFavorite?.(inst);
-                                  }}
-                                  className={`p-0.5 transition-colors ${
-                                    isFavorite
-                                      ? 'text-spectral-rose'
-                                      : 'text-spectral-rose/40 hover:text-spectral-rose'
-                                  }`}
-                                  title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-                                >
-                                  <Star
-                                    className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </SpotlightCard>
-                    </Reorder.Item>
-                  );
-                })}
-              </Reorder.Group>
-            </>
+            <Reorder.Group
+              axis="y"
+              values={filteredInstances}
+              onReorder={handleReorder}
+              className="space-y-2.5"
+            >
+              {filteredInstances.map((inst) => (
+                <InstanceReorderItem
+                  key={inst.id}
+                  inst={inst}
+                  isSelected={currentHero?.id === inst.id}
+                  isFavorite={Boolean(inst.favorite)}
+                  isDragging={draggingId === inst.id}
+                  onSelectInstance={onSelectInstance}
+                  onToggleFavorite={onToggleFavorite}
+                  onDragStart={() => setDraggingId(inst.id)}
+                  onDragEnd={handleDragEnd}
+                />
+              ))}
+            </Reorder.Group>
           )}
         </div>
       </div>

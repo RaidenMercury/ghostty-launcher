@@ -9,11 +9,9 @@ use std::time::Duration;
 use uuid::Uuid;
 
 pub const GHOSTTY_MSA_CLIENT_ID: &str = "1b857661-eaf1-4c25-a00f-be80204fb059";
-pub const COMMUNITY_MSA_CLIENT_ID: &str = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
 
-/// Temporalmente se utiliza el Client ID comunitario verificado por Mojang mientras la app oficial
-/// de Azure "Ghostty Launcher" (1b857661) pasa el proceso de aprobación en https://aka.ms/AppRegInfo.
-const DEFAULT_MSA_CLIENT_ID: &str = COMMUNITY_MSA_CLIENT_ID;
+/// Client ID oficial de Ghostty Launcher registrado y aprobado en Microsoft Entra ID.
+const DEFAULT_MSA_CLIENT_ID: &str = GHOSTTY_MSA_CLIENT_ID;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DeviceCodeResponse {
@@ -102,9 +100,6 @@ pub struct AccountManager;
 
 impl AccountManager {
     fn msa_client_id() -> String {
-        if std::env::var("GHOSTTY_USE_COMMUNITY_AUTH").map_or(false, |v| v == "1") {
-            return COMMUNITY_MSA_CLIENT_ID.to_string();
-        }
         std::env::var("GHOSTTY_MSA_CLIENT_ID")
             .ok()
             .filter(|v| !v.trim().is_empty())
