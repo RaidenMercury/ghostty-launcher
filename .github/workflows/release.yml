@@ -56,7 +56,7 @@ jobs:
 
             Esta versión v0.1.1 incluye correcciones en la experiencia de usuario, optimizaciones de rendimiento y nuevas funcionalidades desarrolladas entre v0.1.0 y v0.1.1.
 
-            ### 🛠️ Resumen de Correcciones y Soluciones (con Commits)
+            ### Resumen de Correcciones y Soluciones (con Commits)
 
             * **Visor de Fotos In-Launcher (Lightbox):**
               - `8c7f680` — **feat(viewer):** Implementación de arquitectura de doble capa con desenfoque `.island-backdrop` (`backdrop-filter: blur(14px) saturate(1.05)`) y cierre instantáneo al hacer clic en cualquier espacio vacío exterior.
@@ -65,31 +65,26 @@ jobs:
               - `4a3434d` — **feat(ui):** Integración inicial del visor de capturas in-launcher para modpacks, mods, shaders y resourcepacks en lugar de abrir el navegador externo.
 
             * **Ajustes y Configuración:**
-              - `d05be50` — **fix(settings):** Cierre automático del panel de Ajustes al presionar "Guardar Cambios" e inclusión del botón táctil de cierre rápido `X`.
+              - `d05be50` — **fix(settings):** Cierre automático del panel de Ajustes al presionar "Guardar Cambios" e inclusión del botón táctil de cierre rápido X.
 
             * **Internacionalización y Textos:**
               - `60797e4` — **feat(i18n):** Cobertura del 100% de traducción en Español e Inglés en todas las pantallas, configuraciones de entorno, botones y diálogos modales.
 
             * **Escalado Responsivo de Interfaz:**
-              - `4d0c418` — **feat(ui):** Implementación de escalado dinámico (`--ui-scale`: Auto, 75%, 85%, 100%, 115%) ideal para pantallas pequeñas (Steam Deck, 720p) y monitores de alta resolución.
+              - `4d0c418` — **feat(ui):** Implementación de escalado dinámico (`--ui-scale`: Auto, 75%, 85%, 100%, 115%) para pantallas pequeñas (Steam Deck, 720p) y monitores de alta resolución.
 
             * **Autenticación y Rendimiento de Instancias:**
-              - `ed21e61` — **fix(auth & perf):** Vinculación del Client ID oficial de Microsoft Entra ID y optimización del drag-and-drop en el reordenamiento de instancias para eliminar cualquier retardo visual.
+              - `ed21e61` — **fix(auth & perf):** Activación del Client ID oficial y aprobado de Ghostty Launcher en Microsoft Entra ID, junto con optimización del arrastre en el reordenamiento de instancias para eliminar retardo visual.
 
             * **Gestor de Contenido y Drag & Drop:**
               - `2c5b82f` — **feat(content):** Soporte de arrastrar y soltar archivos `.jar` (mods) y `.zip` (shaders / texturepacks) para instalación directa en la instancia activa, junto con resolución de dependencias de Modrinth.
 
             ---
 
-            ### 📦 Paquetes y Extensiones Disponibles en este Release:
+            ### Paquetes y Extensiones Disponibles en este Release:
             - **Linux:** `.AppImage` (Universal ejecutable portable), `.deb` (Debian, Ubuntu, Mint) y `.rpm` (Fedora, RHEL, openSUSE).
             - **Windows:** Instalador `.exe` (NSIS) de 64 bits.
             - **macOS:** Imagen de disco `.dmg` (Universal para procesadores Intel y Apple Silicon).
-
-            ---
-
-            > **Nota sobre la autenticación de Microsoft / Xbox Live:**  
-            > De forma temporal, el inicio de sesión OAuth utiliza el identificador de cliente comunitario verificado por Mojang (`c36a9fb6`) mientras la aplicación oficial registrada en Azure para **Ghostty Launcher** (`1b857661-eaf1-4c25-a00f-be80204fb059`) completa las revisiones de Mojang Studios en [aka.ms/AppRegInfo](https://aka.ms/AppRegInfo). En cuanto sea aprobada en la lista blanca de la API, se activará de forma nativa sin requerir intervención del usuario.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
