@@ -12,10 +12,13 @@ import {
   Image as ImageIcon,
   Code2,
   Scale,
+  Maximize2,
 } from 'lucide-react';
 import { ModrinthSearchHit, ModrinthVersion, Instance } from '../types';
 import { api, ProjectFullDetails } from '../services/api';
 import { GlassSelect } from './GlassSelect';
+import { ImageViewerModal, GalleryImage } from './ImageViewerModal';
+import { useI18n } from '../utils/i18n';
 
 interface VersionSelectorModalProps {
   isOpen: boolean;
@@ -34,9 +37,12 @@ export function VersionSelectorModal({
   onClose,
   onInstallVersion,
 }: VersionSelectorModalProps) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'details' | 'versions'>(initialTab);
   const [details, setDetails] = useState<ProjectFullDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const [versions, setVersions] = useState<ModrinthVersion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,7 +64,7 @@ export function VersionSelectorModal({
   }, [hit]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isImageViewerOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -67,7 +73,7 @@ export function VersionSelectorModal({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, isImageViewerOpen, onClose]);
 
   const loadProjectDetails = async (targetHit: ModrinthSearchHit) => {
     try {
@@ -146,41 +152,60 @@ export function VersionSelectorModal({
       .trim();
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center p-2.5 sm:p-4 overflow-hidden">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.14 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/75"
-          />
+  const viewerImages: GalleryImage[] =
+    details?.gallery && details.gallery.length > 0
+      ? details.gallery
+      : hit.icon_url
+      ? [{ url: hit.icon_url, title: hit.title }]
+      : [];
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 6 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-full max-w-full h-full max-h-full flex flex-col glass-panel-strong text-ghost-100 z-10 overflow-hidden"
-          >
-            <div className="relative overflow-hidden border-b glass-divider px-5 py-3.5 flex items-center justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-control bg-black/30 border border-[var(--glass-border)] overflow-hidden flex items-center justify-center shrink-0">
-                  {hit.icon_url ? (
-                    <img
-                      src={hit.icon_url}
-                      alt={hit.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Layers className="w-5 h-5 accent-text" />
-                  )}
-                </div>
+  return (
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center p-2.5 sm:p-4 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.14 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-black/75"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 6 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-full h-full max-h-full flex flex-col glass-panel-strong text-ghost-100 z-10 overflow-hidden"
+            >
+              <div className="relative overflow-hidden border-b glass-divider px-5 py-3.5 flex items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    onClick={() => {
+                      if (hit.icon_url) {
+                        setSelectedImageIndex(0);
+                        setIsImageViewerOpen(true);
+                      }
+                    }}
+                    className={`w-10 h-10 rounded-control bg-black/30 border border-[var(--glass-border)] overflow-hidden flex items-center justify-center shrink-0 ${
+                      hit.icon_url ? 'cursor-pointer hover:border-ghost-300 transition-colors' : ''
+                    }`}
+                    title={hit.icon_url ? t.gallery_click_to_expand : undefined}
+                  >
+                    {hit.icon_url ? (
+                      <img
+                        src={hit.icon_url}
+                        alt={hit.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Layers className="w-5 h-5 accent-text" />
+                    )}
+                  </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="heading-display text-xl sm:text-2xl font-extrabold text-ghost-50 truncate">
@@ -289,16 +314,24 @@ export function VersionSelectorModal({
 
                     {details?.gallery && details.gallery.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-mono uppercase text-ghost-300 flex items-center gap-1.5">
-                          <ImageIcon className="w-3.5 h-3.5 accent-text" />
-                          <span>Galería ({details.gallery.length})</span>
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                          {details.gallery.slice(0, 6).map((img, i) => (
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-mono uppercase text-ghost-300 flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 accent-text" />
+                            <span>{t.gallery_title} ({details.gallery.length})</span>
+                          </h4>
+                          <span className="text-[11px] text-ghost-400">
+                            {t.gallery_click_to_expand}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                          {details.gallery.map((img, i) => (
                             <div
                               key={i}
-                              onClick={() => api.openExternalUrl(img.url)}
-                              className="h-24 rounded-control overflow-hidden border border-[var(--glass-border)] bg-black/30 cursor-pointer group relative"
+                              onClick={() => {
+                                setSelectedImageIndex(i);
+                                setIsImageViewerOpen(true);
+                              }}
+                              className="h-28 rounded-control overflow-hidden border border-[var(--glass-border)] bg-black/30 cursor-pointer group relative shadow-sm hover:border-ghost-300 transition-all"
                             >
                               <img
                                 src={img.url}
@@ -307,6 +340,9 @@ export function VersionSelectorModal({
                                 decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                               />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="w-5 h-5 text-ghost-50 drop-shadow" />
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -504,5 +540,13 @@ export function VersionSelectorModal({
         </div>
       )}
     </AnimatePresence>
+
+    <ImageViewerModal
+      isOpen={isImageViewerOpen}
+      images={viewerImages}
+      initialIndex={selectedImageIndex}
+      onClose={() => setIsImageViewerOpen(false)}
+    />
+  </>
   );
 }

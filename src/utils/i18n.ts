@@ -287,6 +287,13 @@ export interface Translations {
   common_import: string;
   common_folder: string;
   common_refresh: string;
+
+  // Image Viewer
+  viewer_counter: string;
+  viewer_open_original: string;
+  viewer_close: string;
+  gallery_title: string;
+  gallery_click_to_expand: string;
 }
 
 const es: Translations = {
@@ -561,6 +568,12 @@ const es: Translations = {
   common_import: 'Importar',
   common_folder: 'Carpeta',
   common_refresh: 'Refrescar',
+
+  viewer_counter: 'de',
+  viewer_open_original: 'Abrir original en navegador',
+  viewer_close: 'Cerrar (Esc)',
+  gallery_title: 'Galería',
+  gallery_click_to_expand: 'Clic para ampliar',
 };
 
 const en: Translations = {
@@ -835,6 +848,12 @@ const en: Translations = {
   common_import: 'Import',
   common_folder: 'Folder',
   common_refresh: 'Refresh',
+
+  viewer_counter: 'of',
+  viewer_open_original: 'Open original in browser',
+  viewer_close: 'Close (Esc)',
+  gallery_title: 'Gallery',
+  gallery_click_to_expand: 'Click to enlarge',
 };
 
 const dictionaries: Record<Language, Translations> = { es, en };
