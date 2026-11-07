@@ -477,12 +477,39 @@ impl ModpackEngine {
         Ok(temp_file.to_string_lossy().to_string())
     }
 
+    pub fn validate_cache_temp_path(temp_path: &str) -> Result<PathBuf, String> {
+        let clean = temp_path.trim();
+        if clean.is_empty() {
+            return Err("Ruta de archivo temporal vacía".to_string());
+        }
+        let root = LauncherManager::get_root_dir()?;
+        let cache_dir = root.join("caches");
+        let path = PathBuf::from(clean);
+
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| "Nombre de archivo temporal inválido".to_string())?;
+
+        if !file_name.starts_with("upload_") || (!file_name.ends_with(".mrpack") && !file_name.ends_with(".zip")) {
+            return Err("Nombre de archivo temporal no reconocido".to_string());
+        }
+
+        let expected = cache_dir.join(file_name);
+        if path != expected {
+            return Err("Ruta de archivo temporal fuera de la caché permitida".to_string());
+        }
+
+        Ok(expected)
+    }
+
     pub fn append_upload_chunk(temp_path: &str, chunk_b64: &str) -> Result<(), String> {
+        let valid_path = Self::validate_cache_temp_path(temp_path)?;
         let decoded = decode_base64(chunk_b64)?;
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(temp_path)
+            .open(&valid_path)
             .map_err(|e| e.to_string())?;
         file.write_all(&decoded).map_err(|e| e.to_string())?;
         Ok(())
@@ -493,7 +520,7 @@ impl ModpackEngine {
         temp_path: &str,
         custom_name: Option<String>,
     ) -> Result<Instance, String> {
-        let path_buf = PathBuf::from(temp_path);
+        let path_buf = Self::validate_cache_temp_path(temp_path)?;
         let mut resolved_icon: Option<String> = None;
 
         if let Some(sha1_hex) = compute_file_sha1(&path_buf) {

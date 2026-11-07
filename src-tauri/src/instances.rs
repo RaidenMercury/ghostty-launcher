@@ -23,10 +23,42 @@ pub fn ensure_supported_loader(loader: &str) -> Result<(), String> {
 
 pub struct InstanceManager;
 
+pub fn is_valid_instance_id(id: &str) -> bool {
+    let clean = id.trim();
+    !clean.is_empty()
+        && clean.len() <= 64
+        && clean.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+fn safe_content_path(mods_dir: &Path, filename: &str) -> Result<PathBuf, String> {
+    let clean = filename.trim();
+    if clean.is_empty() || clean.contains('/') || clean.contains('\\') || clean.contains("..") {
+        return Err("Nombre de archivo no válido o sospechoso".to_string());
+    }
+    let Some(file_name) = Path::new(clean).file_name().and_then(|f| f.to_str()) else {
+        return Err("Nombre de archivo inválido".to_string());
+    };
+    if file_name != clean {
+        return Err("Nombre de archivo no coincide con su nombre base".to_string());
+    }
+    let path = mods_dir.join(file_name);
+    if !path.starts_with(mods_dir) {
+        return Err("Ruta de archivo fuera del directorio de contenido".to_string());
+    }
+    Ok(path)
+}
+
 impl InstanceManager {
     pub fn get_instance_dir(instance_id: &str) -> Result<PathBuf, String> {
+        if !is_valid_instance_id(instance_id) {
+            return Err(format!("Identificador de instancia inválido: '{}'", instance_id));
+        }
         let root = LauncherManager::get_root_dir()?;
-        let dir = root.join("instances").join(instance_id);
+        let instances_root = root.join("instances");
+        let dir = instances_root.join(instance_id);
+        if !dir.starts_with(&instances_root) {
+            return Err("Ruta de instancia fuera de los límites permitidos".to_string());
+        }
         if !dir.exists() {
             fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         }
@@ -160,13 +192,17 @@ impl InstanceManager {
     }
 
     pub fn delete_instance(id: &str) -> Result<Vec<Instance>, String> {
+        if !is_valid_instance_id(id) {
+            return Err(format!("Identificador de instancia inválido: '{}'", id));
+        }
         let mut instances = LauncherManager::load_instances()?;
         instances.retain(|i| i.id != id);
         LauncherManager::save_instances(&instances)?;
 
         let root = LauncherManager::get_root_dir()?;
-        let dir = root.join("instances").join(id);
-        if dir.exists() {
+        let instances_root = root.join("instances");
+        let dir = instances_root.join(id);
+        if dir.starts_with(&instances_root) && dir.exists() {
             let _ = fs::remove_dir_all(dir);
         }
 
@@ -215,7 +251,7 @@ impl InstanceManager {
 
     pub fn toggle_content(instance_id: &str, filename: &str, kind: &str) -> Result<ModFileInfo, String> {
         let mods_dir = Self::content_dir(instance_id, kind)?;
-        let old_path = mods_dir.join(filename);
+        let old_path = safe_content_path(&mods_dir, filename)?;
         if !old_path.exists() {
             return Err("El archivo del mod no existe".to_string());
         }
@@ -226,7 +262,7 @@ impl InstanceManager {
             format!("{}.disabled", filename)
         };
 
-        let new_path = mods_dir.join(&new_filename);
+        let new_path = safe_content_path(&mods_dir, &new_filename)?;
         fs::rename(&old_path, &new_path).map_err(|e| e.to_string())?;
         let meta = fs::metadata(&new_path).map_err(|e| e.to_string())?;
 
@@ -240,7 +276,7 @@ impl InstanceManager {
 
     pub fn delete_content(instance_id: &str, filename: &str, kind: &str) -> Result<(), String> {
         let mods_dir = Self::content_dir(instance_id, kind)?;
-        let path = mods_dir.join(filename);
+        let path = safe_content_path(&mods_dir, filename)?;
         if path.exists() {
             fs::remove_file(path).map_err(|e| e.to_string())?;
         }
@@ -401,4 +437,33 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validates_instance_id_security() {
+        assert!(is_valid_instance_id("550e8400-e29b-41d4-a716-446655440000"));
+        assert!(is_valid_instance_id("my_instance-123"));
+        assert!(!is_valid_instance_id(""));
+        assert!(!is_valid_instance_id("../evil"));
+        assert!(!is_valid_instance_id("inst/sub"));
+        assert!(!is_valid_instance_id("inst\\sub"));
+        assert!(!is_valid_instance_id("inst;calc"));
+        assert!(!is_valid_instance_id("inst name"));
+    }
+
+    #[test]
+    fn validates_safe_content_path_security() {
+        let base = PathBuf::from("/mock/mods");
+        assert!(safe_content_path(&base, "jei-1.21.jar").is_ok());
+        assert!(safe_content_path(&base, "sodium.jar.disabled").is_ok());
+        assert!(safe_content_path(&base, "../other.jar").is_err());
+        assert!(safe_content_path(&base, "/etc/passwd").is_err());
+        assert!(safe_content_path(&base, "sub/mod.jar").is_err());
+        assert!(safe_content_path(&base, "sub\\mod.jar").is_err());
+        assert!(safe_content_path(&base, "").is_err());
+    }
 }

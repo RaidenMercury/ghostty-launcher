@@ -54,30 +54,21 @@ jobs:
           releaseBody: |
             ## Ghostty Launcher ${{ github.ref_name }} — Release Notes
 
-            Esta versión v0.1.1 incluye correcciones en la experiencia de usuario, optimizaciones de rendimiento y nuevas funcionalidades desarrolladas entre v0.1.0 y v0.1.1.
+            Esta versión v0.1.2 implementa el endurecimiento de seguridad integral del launcher, mitigando vectores de ejecución de comandos en Windows, previniendo path traversal en el manejo de contenido e instancias, y blindando la subida de paquetes temporales.
 
-            ### Resumen de Correcciones y Soluciones (con Commits)
+            ### Resumen de Correcciones y Soluciones
 
-            * **Visor de Fotos In-Launcher (Lightbox):**
-              - `8c7f680` — **feat(viewer):** Implementación de arquitectura de doble capa con desenfoque `.island-backdrop` (`backdrop-filter: blur(14px) saturate(1.05)`) y cierre instantáneo al hacer clic en cualquier espacio vacío exterior.
-              - `1a4e7df` — **fix(viewer):** Corrección de montaje en `createPortal` con `AnimatePresence` interno para garantizar transiciones fluidas de entrada y salida con Framer Motion sin parpadeos.
-              - `af641a3` — **fix(viewer):** Corrección del tamaño de miniaturas del carrusel (`w-20 h-14` / `w-24 h-16`) y auto-centrado geométrico suave sobre la imagen seleccionada.
-              - `4a3434d` — **feat(ui):** Integración inicial del visor de capturas in-launcher para modpacks, mods, shaders y resourcepacks en lugar de abrir el navegador externo.
+            * **Seguridad en Apertura de URLs Externas (Windows):**
+              - Mitigación de inyección de comandos en `open_external_url` en Windows: sustitución de `cmd.exe /C start` por invocación directa vía `rundll32 url.dll,FileProtocolHandler`, evitando la ruptura o inyección provocada por caracteres de control (`&`, `|`, newlines) en URLs con parámetros de búsqueda.
 
-            * **Ajustes y Configuración:**
-              - `d05be50` — **fix(settings):** Cierre automático del panel de Ajustes al presionar "Guardar Cambios" e inclusión del botón táctil de cierre rápido X.
+            * **Protección contra Path Traversal en Gestor de Contenido:**
+              - Saneamiento y validación estricta de nombres de archivo en `delete_content` y `toggle_content` mediante `safe_content_path`, impidiendo secuencias de escape de directorio (`../`) y asegurando que las operaciones se limiten estrictamente a la carpeta de mods/paquetes.
 
-            * **Internacionalización y Textos:**
-              - `60797e4` — **feat(i18n):** Cobertura del 100% de traducción en Español e Inglés en todas las pantallas, configuraciones de entorno, botones y diálogos modales.
+            * **Blindaje de Archivos Temporales de Subida:**
+              - Validación estricta en `append_upload_chunk` y `finish_upload` mediante `validate_cache_temp_path`, restringiendo la escritura exclusivamente a archivos generados con prefijo `upload_` dentro de la carpeta `caches/` del launcher.
 
-            * **Escalado Responsivo de Interfaz:**
-              - `4d0c418` — **feat(ui):** Implementación de escalado dinámico (`--ui-scale`: Auto, 75%, 85%, 100%, 115%) para pantallas pequeñas (Steam Deck, 720p) y monitores de alta resolución.
-
-            * **Autenticación y Rendimiento de Instancias:**
-              - `ed21e61` — **fix(auth & perf):** Activación del Client ID oficial y aprobado de Ghostty Launcher en Microsoft Entra ID, junto con optimización del arrastre en el reordenamiento de instancias para eliminar retardo visual.
-
-            * **Gestor de Contenido y Drag & Drop:**
-              - `2c5b82f` — **feat(content):** Soporte de arrastrar y soltar archivos `.jar` (mods) y `.zip` (shaders / texturepacks) para instalación directa en la instancia activa, junto con resolución de dependencias de Modrinth.
+            * **Aislamiento y Validación de Identificadores de Instancia:**
+              - Validación de formato para `instance_id` (`is_valid_instance_id`) y verificación de confinamiento en `get_instance_dir` y `delete_instance`, garantizando que ninguna llamada pueda escapar del directorio raíz de instancias.
 
             ---
 

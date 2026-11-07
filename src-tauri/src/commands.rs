@@ -346,9 +346,14 @@ pub fn open_external_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err("URL no permitida".to_string());
     }
+    if url.contains('\n') || url.contains('\r') || url.contains('\0') {
+        return Err("URL inválida".to_string());
+    }
     #[cfg(target_os = "windows")]
     {
-        let _ = Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+        let _ = Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", &url])
+            .spawn();
     }
     #[cfg(target_os = "macos")]
     {
